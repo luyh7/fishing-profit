@@ -1,13 +1,13 @@
 {
-  "updated_at": "2026-05-11T02:09:25.950279",
+  "updated_at": "2026-05-11T03:21:46.130279",
   "locations": [
     {
       "id": "1",
       "name": "乡间浅溪",
       "difficulty": 0,
-      "fishers": 32,
+      "fishers": 33,
       "buffs": {
-        "nest": 4
+        "nest": 5
       }
     },
     {
@@ -57,7 +57,7 @@
       "id": "7",
       "name": "长江中游",
       "difficulty": 6,
-      "fishers": 1,
+      "fishers": 0,
       "buffs": {}
     },
     {
