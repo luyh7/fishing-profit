@@ -11,7 +11,7 @@
   const systemBuffs = Array.isArray(config.systemBuffs)
     ? config.systemBuffs
     : [];
-  const nestBuffApiUrl = "http://223.109.140.105:4158/";
+  const nestBuffSourceUrl = config.nestBuffSourceUrl || "./nest-buff.json";
   const nestBuffRefreshCooldownMs = 5 * 60 * 1000;
   const storageKeys = {
     hookLevel: "fish_calculator_hook_level",
@@ -255,7 +255,7 @@
     setNestBuffRefreshButtonState(true);
 
     try {
-      const response = await fetch(nestBuffApiUrl, {
+      const response = await fetch(nestBuffSourceUrl, {
         cache: "no-store",
       });
 
