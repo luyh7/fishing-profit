@@ -139,6 +139,10 @@
     return Array.isArray(map.fishes) ? map.fishes : [];
   }
 
+  function getMapCode(map) {
+    return parseNumber(map.level) + 1;
+  }
+
   function calculateAverageNPrice(fishes) {
     if (!fishes.length) {
       return Number.NaN;
@@ -399,7 +403,10 @@
           <div class="map-card ${isSelected ? "selected" : ""} ${isBest ? "best" : ""}" data-map-level="${row.map.level}" role="button" tabindex="0">
             <div class="map-card-compact">
               <div class="map-card-header">
-                <div class="map-card-title">Lv.${row.map.level} ${row.map.name}</div>
+                <div class="map-card-title">
+                  <span class="map-card-code">${formatNumber(getMapCode(row.map), 0)}</span>
+                  <span>Lv.${row.map.level} ${row.map.name}</span>
+                </div>
                 <div class="map-card-badges" data-map-badges="${row.map.level}">
                   ${isBest ? '<span class="badge badge-best">最优</span>' : ""}
                 </div>
