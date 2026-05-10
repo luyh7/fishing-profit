@@ -540,6 +540,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        flex-wrap: wrap;
         gap: 12px;
         margin-bottom: 14px;
       }
@@ -548,6 +549,8 @@
       .panel-head h2,
       .section-head h2 {
         font-size: 18px;
+        flex: 0 0 auto;
+        white-space: nowrap;
       }
 
       .panel-head-actions {
@@ -564,10 +567,21 @@
         gap: 10px;
       }
 
-      .refresh-nest-buff-status {
-        width: fit-content;
+      .refresh-nest-buff-statuses {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 6px 8px;
+        align-items: center;
+        justify-content: flex-end;
         min-width: 0;
-        max-width: min(320px, 42vw);
+        flex: 1 1 260px;
+      }
+
+      .refresh-nest-buff-status {
+        width: auto;
+        min-width: 0;
+        max-width: min(320px, 100%);
         padding: 4px 10px;
         border: 1px solid rgba(255, 255, 255, 0.08);
         background: rgba(255, 255, 255, 0.02);
@@ -579,6 +593,7 @@
         text-align: left;
         white-space: normal;
         overflow-wrap: anywhere;
+        word-break: break-word;
       }
 
       .refresh-nest-buff-status.success {
@@ -836,7 +851,10 @@
           <div class="panel-head">
             <h2>地图选择</h2>
             <div class="panel-head-actions">
-              <div class="refresh-nest-buff-status" id="refreshNestBuffStatus" hidden></div>
+              <div class="refresh-nest-buff-statuses">
+                <div class="refresh-nest-buff-status" id="refreshNestBuffStatus" hidden></div>
+                <div class="refresh-nest-buff-status error" id="refreshNestBuffError" hidden></div>
+              </div>
               <div class="refresh-nest-buff-actions">
                 <button type="button" class="refresh-nest-buff-btn" id="refreshNestBuffBtn">获取实时打窝buff</button>
               </div>

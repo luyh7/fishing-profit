@@ -12,7 +12,7 @@
     ? config.systemBuffs
     : [];
   const nestBuffSourceUrl = config.nestBuffSourceUrl || "./nest-buff.json";
-  const nestBuffRefreshCooldownMs = 5 * 60 * 1000;
+  const nestBuffRefreshCooldownMs = 1 * 60 * 1000;
   const storageKeys = {
     hookLevel: "fish_calculator_hook_level",
     rodLevel: "fish_calculator_rod_level",
@@ -35,6 +35,7 @@
     selectedBestNet: document.getElementById("selectedBestNet"),
     refreshNestBuffBtn: document.getElementById("refreshNestBuffBtn"),
     refreshNestBuffStatus: document.getElementById("refreshNestBuffStatus"),
+    refreshNestBuffError: document.getElementById("refreshNestBuffError"),
     fishPriceTooltip: document.getElementById("fishPriceTooltip"),
     bestBaitName: document.getElementById("bestBaitName"),
     bestBaitNet: document.getElementById("bestBaitNet"),
@@ -64,6 +65,20 @@
   function formatMinutes(value) {
     if (!Number.isFinite(value)) return "-";
     return `${formatNumber(value * 60, 1)} 分钟`;
+  }
+
+  function formatDateTime(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return "-";
+    }
+
+    const pad = (number) => String(number).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+      date.getDate(),
+    )} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(
+      date.getSeconds(),
+    )}`;
   }
 
   function buildOption(selectElement, items, getValue, getLabel) {
@@ -107,6 +122,7 @@
   let nestBuffStatusIntervalId = null;
   let nestBuffStatusTimeoutId = null;
   let nestBuffLastRefreshAt = 0;
+  let nestBuffLastUpdateAt = "";
 
   function getNestBuffLastRefreshAt() {
     return nestBuffLastRefreshAt;
@@ -114,6 +130,14 @@
 
   function setNestBuffLastRefreshAt(timestamp) {
     nestBuffLastRefreshAt = Number.isFinite(timestamp) ? timestamp : 0;
+  }
+
+  function setNestBuffLastUpdateAt(value) {
+    nestBuffLastUpdateAt = value ?? "";
+  }
+
+  function getNestBuffLastUpdateAt() {
+    return nestBuffLastUpdateAt;
   }
 
   function clearNestBuffStatus() {
@@ -124,6 +148,16 @@
     elements.refreshNestBuffStatus.hidden = true;
     elements.refreshNestBuffStatus.textContent = "";
     elements.refreshNestBuffStatus.className = "refresh-nest-buff-status";
+  }
+
+  function clearNestBuffError() {
+    if (!elements.refreshNestBuffError) {
+      return;
+    }
+
+    elements.refreshNestBuffError.hidden = true;
+    elements.refreshNestBuffError.textContent = "";
+    elements.refreshNestBuffError.className = "refresh-nest-buff-status error";
   }
 
   function clearNestBuffStatusTimers() {
@@ -148,6 +182,16 @@
     elements.refreshNestBuffStatus.className = `refresh-nest-buff-status ${kind}`;
   }
 
+  function showNestBuffError(message) {
+    if (!elements.refreshNestBuffError) {
+      return;
+    }
+
+    elements.refreshNestBuffError.hidden = false;
+    elements.refreshNestBuffError.textContent = message;
+    elements.refreshNestBuffError.className = "refresh-nest-buff-status error";
+  }
+
   function formatCountdown(remainingMs) {
     const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
     const minutes = Math.floor(totalSeconds / 60);
@@ -157,18 +201,18 @@
 
   function showNestBuffCooldownStatus() {
     clearNestBuffStatusTimers();
+    clearNestBuffError();
 
     const update = () => {
       const remainingMs = getNestBuffCooldownRemainingMs();
       if (remainingMs <= 0) {
         clearNestBuffStatusTimers();
-        clearNestBuffStatus();
+        clearNestBuffError();
         return false;
       }
 
-      showNestBuffStatus(
+      showNestBuffError(
         `获取过于频繁，请 ${formatCountdown(remainingMs)} 后再试。`,
-        "error",
       );
       return true;
     };
@@ -182,11 +226,9 @@
 
   function showNestBuffSuccessStatus() {
     clearNestBuffStatusTimers();
-    showNestBuffStatus("获取成功！", "success");
-    nestBuffStatusTimeoutId = window.setTimeout(() => {
-      clearNestBuffStatusTimers();
-      clearNestBuffStatus();
-    }, 5000);
+    clearNestBuffError();
+    const updateAt = getNestBuffLastUpdateAt() || getNestBuffLastRefreshAt();
+    showNestBuffStatus(`数据更新于 ${formatDateTime(updateAt)}`, "success");
   }
 
   function getNestBuffCooldownRemainingMs() {
@@ -265,12 +307,13 @@
 
       const payload = await response.json();
       applyNestBuffSnapshot(payload);
+      setNestBuffLastUpdateAt(payload?.updated_at);
       setNestBuffLastRefreshAt(Date.now());
       showNestBuffSuccessStatus();
       render({ skipMapCardRebuild: true });
     } catch (error) {
       console.error("获取实时打窝buff失败", error);
-      showNestBuffStatus("获取实时打窝buff失败，请稍后重试。", "error");
+      showNestBuffError("获取实时打窝buff失败，请稍后重试。");
     } finally {
       isRefreshingNestBuff = false;
       setNestBuffRefreshButtonState(false);
@@ -831,6 +874,7 @@
           const current = getBaitBuffForMap(mapLevel);
           const next = Math.max(0, current + stepValue);
           setBaitBuffForMap(mapLevel, next === 0 ? "" : String(next));
+          clearNestBuffStatus();
           render({ skipMapCardRebuild: true });
           return;
         }
@@ -869,7 +913,7 @@
           return;
         }
 
-        clearNestBuffStatus();
+        clearNestBuffError();
         refreshNestBuffs();
       });
     }
