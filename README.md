@@ -61,3 +61,20 @@ nestBuffSourceUrl: "https://raw.githubusercontent.com/luyh7/fishing-profit/gh-pa
 ## License
 
 MIT
+
+## Cloudflare Worker nest buff sync
+
+Nest buff data is served by the Worker in `workers/nest-buff-sync`.
+Because the original IP source returns HTTP 403 to Cloudflare Worker egress,
+the Worker stores JSON in Cloudflare KV and only reads it at request time.
+The Tencent Cloud Function in `tencent-scf/nest-buff-sync` fetches the upstream
+JSON and writes it directly to Cloudflare KV.
+
+Deploy the Worker, then replace the placeholder in `config.js`:
+
+```js
+nestBuffSourceUrl: "https://<your-worker-host>/nest-buff.json";
+```
+
+Deploy the Tencent Cloud Function with a timer trigger so it can refresh the KV
+entry on a schedule.

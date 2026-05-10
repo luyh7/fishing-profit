@@ -10,7 +10,7 @@
 - 页面直接读取鱼钩等级、鱼竿等级、鱼饵列表、系统 buff、地图列表、稀有度倍数和概率表。
 - 每张地图内配置自己的 `id`、`difficulty`、鱼种列表及每种鱼的 N 级基础价格。
 - 用户输入与选择会通过 `localStorage` 持久化，包括鱼钩等级、鱼竿等级、系统 buff、当前地图和每张地图的打窝 buff。
-- 地图打窝 buff 支持通过配置中的静态 JSON 地址刷新，地址由 `config.js` 中的 `nestBuffSourceUrl` 提供，推荐指向 `gh-pages` 分支上的 raw JSON 文件，返回的 `locations[].buffs.nest` 会按 `nest * 5` 转换为最终打窝 buff。
+- 地图打窝 buff 支持通过配置中的静态 JSON 地址刷新，地址由 `config.js` 中的 `nestBuffSourceUrl` 提供，推荐指向 Cloudflare Worker 的 `/nest-buff.json`，返回的 `locations[].buffs.nest` 会按 `nest * 5` 转换为最终打窝 buff。
 
 ## 页面结构
 
@@ -105,3 +105,12 @@
 ## 同步要求
 
 后续任何涉及公式、鱼钩、鱼竿、地图、概率、buff、收益字段或展示逻辑的变更，都必须同步更新本文件。
+
+## Cloudflare Worker sync
+
+Nest buff data is served by the Cloudflare Worker in `workers/nest-buff-sync`.
+Because the upstream IP blocks Cloudflare Worker egress, refresh is pushed by an
+external sync runner instead of a Worker cron trigger. The Tencent Cloud
+Function fetches the upstream JSON and writes it directly to Cloudflare KV with
+the Cloudflare API token. The page reads `/nest-buff.json` through `config.js`
+`nestBuffSourceUrl`.

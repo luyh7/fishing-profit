@@ -1,0 +1,14 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "fishing-profit-nest-buff",
+	"main": "src/worker.js",
+	"compatibility_date": "2026-05-10",
+	"workers_dev": true,
+	"kv_namespaces": [
+		{
+			"binding": "NEST_BUFF_KV",
+			"id": "232c1bd1fca14ba29b4da0d98509d327",
+			"remote": true
+		}
+	]
+}

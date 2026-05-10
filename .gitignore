@@ -14,3 +14,18 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Dependencies
+node_modules/
+
+# Cloudflare Workers local state
+.wrangler/
+.dev.vars
+.dev.vars.*
+
+# Package manager / build caches
+.npm/
+.pnpm-store/
+.yarn/
+dist/
+build/
