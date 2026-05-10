@@ -1,0 +1,81 @@
+{
+  "updated_at": "2026-05-10T21:34:01.288884",
+  "locations": [
+    {
+      "id": "1",
+      "name": "乡间浅溪",
+      "difficulty": 0,
+      "fishers": 36,
+      "buffs": {}
+    },
+    {
+      "id": "2",
+      "name": "田园池塘",
+      "difficulty": 1,
+      "fishers": 7,
+      "buffs": {
+        "nest": 1
+      }
+    },
+    {
+      "id": "3",
+      "name": "平缓内河",
+      "difficulty": 2,
+      "fishers": 13,
+      "buffs": {
+        "nest": 1
+      }
+    },
+    {
+      "id": "4",
+      "name": "宽阔大湖",
+      "difficulty": 3,
+      "fishers": 8,
+      "buffs": {
+        "nest": 3
+      }
+    },
+    {
+      "id": "5",
+      "name": "山泉深潭",
+      "difficulty": 4,
+      "fishers": 0,
+      "buffs": {}
+    },
+    {
+      "id": "6",
+      "name": "芦苇浅荡",
+      "difficulty": 5,
+      "fishers": 0,
+      "buffs": {}
+    },
+    {
+      "id": "7",
+      "name": "长江中游",
+      "difficulty": 6,
+      "fishers": 0,
+      "buffs": {}
+    },
+    {
+      "id": "8",
+      "name": "河口交汇",
+      "difficulty": 7,
+      "fishers": 0,
+      "buffs": {}
+    },
+    {
+      "id": "9",
+      "name": "高山冷湖",
+      "difficulty": 8,
+      "fishers": 0,
+      "buffs": {}
+    },
+    {
+      "id": "10",
+      "name": "原生古河",
+      "difficulty": 9,
+      "fishers": 0,
+      "buffs": {}
+    }
+  ]
+}
