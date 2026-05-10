@@ -554,17 +554,20 @@
       }
 
       .panel-head-actions {
-        display: inline-flex;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
         align-items: center;
         justify-content: flex-end;
         gap: 10px;
-        flex-wrap: wrap;
+        min-width: 0;
       }
 
       .refresh-nest-buff-actions {
         display: inline-flex;
         align-items: center;
         gap: 10px;
+        flex: 0 0 auto;
+        justify-self: end;
       }
 
       .refresh-nest-buff-statuses {
@@ -573,9 +576,10 @@
         flex-wrap: wrap;
         gap: 6px 8px;
         align-items: center;
-        justify-content: flex-end;
+        justify-content: flex-start;
         min-width: 0;
-        flex: 1 1 260px;
+        max-width: 100%;
+        overflow: hidden;
       }
 
       .refresh-nest-buff-status {
