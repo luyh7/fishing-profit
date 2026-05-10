@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.1",
-  gitCommitCount: 19,
+  gitCommitCount: 20,
   nestBuffSourceUrl:
     "https://raw.githubusercontent.com/luyh7/fishing-profit/gh-pages/nest-buff.json",
   baseIntervalHours: 1,
@@ -166,7 +166,7 @@ window.FISH_FISHING_CONFIG = {
     { level: 3, name: "鱼竿 Lv.3" },
     { level: 4, name: "鱼竿 Lv.4" },
     { level: 5, name: "鱼竿 Lv.5" },
-    // { level: 6, name: "鱼竿 Lv.6" },
+    { level: 6, name: "鱼竿 Lv.6" },
     // { level: 7, name: "鱼竿 Lv.7" },
     // { level: 8, name: "鱼竿 Lv.8" },
     // { level: 9, name: "鱼竿 Lv.9" },
@@ -179,10 +179,10 @@ window.FISH_FISHING_CONFIG = {
     3: { UR: 0, SSR: 0, SR: 34.72, R: 48.9, N: 16.38 },
     4: { UR: 0, SSR: 11.37, SR: 44.12, R: 37.74, N: 6.77 },
     5: { UR: 0, SSR: 25.64, SR: 51.01, R: 23.35, N: 0 },
-    6: { UR: 7, SSR: 9, SR: 16, R: 26, N: 42 },
-    7: { UR: 9, SSR: 11, SR: 18, R: 27, N: 35 },
-    8: { UR: 11, SSR: 13, SR: 20, R: 28, N: 28 },
-    9: { UR: 13, SSR: 15, SR: 22, R: 26, N: 24 },
-    10: { UR: 15, SSR: 18, SR: 24, R: 23, N: 20 },
+    6: { UR: 7.04, SSR: 37.85, SR: 44.26, R: 10.85, N: 0 },
+    7: { UR: 0, SSR: 0, SR: 0, R: 0, N: 0 },
+    8: { UR: 0, SSR: 0, SR: 0, R: 0, N: 0 },
+    9: { UR: 0, SSR: 0, SR: 0, R: 0, N: 0 },
+    10: { UR: 0, SSR: 0, SR: 0, R: 0, N: 0 },
   },
 };
