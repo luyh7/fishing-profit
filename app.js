@@ -353,10 +353,9 @@
       const chips = visibleRarities
         .map(
           (rarity) =>
-            `<span class="rarity-chip" data-rarity="${rarity}">${rarity} ${formatNumber(
-              parseNumber(selectedMapRow.profile[rarity]),
-              2,
-            )}%</span>`,
+            `<span class="rarity-chip" data-rarity="${rarity}"><span style="color: ${rarityColor(
+              rarity,
+            )}; font-weight: 700;">${rarity}</span> <span style="color: #ffffff; font-weight: 700; font-size: 1.05em;">${formatNumber(parseNumber(selectedMapRow.profile[rarity]), 2)}%</span></span>`,
         )
         .join("");
       elements.selectedMapProbability.className = "small rarity-chips";
