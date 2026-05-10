@@ -8,26 +8,20 @@
   }
 
   const statisticsHours = config.statisticsHours ?? 24;
+  const systemBuffs = Array.isArray(config.systemBuffs)
+    ? config.systemBuffs
+    : [];
   const storageKeys = {
     hookLevel: "fish_calculator_hook_level",
     rodLevel: "fish_calculator_rod_level",
-    baitBuff: "fish_calculator_bait_buff",
     systemBuff: "fish_calculator_system_buff",
     mapLevel: "fish_calculator_map_level",
+    baitBuffByMap: "fish_calculator_bait_buff_by_map",
   };
-
-  const zeroProbabilityProfile = config.rarityOrder.reduce(
-    (profile, rarity) => {
-      profile[rarity] = 0;
-      return profile;
-    },
-    {},
-  );
 
   const elements = {
     hookLevel: document.getElementById("hookLevel"),
     rodLevel: document.getElementById("rodLevel"),
-    baitBuff: document.getElementById("baitBuff"),
     systemBuff: document.getElementById("systemBuff"),
     mapCardList: document.getElementById("mapCardList"),
     selectedMapName: document.getElementById("selectedMapName"),
@@ -91,22 +85,34 @@
     }
   }
 
-  function getStoredPercentValue(key, fallback = 0) {
-    const storedValue = getStoredValue(key);
-    if (storedValue === null || storedValue === "") {
-      return fallback;
+  function loadBaitBuffMap() {
+    const raw = getStoredValue(storageKeys.baitBuffByMap);
+    if (!raw) return {};
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (_error) {
+      return {};
     }
+  }
 
-    const parsedValue = Number.parseFloat(storedValue);
-    if (!Number.isFinite(parsedValue)) {
-      return fallback;
+  let baitBuffByMap = loadBaitBuffMap();
+
+  function getBaitBuffForMap(mapLevel) {
+    return parseNumber(baitBuffByMap[String(mapLevel)]);
+  }
+
+  function setBaitBuffForMap(mapLevel, rawValue) {
+    const key = String(mapLevel);
+    if (rawValue === "" || rawValue === null || rawValue === undefined) {
+      delete baitBuffByMap[key];
+    } else {
+      baitBuffByMap[key] = rawValue;
     }
-
-    if (parsedValue !== 0 && Math.abs(parsedValue) <= 1) {
-      return parsedValue * 100;
-    }
-
-    return parsedValue;
+    setStoredValue(
+      storageKeys.baitBuffByMap,
+      JSON.stringify(baitBuffByMap),
+    );
   }
 
   function getHookConfig(level) {
@@ -120,6 +126,14 @@
     return (
       config.rodLevels.find((item) => item.level === level) ||
       config.rodLevels[0]
+    );
+  }
+
+  function getSystemBuffConfig(id) {
+    return (
+      systemBuffs.find((item) => item.id === id) ||
+      systemBuffs[0] ||
+      { id: "none", name: "无", value: 0 }
     );
   }
 
@@ -164,12 +178,12 @@
     }, 0);
   }
 
-  function calculateBaitRows(inputs, averageFishPrice) {
+  function calculateBaitRows(inputs, averageFishPrice, baitBuff) {
     return config.baitList.map((bait) => {
       const intervalHours = calculateIntervalHours(
         inputs.hookConfig.speed,
         bait.speed,
-        inputs.baitBuff,
+        baitBuff,
         inputs.systemBuff,
       );
       const theoreticalCount = Number.isFinite(intervalHours)
@@ -206,7 +220,8 @@
           profile,
           averageNPrice,
         );
-        const baitRows = calculateBaitRows(inputs, expectedPrice);
+        const baitBuff = getBaitBuffForMap(map.level);
+        const baitRows = calculateBaitRows(inputs, expectedPrice, baitBuff);
         const bestBaitRow = [...baitRows].sort((left, right) => {
           if (right.netRevenue !== left.netRevenue) {
             return right.netRevenue - left.netRevenue;
@@ -221,6 +236,7 @@
           delta,
           profile,
           expectedPrice,
+          baitBuff,
           baitRows,
           bestBaitRow,
           expectedDailyRevenue: bestBaitRow ? bestBaitRow.grossRevenue : 0,
@@ -232,12 +248,13 @@
   function getInputs() {
     const hookLevelValue = Number.parseInt(elements.hookLevel.value, 10);
     const rodLevelValue = Number.parseInt(elements.rodLevel.value, 10);
+    const systemBuffConfig = getSystemBuffConfig(elements.systemBuff.value);
 
     return {
       hookConfig: getHookConfig(hookLevelValue),
       rodConfig: getRodConfig(rodLevelValue),
-      baitBuff: parseNumber(elements.baitBuff.value),
-      systemBuff: parseNumber(elements.systemBuff.value),
+      systemBuffConfig,
+      systemBuff: parseNumber(systemBuffConfig.value),
     };
   }
 
@@ -246,7 +263,7 @@
       ? ` Lv.${selectedMapRow.map.level} ${selectedMapRow.map.name}`
       : "-";
     elements.selectedMapDelta.textContent = selectedMapRow
-      ? `鱼竿等级 - 地图等级 = ${selectedMapRow.delta}`
+      ? `鱼竿等级 - 地图等级 = ${selectedMapRow.delta} / 打窝 buff ${formatNumber(selectedMapRow.baitBuff, 2)}%`
       : "-";
     elements.selectedFishPrice.textContent = selectedMapRow
       ? `¥${formatNumber(selectedMapRow.expectedPrice, 2)}`
@@ -273,6 +290,19 @@
       : "-";
   }
 
+  function findBestMapLevel(mapRows) {
+    let bestLevel = null;
+    let bestNet = -Infinity;
+    mapRows.forEach((row) => {
+      const net = row.bestBaitRow ? row.bestBaitRow.netRevenue : -Infinity;
+      if (net > bestNet) {
+        bestNet = net;
+        bestLevel = row.map.level;
+      }
+    });
+    return bestLevel;
+  }
+
   function renderMapCards(mapRows, selectedMapLevel) {
     if (!elements.mapCardList) {
       return;
@@ -284,23 +314,79 @@
       return;
     }
 
+    const bestMapLevel = findBestMapLevel(mapRows);
+
     elements.mapCardList.innerHTML = mapRows
       .map((row) => {
         const isSelected = row.map.level === selectedMapLevel;
+        const isBest = row.map.level === bestMapLevel;
         return `
-          <button type="button" class="map-card ${isSelected ? "selected" : ""}" data-map-level="${row.map.level}">
+          <div class="map-card ${isSelected ? "selected" : ""} ${isBest ? "best" : ""}" data-map-level="${row.map.level}" role="button" tabindex="0">
             <div class="map-card-compact">
               <div class="map-card-header">
                 <div class="map-card-title">Lv.${row.map.level} ${row.map.name}</div>
-                ${isSelected ? '<span class="badge">当前</span>' : ""}
+                <div class="map-card-badges" data-map-badges="${row.map.level}">
+                  ${isBest ? '<span class="badge badge-best">最优</span>' : ""}
+                </div>
               </div>
-              <div class="map-card-price"> ¥${formatNumber(row.bestBaitRow?.netRevenue ?? 0, 0)}</div>
-              <div class="map-card-note map-card-best-bait">最优鱼饵：${row.bestBaitRow ? row.bestBaitRow.bait.name : "-"}</div>
+              <div class="map-card-price" data-map-price="${row.map.level}"> ¥${formatNumber(row.bestBaitRow?.netRevenue ?? 0, 0)}</div>
+              <div class="map-card-note map-card-best-bait" data-map-best-bait="${row.map.level}">最优鱼饵：${row.bestBaitRow ? row.bestBaitRow.bait.name : "-"}</div>
+              <label class="map-card-buff">
+                <span>打窝 buff（%）</span>
+                <div class="map-card-buff-stepper" data-bait-buff-stepper="${row.map.level}">
+                  <button type="button" class="stepper-btn" data-bait-buff-step="-5" data-bait-buff-map="${row.map.level}" aria-label="减少">−</button>
+                  <span class="stepper-value" data-bait-buff-value="${row.map.level}">${formatNumber(row.baitBuff, 0)}</span>
+                  <button type="button" class="stepper-btn" data-bait-buff-step="5" data-bait-buff-map="${row.map.level}" aria-label="增加">+</button>
+                </div>
+              </label>
             </div>
-          </button>
+          </div>
         `;
       })
       .join("");
+  }
+
+  function updateMapCardValues(mapRows) {
+    if (!elements.mapCardList) {
+      return;
+    }
+    const bestMapLevel = findBestMapLevel(mapRows);
+    mapRows.forEach((row) => {
+      const priceEl = elements.mapCardList.querySelector(
+        `[data-map-price="${row.map.level}"]`,
+      );
+      if (priceEl) {
+        priceEl.textContent = ` ¥${formatNumber(row.bestBaitRow?.netRevenue ?? 0, 0)}`;
+      }
+      const bestBaitEl = elements.mapCardList.querySelector(
+        `[data-map-best-bait="${row.map.level}"]`,
+      );
+      if (bestBaitEl) {
+        bestBaitEl.textContent = `最优鱼饵：${row.bestBaitRow ? row.bestBaitRow.bait.name : "-"}`;
+      }
+      const buffValueEl = elements.mapCardList.querySelector(
+        `[data-bait-buff-value="${row.map.level}"]`,
+      );
+      if (buffValueEl) {
+        buffValueEl.textContent = formatNumber(row.baitBuff, 0);
+      }
+
+      const cardEl = elements.mapCardList.querySelector(
+        `.map-card[data-map-level="${row.map.level}"]`,
+      );
+      const badgesEl = elements.mapCardList.querySelector(
+        `[data-map-badges="${row.map.level}"]`,
+      );
+      const isBest = row.map.level === bestMapLevel;
+      if (cardEl) {
+        cardEl.classList.toggle("best", isBest);
+      }
+      if (badgesEl) {
+        badgesEl.innerHTML = `
+          ${isBest ? '<span class="badge badge-best">最优</span>' : ""}
+        `;
+      }
+    });
   }
 
   function renderTable(rows, bestRow) {
@@ -352,7 +438,7 @@
       .join("");
   }
 
-  function render() {
+  function render(options = {}) {
     const inputs = getInputs();
     const selectedRodLevel = Number.parseInt(elements.rodLevel.value, 10);
     const mapRows = calculateMapRows(inputs, selectedRodLevel);
@@ -387,10 +473,15 @@
       selectedMapRow,
       mapRows,
       averageNPrice: selectedMapRow ? selectedMapRow.averageNPrice : Number.NaN,
+      systemBuff: inputs.systemBuffConfig,
     };
 
     renderSummary(selectedMapRow, bestBaitRow);
-    renderMapCards(mapRows, activeMapLevel);
+    if (options.skipMapCardRebuild) {
+      updateMapCardValues(mapRows);
+    } else {
+      renderMapCards(mapRows, activeMapLevel);
+    }
     renderTable(selectedMapRow ? selectedMapRow.baitRows : [], bestBaitRow);
   }
 
@@ -407,6 +498,12 @@
       (item) => item.level,
       (item) => item.name,
     );
+    buildOption(
+      elements.systemBuff,
+      systemBuffs,
+      (item) => item.id,
+      (item) => item.name,
+    );
 
     const storedHookLevel = Number.parseInt(
       getStoredValue(storageKeys.hookLevel) || "",
@@ -416,11 +513,11 @@
       getStoredValue(storageKeys.rodLevel) || "",
       10,
     );
-    const storedBaitBuff = getStoredPercentValue(storageKeys.baitBuff);
-    const storedSystemBuff = getStoredPercentValue(storageKeys.systemBuff);
+    const storedSystemBuffId = getStoredValue(storageKeys.systemBuff);
 
     const defaultHookLevel = config.hookLevels[0]?.level ?? 1;
     const defaultRodLevel = config.rodLevels[0]?.level ?? 1;
+    const defaultSystemBuffId = systemBuffs[0]?.id ?? "none";
 
     elements.hookLevel.value = String(
       config.hookLevels.some((item) => item.level === storedHookLevel)
@@ -432,33 +529,45 @@
         ? storedRodLevel
         : defaultRodLevel,
     );
-    elements.baitBuff.value = String(storedBaitBuff);
-    elements.systemBuff.value = String(storedSystemBuff);
+    elements.systemBuff.value = systemBuffs.some(
+      (item) => item.id === storedSystemBuffId,
+    )
+      ? storedSystemBuffId
+      : defaultSystemBuffId;
 
-    [
-      elements.hookLevel,
-      elements.rodLevel,
-      elements.baitBuff,
-      elements.systemBuff,
-    ].forEach((element) => {
-      element.addEventListener("input", () => {
-        setStoredValue(storageKeys.hookLevel, elements.hookLevel.value);
-        setStoredValue(storageKeys.rodLevel, elements.rodLevel.value);
-        setStoredValue(storageKeys.baitBuff, elements.baitBuff.value);
-        setStoredValue(storageKeys.systemBuff, elements.systemBuff.value);
-        render();
-      });
-      element.addEventListener("change", () => {
-        setStoredValue(storageKeys.hookLevel, elements.hookLevel.value);
-        setStoredValue(storageKeys.rodLevel, elements.rodLevel.value);
-        setStoredValue(storageKeys.baitBuff, elements.baitBuff.value);
-        setStoredValue(storageKeys.systemBuff, elements.systemBuff.value);
-        render();
-      });
-    });
+    const persist = () => {
+      setStoredValue(storageKeys.hookLevel, elements.hookLevel.value);
+      setStoredValue(storageKeys.rodLevel, elements.rodLevel.value);
+      setStoredValue(storageKeys.systemBuff, elements.systemBuff.value);
+    };
+
+    [elements.hookLevel, elements.rodLevel, elements.systemBuff].forEach(
+      (element) => {
+        element.addEventListener("input", () => {
+          persist();
+          render();
+        });
+        element.addEventListener("change", () => {
+          persist();
+          render();
+        });
+      },
+    );
 
     if (elements.mapCardList) {
       elements.mapCardList.addEventListener("click", (event) => {
+        const stepButton = event.target.closest("[data-bait-buff-step]");
+        if (stepButton) {
+          event.stopPropagation();
+          const mapLevel = stepButton.dataset.baitBuffMap;
+          const stepValue = parseNumber(stepButton.dataset.baitBuffStep);
+          const current = getBaitBuffForMap(mapLevel);
+          const next = Math.max(0, current + stepValue);
+          setBaitBuffForMap(mapLevel, next === 0 ? "" : String(next));
+          render({ skipMapCardRebuild: true });
+          return;
+        }
+
         const target = event.target.closest("[data-map-level]");
         if (!target) {
           return;
@@ -467,12 +576,25 @@
         setStoredValue(storageKeys.mapLevel, target.dataset.mapLevel || "");
         render();
       });
+
+      elements.mapCardList.addEventListener("keydown", (event) => {
+        if (event.target.closest("[data-bait-buff-step]")) {
+          return;
+        }
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+        const target = event.target.closest("[data-map-level]");
+        if (!target) {
+          return;
+        }
+        event.preventDefault();
+        setStoredValue(storageKeys.mapLevel, target.dataset.mapLevel || "");
+        render();
+      });
     }
 
-    setStoredValue(storageKeys.hookLevel, elements.hookLevel.value);
-    setStoredValue(storageKeys.rodLevel, elements.rodLevel.value);
-    setStoredValue(storageKeys.baitBuff, elements.baitBuff.value);
-    setStoredValue(storageKeys.systemBuff, elements.systemBuff.value);
+    persist();
 
     render();
   }

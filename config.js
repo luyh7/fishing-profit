@@ -29,6 +29,10 @@ window.FISH_FISHING_CONFIG = {
     { id: 5, name: "魔法鱼饵", price: 30, speed: 1.0 },
     { id: 6, name: "传说鱼饵", price: 50, speed: 1.2 },
   ],
+  systemBuffs: [
+    { id: "none", name: "无", value: 0 },
+    { id: "weekend", name: "周末加速 30%", value: 30 },
+  ],
   maps: [
     {
       level: 0,

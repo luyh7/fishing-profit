@@ -176,6 +176,82 @@
         border-color: rgba(125, 211, 252, 0.55);
       }
 
+      .map-card.best .map-card-price {
+        color: var(--good);
+      }
+
+      .map-card-badges {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+      }
+
+      .map-card-badges .badge {
+        margin-left: 0;
+      }
+
+      .badge,
+      .badge-best,
+      .best-row .badge {
+        background: rgba(250, 204, 21, 0.15);
+        color: #fbbf24;
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .map-card-buff {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .map-card-buff-stepper {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(8, 11, 18, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 2px;
+      }
+
+      .map-card-buff-stepper .stepper-btn {
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
+        border: none;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+        font-size: 13px;
+        line-height: 1;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.15s ease;
+      }
+
+      .map-card-buff-stepper .stepper-btn:hover {
+        background: rgba(125, 211, 252, 0.22);
+      }
+
+      .map-card-buff-stepper .stepper-btn:active {
+        background: rgba(125, 211, 252, 0.34);
+      }
+
+      .map-card-buff-stepper .stepper-value {
+        min-width: 36px;
+        text-align: center;
+        font-size: 12px;
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+      }
+
       .map-card-header {
         display: flex;
         justify-content: space-between;
@@ -419,13 +495,9 @@
                 <label for="rodLevel">鱼竿等级</label>
                 <select id="rodLevel"></select>
               </div>
-              <div class="field">
-                <label for="baitBuff">打窝 buff（%）</label>
-                <input id="baitBuff" type="number" step="0.01" value="0" />
-              </div>
-              <div class="field">
-                <label for="systemBuff">系统 buff（%）</label>
-                <input id="systemBuff" type="number" step="0.01" value="0" />
+              <div class="field full">
+                <label for="systemBuff">系统 buff</label>
+                <select id="systemBuff"></select>
               </div>
             </div>
           </div>
