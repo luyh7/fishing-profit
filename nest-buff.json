@@ -1,38 +1,38 @@
 {
-  "updated_at": "2026-05-11T00:13:23.687596",
+  "updated_at": "2026-05-11T00:55:51.639487",
   "locations": [
     {
       "id": "1",
       "name": "乡间浅溪",
       "difficulty": 0,
-      "fishers": 34,
+      "fishers": 32,
       "buffs": {
-        "nest": 2
+        "nest": 3
       }
     },
     {
       "id": "2",
       "name": "田园池塘",
       "difficulty": 1,
-      "fishers": 7,
+      "fishers": 9,
       "buffs": {
-        "nest": 1
+        "nest": 2
       }
     },
     {
       "id": "3",
       "name": "平缓内河",
       "difficulty": 2,
-      "fishers": 12,
+      "fishers": 13,
       "buffs": {
-        "nest": 1
+        "nest": 3
       }
     },
     {
       "id": "4",
       "name": "宽阔大湖",
       "difficulty": 3,
-      "fishers": 10,
+      "fishers": 9,
       "buffs": {
         "nest": 6
       }
