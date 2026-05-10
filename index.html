@@ -550,6 +550,88 @@
         font-size: 18px;
       }
 
+      .panel-head-actions {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .refresh-nest-buff-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .refresh-nest-buff-status {
+        width: fit-content;
+        min-width: 0;
+        max-width: min(320px, 42vw);
+        padding: 4px 10px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 999px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+        box-shadow: none;
+        text-align: left;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+
+      .refresh-nest-buff-status.success {
+        border-color: rgba(126, 224, 129, 0.22);
+        background: rgba(126, 224, 129, 0.06);
+        color: var(--good);
+      }
+
+      .refresh-nest-buff-status.error {
+        border-color: rgba(255, 124, 145, 0.22);
+        background: rgba(255, 124, 145, 0.06);
+        color: #ffb8c2;
+      }
+
+      .refresh-nest-buff-status[hidden] {
+        display: none;
+      }
+
+      .refresh-nest-buff-actions-row {
+        align-items: center;
+        gap: 10px;
+      }
+
+      .refresh-nest-buff-btn {
+        appearance: none;
+        border: 1px solid rgba(125, 211, 252, 0.28);
+        background: linear-gradient(135deg, rgba(125, 211, 252, 0.18), rgba(255, 255, 255, 0.05));
+        color: var(--text);
+        border-radius: 999px;
+        padding: 10px 14px;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+      }
+
+      .refresh-nest-buff-btn:hover:not(:disabled) {
+        transform: translateY(-1px);
+        border-color: rgba(125, 211, 252, 0.48);
+        background: linear-gradient(135deg, rgba(125, 211, 252, 0.24), rgba(255, 255, 255, 0.08));
+      }
+
+      .refresh-nest-buff-btn:active:not(:disabled) {
+        transform: translateY(0);
+      }
+
+      .refresh-nest-buff-btn:disabled {
+        opacity: 0.65;
+        cursor: progress;
+      }
+
       .chip {
         display: inline-flex;
         align-items: center;
@@ -753,6 +835,12 @@
         <aside class="card panel">
           <div class="panel-head">
             <h2>地图选择</h2>
+            <div class="panel-head-actions">
+              <div class="refresh-nest-buff-status" id="refreshNestBuffStatus" hidden></div>
+              <div class="refresh-nest-buff-actions">
+                <button type="button" class="refresh-nest-buff-btn" id="refreshNestBuffBtn">获取实时打窝buff</button>
+              </div>
+            </div>
           </div>
           <div class="map-grid" id="mapCardList"></div>
         </aside>

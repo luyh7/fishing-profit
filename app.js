@@ -11,6 +11,8 @@
   const systemBuffs = Array.isArray(config.systemBuffs)
     ? config.systemBuffs
     : [];
+  const nestBuffApiUrl = "http://223.109.140.105:4158/";
+  const nestBuffRefreshCooldownMs = 5 * 60 * 1000;
   const storageKeys = {
     hookLevel: "fish_calculator_hook_level",
     rodLevel: "fish_calculator_rod_level",
@@ -31,6 +33,8 @@
     selectedMapProbability: document.getElementById("selectedMapProbability"),
     selectedBestBait: document.getElementById("selectedBestBait"),
     selectedBestNet: document.getElementById("selectedBestNet"),
+    refreshNestBuffBtn: document.getElementById("refreshNestBuffBtn"),
+    refreshNestBuffStatus: document.getElementById("refreshNestBuffStatus"),
     fishPriceTooltip: document.getElementById("fishPriceTooltip"),
     bestBaitName: document.getElementById("bestBaitName"),
     bestBaitNet: document.getElementById("bestBaitNet"),
@@ -99,6 +103,101 @@
   }
 
   let baitBuffByMap = loadBaitBuffMap();
+  let isRefreshingNestBuff = false;
+  let nestBuffStatusIntervalId = null;
+  let nestBuffStatusTimeoutId = null;
+  let nestBuffLastRefreshAt = 0;
+
+  function getNestBuffLastRefreshAt() {
+    return nestBuffLastRefreshAt;
+  }
+
+  function setNestBuffLastRefreshAt(timestamp) {
+    nestBuffLastRefreshAt = Number.isFinite(timestamp) ? timestamp : 0;
+  }
+
+  function clearNestBuffStatus() {
+    if (!elements.refreshNestBuffStatus) {
+      return;
+    }
+
+    elements.refreshNestBuffStatus.hidden = true;
+    elements.refreshNestBuffStatus.textContent = "";
+    elements.refreshNestBuffStatus.className = "refresh-nest-buff-status";
+  }
+
+  function clearNestBuffStatusTimers() {
+    if (nestBuffStatusIntervalId !== null) {
+      window.clearInterval(nestBuffStatusIntervalId);
+      nestBuffStatusIntervalId = null;
+    }
+
+    if (nestBuffStatusTimeoutId !== null) {
+      window.clearTimeout(nestBuffStatusTimeoutId);
+      nestBuffStatusTimeoutId = null;
+    }
+  }
+
+  function showNestBuffStatus(message, kind = "error") {
+    if (!elements.refreshNestBuffStatus) {
+      return;
+    }
+
+    elements.refreshNestBuffStatus.hidden = false;
+    elements.refreshNestBuffStatus.textContent = message;
+    elements.refreshNestBuffStatus.className = `refresh-nest-buff-status ${kind}`;
+  }
+
+  function formatCountdown(remainingMs) {
+    const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  function showNestBuffCooldownStatus() {
+    clearNestBuffStatusTimers();
+
+    const update = () => {
+      const remainingMs = getNestBuffCooldownRemainingMs();
+      if (remainingMs <= 0) {
+        clearNestBuffStatusTimers();
+        clearNestBuffStatus();
+        return false;
+      }
+
+      showNestBuffStatus(
+        `获取过于频繁，请 ${formatCountdown(remainingMs)} 后再试。`,
+        "error",
+      );
+      return true;
+    };
+
+    if (!update()) {
+      return;
+    }
+
+    nestBuffStatusIntervalId = window.setInterval(update, 1000);
+  }
+
+  function showNestBuffSuccessStatus() {
+    clearNestBuffStatusTimers();
+    showNestBuffStatus("获取成功！", "success");
+    nestBuffStatusTimeoutId = window.setTimeout(() => {
+      clearNestBuffStatusTimers();
+      clearNestBuffStatus();
+    }, 5000);
+  }
+
+  function getNestBuffCooldownRemainingMs() {
+    const lastRefreshAt = getNestBuffLastRefreshAt();
+    if (!Number.isFinite(lastRefreshAt) || lastRefreshAt <= 0) {
+      return 0;
+    }
+
+    const elapsed = Date.now() - lastRefreshAt;
+    return Math.max(0, nestBuffRefreshCooldownMs - elapsed);
+  }
 
   function getBaitBuffForMap(mapLevel) {
     return parseNumber(baitBuffByMap[String(mapLevel)]);
@@ -112,6 +211,70 @@
       baitBuffByMap[key] = rawValue;
     }
     setStoredValue(storageKeys.baitBuffByMap, JSON.stringify(baitBuffByMap));
+  }
+
+  function setNestBuffRefreshButtonState(isLoading) {
+    if (!elements.refreshNestBuffBtn) {
+      return;
+    }
+
+    elements.refreshNestBuffBtn.disabled = isLoading;
+    elements.refreshNestBuffBtn.textContent = isLoading
+      ? "获取中..."
+      : "获取实时打窝buff";
+  }
+
+  function applyNestBuffSnapshot(payload) {
+    const nextBaitBuffByMap = {};
+    const locations = Array.isArray(payload?.locations)
+      ? payload.locations
+      : [];
+
+    locations.forEach((location) => {
+      const mapLevel = Number.parseInt(location?.id, 10) - 1;
+      if (!Number.isInteger(mapLevel) || mapLevel < 0) {
+        return;
+      }
+
+      const nestValue = parseNumber(location?.buffs?.nest) * 5;
+      if (nestValue > 0) {
+        nextBaitBuffByMap[String(mapLevel)] = String(nestValue);
+      }
+    });
+
+    baitBuffByMap = nextBaitBuffByMap;
+    setStoredValue(storageKeys.baitBuffByMap, JSON.stringify(baitBuffByMap));
+  }
+
+  async function refreshNestBuffs() {
+    if (isRefreshingNestBuff) {
+      return;
+    }
+
+    isRefreshingNestBuff = true;
+    setNestBuffRefreshButtonState(true);
+
+    try {
+      const response = await fetch(nestBuffApiUrl, {
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const payload = await response.json();
+      applyNestBuffSnapshot(payload);
+      setNestBuffLastRefreshAt(Date.now());
+      showNestBuffSuccessStatus();
+      render({ skipMapCardRebuild: true });
+    } catch (error) {
+      console.error("获取实时打窝buff失败", error);
+      showNestBuffStatus("获取实时打窝buff失败，请稍后重试。", "error");
+    } finally {
+      isRefreshingNestBuff = false;
+      setNestBuffRefreshButtonState(false);
+    }
   }
 
   function getHookConfig(level) {
@@ -140,7 +303,7 @@
   }
 
   function getMapCode(map) {
-    return parseNumber(map.level) + 1;
+    return parseNumber(map.id);
   }
 
   function calculateAverageNPrice(fishes) {
@@ -212,17 +375,17 @@
 
   function calculateMapRows(inputs, rodLevel) {
     return config.maps
-      .filter((map) => map.level <= rodLevel)
+      .filter((map) => map.difficulty <= rodLevel)
       .map((map) => {
         const fishes = getMapFishes(map);
         const averageNPrice = calculateAverageNPrice(fishes);
-        const delta = rodLevel - map.level;
+        const delta = rodLevel - map.difficulty;
         const profile = getProbabilityProfile(delta);
         const expectedPrice = calculateExpectedFishPrice(
           profile,
           averageNPrice,
         );
-        const baitBuff = getBaitBuffForMap(map.level);
+        const baitBuff = getBaitBuffForMap(map.difficulty);
         const baitRows = calculateBaitRows(inputs, expectedPrice, baitBuff);
         const bestBaitRow = [...baitRows].sort((left, right) => {
           if (right.netRevenue !== left.netRevenue) {
@@ -244,7 +407,7 @@
           expectedDailyRevenue: bestBaitRow ? bestBaitRow.grossRevenue : 0,
         };
       })
-      .sort((left, right) => left.map.level - right.map.level);
+      .sort((left, right) => left.map.difficulty - right.map.difficulty);
   }
 
   function getInputs() {
@@ -333,7 +496,7 @@
 
   function renderSummary(selectedMapRow, bestBaitRow, inputs) {
     elements.selectedMapName.textContent = selectedMapRow
-      ? ` Lv.${selectedMapRow.map.level} ${selectedMapRow.map.name}`
+      ? ` Lv.${selectedMapRow.map.difficulty} ${selectedMapRow.map.name}`
       : "-";
     elements.selectedMapDelta.className = selectedMapRow
       ? "small selected-map-delta"
@@ -388,7 +551,7 @@
       const net = row.bestBaitRow ? row.bestBaitRow.netRevenue : -Infinity;
       if (net > bestNet) {
         bestNet = net;
-        bestLevel = row.map.level;
+        bestLevel = row.map.difficulty;
       }
     });
     return bestLevel;
@@ -409,28 +572,28 @@
 
     elements.mapCardList.innerHTML = mapRows
       .map((row) => {
-        const isSelected = row.map.level === selectedMapLevel;
-        const isBest = row.map.level === bestMapLevel;
+        const isSelected = row.map.difficulty === selectedMapLevel;
+        const isBest = row.map.difficulty === bestMapLevel;
         return `
-          <div class="map-card ${isSelected ? "selected" : ""} ${isBest ? "best" : ""}" data-map-level="${row.map.level}" role="button" tabindex="0">
+          <div class="map-card ${isSelected ? "selected" : ""} ${isBest ? "best" : ""}" data-map-level="${row.map.difficulty}" role="button" tabindex="0">
             <div class="map-card-compact">
               <div class="map-card-header">
                 <div class="map-card-title">
                   <span class="map-card-code">${formatNumber(getMapCode(row.map), 0)}</span>
-                  <span>Lv.${row.map.level} ${row.map.name}</span>
+                  <span>Lv.${row.map.difficulty} ${row.map.name}</span>
                 </div>
-                <div class="map-card-badges" data-map-badges="${row.map.level}">
+                <div class="map-card-badges" data-map-badges="${row.map.difficulty}">
                   ${isBest ? '<span class="badge badge-best">最优</span>' : ""}
                 </div>
               </div>
-              <div class="map-card-price" data-map-price="${row.map.level}"> ¥${formatNumber(row.bestBaitRow?.netRevenue ?? 0, 0)}</div>
-              <div class="map-card-note map-card-best-bait" data-map-best-bait="${row.map.level}">最优鱼饵：${row.bestBaitRow ? row.bestBaitRow.bait.name : "-"}</div>
+              <div class="map-card-price" data-map-price="${row.map.difficulty}"> ¥${formatNumber(row.bestBaitRow?.netRevenue ?? 0, 0)}</div>
+              <div class="map-card-note map-card-best-bait" data-map-best-bait="${row.map.difficulty}">最优鱼饵：${row.bestBaitRow ? row.bestBaitRow.bait.name : "-"}</div>
               <label class="map-card-buff">
                 <span>打窝 buff（%）</span>
-                <div class="map-card-buff-stepper" data-bait-buff-stepper="${row.map.level}">
-                  <button type="button" class="stepper-btn" data-bait-buff-step="-5" data-bait-buff-map="${row.map.level}" aria-label="减少">−</button>
-                  <span class="stepper-value" data-bait-buff-value="${row.map.level}">${formatNumber(row.baitBuff, 0)}</span>
-                  <button type="button" class="stepper-btn" data-bait-buff-step="5" data-bait-buff-map="${row.map.level}" aria-label="增加">+</button>
+                <div class="map-card-buff-stepper" data-bait-buff-stepper="${row.map.difficulty}">
+                  <button type="button" class="stepper-btn" data-bait-buff-step="-5" data-bait-buff-map="${row.map.difficulty}" aria-label="减少">−</button>
+                  <span class="stepper-value" data-bait-buff-value="${row.map.difficulty}">${formatNumber(row.baitBuff, 0)}</span>
+                  <button type="button" class="stepper-btn" data-bait-buff-step="5" data-bait-buff-map="${row.map.difficulty}" aria-label="增加">+</button>
                 </div>
               </label>
             </div>
@@ -447,31 +610,31 @@
     const bestMapLevel = findBestMapLevel(mapRows);
     mapRows.forEach((row) => {
       const priceEl = elements.mapCardList.querySelector(
-        `[data-map-price="${row.map.level}"]`,
+        `[data-map-price="${row.map.difficulty}"]`,
       );
       if (priceEl) {
         priceEl.textContent = ` ¥${formatNumber(row.bestBaitRow?.netRevenue ?? 0, 0)}`;
       }
       const bestBaitEl = elements.mapCardList.querySelector(
-        `[data-map-best-bait="${row.map.level}"]`,
+        `[data-map-best-bait="${row.map.difficulty}"]`,
       );
       if (bestBaitEl) {
         bestBaitEl.textContent = `最优鱼饵：${row.bestBaitRow ? row.bestBaitRow.bait.name : "-"}`;
       }
       const buffValueEl = elements.mapCardList.querySelector(
-        `[data-bait-buff-value="${row.map.level}"]`,
+        `[data-bait-buff-value="${row.map.difficulty}"]`,
       );
       if (buffValueEl) {
         buffValueEl.textContent = formatNumber(row.baitBuff, 0);
       }
 
       const cardEl = elements.mapCardList.querySelector(
-        `.map-card[data-map-level="${row.map.level}"]`,
+        `.map-card[data-map-level="${row.map.difficulty}"]`,
       );
       const badgesEl = elements.mapCardList.querySelector(
-        `[data-map-badges="${row.map.level}"]`,
+        `[data-map-badges="${row.map.difficulty}"]`,
       );
-      const isBest = row.map.level === bestMapLevel;
+      const isBest = row.map.difficulty === bestMapLevel;
       if (cardEl) {
         cardEl.classList.toggle("best", isBest);
       }
@@ -541,10 +704,10 @@
       10,
     );
     const selectedMapRow =
-      mapRows.find((row) => row.map.level === storedMapLevel) ||
+      mapRows.find((row) => row.map.difficulty === storedMapLevel) ||
       mapRows[0] ||
       null;
-    const activeMapLevel = selectedMapRow ? selectedMapRow.map.level : "";
+    const activeMapLevel = selectedMapRow ? selectedMapRow.map.difficulty : "";
 
     if (selectedMapRow && storedMapLevel !== activeMapLevel) {
       setStoredValue(storageKeys.mapLevel, String(activeMapLevel));
@@ -698,7 +861,25 @@
       });
     }
 
+    if (elements.refreshNestBuffBtn) {
+      elements.refreshNestBuffBtn.addEventListener("click", () => {
+        const cooldownRemainingMs = getNestBuffCooldownRemainingMs();
+        if (cooldownRemainingMs > 0) {
+          showNestBuffCooldownStatus();
+          return;
+        }
+
+        clearNestBuffStatus();
+        refreshNestBuffs();
+      });
+    }
+
     persist();
+    setNestBuffRefreshButtonState(false);
+
+    if (getNestBuffCooldownRemainingMs() > 0) {
+      showNestBuffCooldownStatus();
+    }
 
     render();
   }

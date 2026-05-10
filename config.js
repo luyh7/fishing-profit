@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.1",
-  gitCommitCount: 12,
+  gitCommitCount: 13,
   baseIntervalHours: 1,
   statisticsHours: 24,
   rarityOrder: ["UR", "SSR", "SR", "R", "N"],
@@ -37,7 +37,8 @@ window.FISH_FISHING_CONFIG = {
   ],
   maps: [
     {
-      level: 0,
+      id: 1,
+      difficulty: 0,
       name: "乡间浅溪",
       fishes: [
         { name: "小鲫鱼", nPrice: 9 },
@@ -48,7 +49,8 @@ window.FISH_FISHING_CONFIG = {
       ],
     },
     {
-      level: 1,
+      id: 2,
+      difficulty: 1,
       name: "田园池塘",
       fishes: [
         { name: "草鱼", nPrice: 12 },
@@ -59,7 +61,8 @@ window.FISH_FISHING_CONFIG = {
       ],
     },
     {
-      level: 2,
+      id: 3,
+      difficulty: 2,
       name: "平缓内河",
       fishes: [
         { name: "翘嘴鲌", nPrice: 15 },
@@ -70,7 +73,8 @@ window.FISH_FISHING_CONFIG = {
       ],
     },
     {
-      level: 3,
+      id: 4,
+      difficulty: 3,
       name: "宽阔大湖",
       fishes: [
         { name: "青鱼", nPrice: 21 },
@@ -81,7 +85,8 @@ window.FISH_FISHING_CONFIG = {
       ],
     },
     {
-      level: 4,
+      id: 5,
+      difficulty: 4,
       name: "山泉深潭",
       fishes: [
         { name: "马口鱼", nPrice: 27 },
@@ -92,7 +97,8 @@ window.FISH_FISHING_CONFIG = {
       ],
     },
     {
-      level: 5,
+      id: 6,
+      difficulty: 5,
       name: "芦苇浅荡",
       fishes: [
         { name: "革胡子鲶", nPrice: 35 },
@@ -103,7 +109,8 @@ window.FISH_FISHING_CONFIG = {
       ],
     },
     {
-      level: 6,
+      id: 7,
+      difficulty: 6,
       name: "长江中游",
       fishes: [
         { name: "江团鱼", nPrice: 0 },
@@ -114,7 +121,8 @@ window.FISH_FISHING_CONFIG = {
       ],
     },
     {
-      level: 7,
+      id: 8,
+      difficulty: 7,
       name: "河口交汇",
       fishes: [
         { name: "海鲈", nPrice: 0 },
@@ -125,7 +133,8 @@ window.FISH_FISHING_CONFIG = {
       ],
     },
     {
-      level: 8,
+      id: 9,
+      difficulty: 8,
       name: "高山冷湖",
       fishes: [
         { name: "虹鳟鱼", nPrice: 0 },
@@ -136,7 +145,8 @@ window.FISH_FISHING_CONFIG = {
       ],
     },
     {
-      level: 10,
+      id: 10,
+      difficulty: 9,
       name: "原生古河",
       fishes: [
         { name: "胭脂鱼", nPrice: 0 },
