@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-05-10T23:16:58.232930",
+  "updated_at": "2026-05-10T23:29:02.926971",
   "locations": [
     {
       "id": "1",
@@ -30,7 +30,7 @@
       "id": "4",
       "name": "宽阔大湖",
       "difficulty": 3,
-      "fishers": 7,
+      "fishers": 6,
       "buffs": {
         "nest": 2
       }
@@ -39,7 +39,7 @@
       "id": "5",
       "name": "山泉深潭",
       "difficulty": 4,
-      "fishers": 0,
+      "fishers": 1,
       "buffs": {}
     },
     {
