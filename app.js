@@ -23,6 +23,7 @@
     hookLevel: document.getElementById("hookLevel"),
     rodLevel: document.getElementById("rodLevel"),
     systemBuff: document.getElementById("systemBuff"),
+    versionBadge: document.getElementById("versionBadge"),
     mapCardList: document.getElementById("mapCardList"),
     selectedMapName: document.getElementById("selectedMapName"),
     selectedMapDelta: document.getElementById("selectedMapDelta"),
@@ -560,6 +561,16 @@
   }
 
   function initialize() {
+    const versionPrefix = config.versionPrefix || "0.0";
+    const gitCommitCount = Number.parseInt(config.gitCommitCount, 10);
+    const versionSuffix = Number.isFinite(gitCommitCount) ? gitCommitCount : 0;
+    const versionText = `v${versionPrefix}.${versionSuffix}`;
+
+    if (elements.versionBadge) {
+      elements.versionBadge.textContent = versionText;
+    }
+    document.title = `钓鱼收益计算器 ${versionText}`;
+
     buildOption(
       elements.hookLevel,
       config.hookLevels,

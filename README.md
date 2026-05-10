@@ -39,6 +39,8 @@
 - 地图信息和鱼类数据
 - 稀有度概率分布
 
+仓库内还提供了 `.githooks/pre-commit`，本地启用后会在每次提交前自动递增 `gitCommitCount` 并重新暂存 `config.js`。
+
 ## 技术栈
 
 - 纯 HTML + CSS + JavaScript

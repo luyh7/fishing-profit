@@ -1,0 +1,30 @@
+#!/bin/sh
+set -eu
+
+repo_root=$(git rev-parse --show-toplevel)
+config_file="$repo_root/config.js"
+
+REPO_ROOT="$repo_root" CONFIG_FILE="$config_file" node <<'NODE'
+const fs = require('fs');
+const { execSync } = require('child_process');
+
+const repoRoot = process.env.REPO_ROOT;
+const path = process.env.CONFIG_FILE;
+const source = fs.readFileSync(path, 'utf8');
+const gitCommitCount = Number(
+  execSync('git rev-list --count HEAD', { cwd: repoRoot, encoding: 'utf8' }).trim(),
+);
+const nextCommitCount = Number.isFinite(gitCommitCount) ? gitCommitCount + 1 : 0;
+const updated = source.replace(
+  /(gitCommitCount:\s*)(\d+)(\s*,)/,
+  (_, prefix, _value, suffix) => `${prefix}${nextCommitCount}${suffix}`,
+);
+
+if (updated === source) {
+  throw new Error('gitCommitCount not found in config.js');
+}
+
+fs.writeFileSync(path, updated, 'utf8');
+NODE
+
+git add "$config_file"
