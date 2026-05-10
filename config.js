@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.1",
-  gitCommitCount: 14,
+  gitCommitCount: 15,
   baseIntervalHours: 1,
   statisticsHours: 24,
   rarityOrder: ["UR", "SSR", "SR", "R", "N"],
