@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-05-11T01:16:24.234525",
+  "updated_at": "2026-05-11T02:09:25.950279",
   "locations": [
     {
       "id": "1",
@@ -7,23 +7,23 @@
       "difficulty": 0,
       "fishers": 32,
       "buffs": {
-        "nest": 3
+        "nest": 4
       }
     },
     {
       "id": "2",
       "name": "田园池塘",
       "difficulty": 1,
-      "fishers": 9,
+      "fishers": 10,
       "buffs": {
-        "nest": 2
+        "nest": 3
       }
     },
     {
       "id": "3",
       "name": "平缓内河",
       "difficulty": 2,
-      "fishers": 13,
+      "fishers": 12,
       "buffs": {
         "nest": 3
       }
@@ -32,7 +32,7 @@
       "id": "4",
       "name": "宽阔大湖",
       "difficulty": 3,
-      "fishers": 9,
+      "fishers": 10,
       "buffs": {
         "nest": 6
       }
