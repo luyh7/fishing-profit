@@ -22,7 +22,7 @@
 
 本项目已配置 GitHub Actions，每次推送到 `main` 或 `master` 分支时会自动部署到 GitHub Pages。
 
-仓库还包含一个定时同步工作流，会按固定间隔拉取 `http://223.109.140.105:4158/` 的最新数据并更新 `gh-pages` 分支里的 `nest-buff.json`，然后自动提交到仓库。
+仓库还包含一个定时同步工作流，会按固定间隔拉取 `http://223.109.140.105:4158/` 的最新数据，并把 `gh-pages` 分支里的 `nest-buff.json` 更新为最新内容，然后自动提交到仓库。
 
 ### 首次部署设置步骤
 
@@ -42,10 +42,10 @@
 - 稀有度概率分布
 - 打窝数据静态源地址 `nestBuffSourceUrl`
 
-如果你要把定时程序输出到 GitHub Pages 上的 gh-pages 分支，只需要把 `nestBuffSourceUrl` 改成对应的静态 JSON 地址，例如：
+如果你要把定时程序输出到 GitHub Pages 可访问的静态数据源，建议把 `nestBuffSourceUrl` 改成 gh-pages 分支对应的 raw JSON 地址，例如：
 
 ```js
-nestBuffSourceUrl: "https://luyh7.github.io/fishing-profit/nest-buff.json";
+nestBuffSourceUrl: "https://raw.githubusercontent.com/luyh7/fishing-profit/gh-pages/nest-buff.json";
 ```
 
 如果你想改同步频率，编辑 `.github/workflows/sync-nest-buff.yml` 里的 cron 表达式即可。

@@ -25,12 +25,12 @@ jobs:
         shell: bash
         run: |
           if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
-            git fetch origin gh-pages:gh-pages
             git switch gh-pages
-            git reset --hard origin/gh-pages
           else
             git switch --orphan gh-pages
           fi
+
+          git rm -rf . >/dev/null 2>&1 || true
 
       - name: Fetch nest buff data
         shell: bash
@@ -63,13 +63,14 @@ jobs:
       - name: Commit changes
         shell: bash
         run: |
-          if git diff --quiet -- nest-buff.json; then
+          git add -A
+
+          if git diff --cached --quiet; then
             echo "No changes detected."
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add nest-buff.json
           git commit -m "chore: sync nest buff data"
           git push origin gh-pages

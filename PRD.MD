@@ -10,7 +10,7 @@
 - 页面直接读取鱼钩等级、鱼竿等级、鱼饵列表、系统 buff、地图列表、稀有度倍数和概率表。
 - 每张地图内配置自己的 `id`、`difficulty`、鱼种列表及每种鱼的 N 级基础价格。
 - 用户输入与选择会通过 `localStorage` 持久化，包括鱼钩等级、鱼竿等级、系统 buff、当前地图和每张地图的打窝 buff。
-- 地图打窝 buff 支持通过配置中的 GitHub Pages 静态 JSON 地址刷新，地址由 `config.js` 中的 `nestBuffSourceUrl` 提供，返回的 `locations[].buffs.nest` 会按 `nest * 5` 转换为最终打窝 buff。
+- 地图打窝 buff 支持通过配置中的静态 JSON 地址刷新，地址由 `config.js` 中的 `nestBuffSourceUrl` 提供，推荐指向 `gh-pages` 分支上的 raw JSON 文件，返回的 `locations[].buffs.nest` 会按 `nest * 5` 转换为最终打窝 buff。
 
 ## 页面结构
 
