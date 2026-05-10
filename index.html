@@ -339,6 +339,18 @@
         border-color: rgba(125, 211, 252, 0.4);
       }
 
+      .map-card.unavailable {
+        cursor: not-allowed;
+        opacity: 0.62;
+        pointer-events: none;
+        filter: saturate(0.75);
+      }
+
+      .map-card.unavailable:hover {
+        transform: none;
+        border-color: rgba(255, 255, 255, 0.06);
+      }
+
       .map-card.selected {
         background: linear-gradient(135deg, rgba(125, 211, 252, 0.16), rgba(126, 224, 129, 0.1));
         border-color: rgba(125, 211, 252, 0.55);
@@ -488,6 +500,13 @@
         color: var(--muted);
         font-size: 11px;
         line-height: 1.4;
+      }
+
+      .map-card-unavailable {
+        margin-top: 10px;
+        color: #ffd5dc;
+        font-size: 12px;
+        font-weight: 600;
       }
 
       .selected-map-delta-value {

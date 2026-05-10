@@ -378,6 +378,16 @@
     return config.probabilityByDelta[delta] || config.probabilityByDelta[1];
   }
 
+  function isMapDataSelectable(fishes, profile) {
+    const hasValidFishPrices =
+      fishes.length > 0 && fishes.every((fish) => parseNumber(fish.nPrice) > 0);
+    const hasValidProbability = config.rarityOrder.some(
+      (rarity) => parseNumber(profile?.[rarity]) > 0,
+    );
+
+    return hasValidFishPrices && hasValidProbability;
+  }
+
   function calculateExpectedFishPrice(profile, averageNPrice) {
     return config.rarityOrder.reduce((total, rarity) => {
       const probability = parseNumber(profile[rarity]) / 100;
@@ -424,18 +434,22 @@
         const averageNPrice = calculateAverageNPrice(fishes);
         const delta = rodLevel - map.difficulty;
         const profile = getProbabilityProfile(delta);
-        const expectedPrice = calculateExpectedFishPrice(
-          profile,
-          averageNPrice,
-        );
+        const isSelectable = isMapDataSelectable(fishes, profile);
+        const expectedPrice = isSelectable
+          ? calculateExpectedFishPrice(profile, averageNPrice)
+          : Number.NaN;
         const baitBuff = getBaitBuffForMap(map.difficulty);
-        const baitRows = calculateBaitRows(inputs, expectedPrice, baitBuff);
-        const bestBaitRow = [...baitRows].sort((left, right) => {
-          if (right.netRevenue !== left.netRevenue) {
-            return right.netRevenue - left.netRevenue;
-          }
-          return left.bait.id - right.bait.id;
-        })[0];
+        const baitRows = isSelectable
+          ? calculateBaitRows(inputs, expectedPrice, baitBuff)
+          : [];
+        const bestBaitRow = baitRows.length
+          ? [...baitRows].sort((left, right) => {
+              if (right.netRevenue !== left.netRevenue) {
+                return right.netRevenue - left.netRevenue;
+              }
+              return left.bait.id - right.bait.id;
+            })[0]
+          : null;
 
         return {
           map,
@@ -447,6 +461,8 @@
           baitBuff,
           baitRows,
           bestBaitRow,
+          isSelectable,
+          unavailableReason: isSelectable ? "" : "暂无数据，请等待作者更新",
           expectedDailyRevenue: bestBaitRow ? bestBaitRow.grossRevenue : 0,
         };
       })
@@ -591,6 +607,9 @@
     let bestLevel = null;
     let bestNet = -Infinity;
     mapRows.forEach((row) => {
+      if (!row.isSelectable) {
+        return;
+      }
       const net = row.bestBaitRow ? row.bestBaitRow.netRevenue : -Infinity;
       if (net > bestNet) {
         bestNet = net;
@@ -616,9 +635,23 @@
     elements.mapCardList.innerHTML = mapRows
       .map((row) => {
         const isSelected = row.map.difficulty === selectedMapLevel;
-        const isBest = row.map.difficulty === bestMapLevel;
+        const isBest = row.isSelectable && row.map.difficulty === bestMapLevel;
+        const isUnavailable = !row.isSelectable;
+        const cardContent = isUnavailable
+          ? `<div class="map-card-note map-card-unavailable" data-map-unavailable="${row.map.difficulty}">${row.unavailableReason}</div>`
+          : `
+              <div class="map-card-price" data-map-price="${row.map.difficulty}"> ¥${formatNumber(row.bestBaitRow?.netRevenue ?? 0, 0)}</div>
+              <div class="map-card-note map-card-best-bait" data-map-best-bait="${row.map.difficulty}">最优鱼饵：${row.bestBaitRow ? row.bestBaitRow.bait.name : "-"}</div>
+              <label class="map-card-buff">
+                <span>打窝 buff（%）</span>
+                <div class="map-card-buff-stepper" data-bait-buff-stepper="${row.map.difficulty}">
+                  <button type="button" class="stepper-btn" data-bait-buff-step="-5" data-bait-buff-map="${row.map.difficulty}" aria-label="减少">−</button>
+                  <span class="stepper-value" data-bait-buff-value="${row.map.difficulty}">${formatNumber(row.baitBuff, 0)}</span>
+                  <button type="button" class="stepper-btn" data-bait-buff-step="5" data-bait-buff-map="${row.map.difficulty}" aria-label="增加">+</button>
+                </div>
+              </label>`;
         return `
-          <div class="map-card ${isSelected ? "selected" : ""} ${isBest ? "best" : ""}" data-map-level="${row.map.difficulty}" role="button" tabindex="0">
+          <div class="map-card ${isSelected ? "selected" : ""} ${isBest ? "best" : ""} ${isUnavailable ? "unavailable" : ""}" data-map-level="${row.map.difficulty}" data-map-disabled="${isUnavailable}" role="button" tabindex="${isUnavailable ? "-1" : "0"}" aria-disabled="${isUnavailable ? "true" : "false"}">
             <div class="map-card-compact">
               <div class="map-card-header">
                 <div class="map-card-title">
@@ -629,16 +662,7 @@
                   ${isBest ? '<span class="badge badge-best">最优</span>' : ""}
                 </div>
               </div>
-              <div class="map-card-price" data-map-price="${row.map.difficulty}"> ¥${formatNumber(row.bestBaitRow?.netRevenue ?? 0, 0)}</div>
-              <div class="map-card-note map-card-best-bait" data-map-best-bait="${row.map.difficulty}">最优鱼饵：${row.bestBaitRow ? row.bestBaitRow.bait.name : "-"}</div>
-              <label class="map-card-buff">
-                <span>打窝 buff（%）</span>
-                <div class="map-card-buff-stepper" data-bait-buff-stepper="${row.map.difficulty}">
-                  <button type="button" class="stepper-btn" data-bait-buff-step="-5" data-bait-buff-map="${row.map.difficulty}" aria-label="减少">−</button>
-                  <span class="stepper-value" data-bait-buff-value="${row.map.difficulty}">${formatNumber(row.baitBuff, 0)}</span>
-                  <button type="button" class="stepper-btn" data-bait-buff-step="5" data-bait-buff-map="${row.map.difficulty}" aria-label="增加">+</button>
-                </div>
-              </label>
+              ${cardContent}
             </div>
           </div>
         `;
@@ -652,6 +676,32 @@
     }
     const bestMapLevel = findBestMapLevel(mapRows);
     mapRows.forEach((row) => {
+      const cardEl = elements.mapCardList.querySelector(
+        `.map-card[data-map-level="${row.map.difficulty}"]`,
+      );
+      const isUnavailable = !row.isSelectable;
+      if (cardEl) {
+        cardEl.classList.toggle("unavailable", isUnavailable);
+        cardEl.setAttribute("aria-disabled", isUnavailable ? "true" : "false");
+        cardEl.setAttribute("tabindex", isUnavailable ? "-1" : "0");
+      }
+
+      if (isUnavailable) {
+        const unavailableEl = elements.mapCardList.querySelector(
+          `[data-map-unavailable="${row.map.difficulty}"]`,
+        );
+        if (unavailableEl) {
+          unavailableEl.textContent = row.unavailableReason;
+        }
+        const badgesEl = elements.mapCardList.querySelector(
+          `[data-map-badges="${row.map.difficulty}"]`,
+        );
+        if (badgesEl) {
+          badgesEl.innerHTML = "";
+        }
+        return;
+      }
+
       const priceEl = elements.mapCardList.querySelector(
         `[data-map-price="${row.map.difficulty}"]`,
       );
@@ -671,9 +721,6 @@
         buffValueEl.textContent = formatNumber(row.baitBuff, 0);
       }
 
-      const cardEl = elements.mapCardList.querySelector(
-        `.map-card[data-map-level="${row.map.difficulty}"]`,
-      );
       const badgesEl = elements.mapCardList.querySelector(
         `[data-map-badges="${row.map.difficulty}"]`,
       );
@@ -742,13 +789,14 @@
     const inputs = getInputs();
     const selectedRodLevel = Number.parseInt(elements.rodLevel.value, 10);
     const mapRows = calculateMapRows(inputs, selectedRodLevel);
+    const selectableMapRows = mapRows.filter((row) => row.isSelectable);
     const storedMapLevel = Number.parseInt(
       getStoredValue(storageKeys.mapLevel) || "",
       10,
     );
     const selectedMapRow =
-      mapRows.find((row) => row.map.difficulty === storedMapLevel) ||
-      mapRows[0] ||
+      selectableMapRows.find((row) => row.map.difficulty === storedMapLevel) ||
+      selectableMapRows[0] ||
       null;
     const activeMapLevel = selectedMapRow ? selectedMapRow.map.difficulty : "";
 
@@ -869,6 +917,10 @@
         const stepButton = event.target.closest("[data-bait-buff-step]");
         if (stepButton) {
           event.stopPropagation();
+          const stepCard = stepButton.closest(".map-card");
+          if (stepCard?.dataset.mapDisabled === "true") {
+            return;
+          }
           const mapLevel = stepButton.dataset.baitBuffMap;
           const stepValue = parseNumber(stepButton.dataset.baitBuffStep);
           const current = getBaitBuffForMap(mapLevel);
@@ -881,6 +933,10 @@
 
         const target = event.target.closest("[data-map-level]");
         if (!target) {
+          return;
+        }
+
+        if (target.dataset.mapDisabled === "true") {
           return;
         }
 
@@ -897,6 +953,9 @@
         }
         const target = event.target.closest("[data-map-level]");
         if (!target) {
+          return;
+        }
+        if (target.dataset.mapDisabled === "true") {
           return;
         }
         event.preventDefault();

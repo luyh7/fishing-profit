@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.1",
-  gitCommitCount: 22,
+  gitCommitCount: 23,
   nestBuffSourceUrl:
     "https://raw.githubusercontent.com/luyh7/fishing-profit/gh-pages/nest-buff.json",
   baseIntervalHours: 1,
@@ -115,11 +115,11 @@ window.FISH_FISHING_CONFIG = {
       difficulty: 6,
       name: "长江中游",
       fishes: [
-        { name: "江团鱼", nPrice: 0 },
+        { name: "江团鱼", nPrice: 47 },
         { name: "刀鲚", nPrice: 0 },
         { name: "黄尾鲴", nPrice: 0 },
-        { name: "细鳞鱼", nPrice: 0 },
-        { name: "重唇鱼", nPrice: 0 },
+        { name: "细鳞鱼", nPrice: 49 },
+        { name: "重唇鱼", nPrice: 55 },
       ],
     },
     {
@@ -167,10 +167,10 @@ window.FISH_FISHING_CONFIG = {
     { level: 4, name: "鱼竿 Lv.4" },
     { level: 5, name: "鱼竿 Lv.5" },
     { level: 6, name: "鱼竿 Lv.6" },
-    // { level: 7, name: "鱼竿 Lv.7" },
-    // { level: 8, name: "鱼竿 Lv.8" },
-    // { level: 9, name: "鱼竿 Lv.9" },
-    // { level: 10, name: "鱼竿 Lv.10" },
+    { level: 7, name: "鱼竿 Lv.7" },
+    { level: 8, name: "鱼竿 Lv.8" },
+    { level: 9, name: "鱼竿 Lv.9" },
+    { level: 10, name: "鱼竿 Lv.10" },
   ],
   probabilityByDelta: {
     0: { UR: 0, SSR: 0, SR: 0, R: 33.45, N: 66.55 },
