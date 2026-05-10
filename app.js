@@ -324,12 +324,22 @@
     }
   }
 
-  function renderSummary(selectedMapRow, bestBaitRow) {
+  function highlightPercentValues(text, className) {
+    return String(text).replace(
+      /(\d+(?:\.\d+)?)%/g,
+      `<span class="${className}">$1%</span>`,
+    );
+  }
+
+  function renderSummary(selectedMapRow, bestBaitRow, inputs) {
     elements.selectedMapName.textContent = selectedMapRow
       ? ` Lv.${selectedMapRow.map.level} ${selectedMapRow.map.name}`
       : "-";
-    elements.selectedMapDelta.textContent = selectedMapRow
-      ? `渔力 ${selectedMapRow.delta} / 打窝 buff ${formatNumber(selectedMapRow.baitBuff, 2)}%`
+    elements.selectedMapDelta.className = selectedMapRow
+      ? "small selected-map-delta"
+      : "small";
+    elements.selectedMapDelta.innerHTML = selectedMapRow
+      ? `<span class="selected-map-delta-item"><span class="selected-map-delta-label">🎣渔力</span><span class="selected-map-delta-value">${selectedMapRow.delta}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">🪝鱼钩</span><span class="selected-map-buff-value">${formatPercent(inputs?.hookConfig?.speed ?? 0, 2)}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">⚡${highlightPercentValues(inputs?.systemBuffConfig?.name ?? "", "selected-map-buff-value")}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">🌽打窝</span><span class="selected-map-buff-value">${formatNumber(selectedMapRow.baitBuff, 2)}%</span></span>`
       : "-";
     elements.selectedFishPrice.textContent = selectedMapRow
       ? `¥${formatNumber(selectedMapRow.expectedPrice, 2)}`
@@ -361,11 +371,14 @@
     elements.selectedBestBait.textContent = bestBaitRow
       ? bestBaitRow.bait.name
       : "-";
-    elements.selectedBestNet.textContent = bestBaitRow
-      ? `24h 完成 ${formatNumber(bestBaitRow.completedCount, 0)} 次 / 净收益 ¥${formatNumber(
+    elements.selectedBestNet.className = bestBaitRow
+      ? "small selected-best-net"
+      : "small";
+    elements.selectedBestNet.innerHTML = bestBaitRow
+      ? `<span class="selected-best-net-item">⏱️24h 完成 <span class="selected-best-net-value">${formatNumber(bestBaitRow.completedCount, 0)}</span> 次</span><span class="selected-best-net-item">💰净收益 <span class="selected-best-net-value">¥${formatNumber(
           bestBaitRow.netRevenue,
-          2,
-        )}`
+          0,
+        )}</span></span>`
       : "-";
   }
 
@@ -558,7 +571,7 @@
       systemBuff: inputs.systemBuffConfig,
     };
 
-    renderSummary(selectedMapRow, bestBaitRow);
+    renderSummary(selectedMapRow, bestBaitRow, inputs);
     if (options.skipMapCardRebuild) {
       updateMapCardValues(mapRows);
     } else {

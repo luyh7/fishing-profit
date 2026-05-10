@@ -165,6 +165,25 @@
         font-size: 12px;
       }
 
+        .selected-map-delta {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          justify-content: flex-start;
+          gap: 4px 12px;
+        }
+
+        .selected-map-delta-item {
+          display: inline-flex;
+          align-items: baseline;
+          min-width: 0;
+          gap: 4px;
+        }
+
+        .selected-map-delta-label {
+          white-space: nowrap;
+        }
+
       .metric-value,
       .summary-card .value,
       .map-card .value {
@@ -396,9 +415,12 @@
       .map-card-buff-stepper .stepper-value {
         min-width: 36px;
         text-align: center;
-        font-size: 12px;
-        color: var(--text);
+        display: inline-block;
+        font-size: 14px;
+        font-weight: 900;
+        color: #f8fbff;
         font-variant-numeric: tabular-nums;
+        line-height: 1;
       }
 
       .map-card-header {
@@ -466,6 +488,41 @@
         color: var(--muted);
         font-size: 11px;
         line-height: 1.4;
+      }
+
+      .selected-map-delta-value {
+        font-size: 1.15em;
+        font-weight: 800;
+        color: #f8fbff;
+      }
+
+      .selected-map-buff-value {
+        font-size: 14px;
+        font-weight: 900;
+        color: #f8fbff;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .selected-best-net {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: flex-start;
+        gap: 4px 18px;
+      }
+
+      .selected-best-net-item {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 4px;
+        min-width: 0;
+      }
+
+      .selected-best-net-value {
+        font-size: 14px;
+        font-weight: 900;
+        color: #f8fbff;
+        font-variant-numeric: tabular-nums;
       }
 
       .map-card-best-bait {
