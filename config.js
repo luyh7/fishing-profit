@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.1",
-  gitCommitCount: 23,
+  gitCommitCount: 24,
   nestBuffSourceUrl:
     "https://raw.githubusercontent.com/luyh7/fishing-profit/gh-pages/nest-buff.json",
   baseIntervalHours: 1,
@@ -116,8 +116,8 @@ window.FISH_FISHING_CONFIG = {
       name: "长江中游",
       fishes: [
         { name: "江团鱼", nPrice: 47 },
-        { name: "刀鲚", nPrice: 0 },
-        { name: "黄尾鲴", nPrice: 0 },
+        { name: "刀鲚", nPrice: 57 },
+        { name: "黄尾鲴", nPrice: 52 },
         { name: "细鳞鱼", nPrice: 49 },
         { name: "重唇鱼", nPrice: 55 },
       ],
