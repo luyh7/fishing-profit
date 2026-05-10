@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.1",
-  gitCommitCount: 20,
+  gitCommitCount: 21,
   nestBuffSourceUrl:
     "https://raw.githubusercontent.com/luyh7/fishing-profit/gh-pages/nest-buff.json",
   baseIntervalHours: 1,
