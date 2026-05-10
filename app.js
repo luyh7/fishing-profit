@@ -199,6 +199,16 @@
     return Math.max(0, nestBuffRefreshCooldownMs - elapsed);
   }
 
+  function getNestBuffFetchUrls() {
+    if (window.location.protocol === "https:") {
+      return [
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(nestBuffApiUrl)}`,
+      ];
+    }
+
+    return [nestBuffApiUrl];
+  }
+
   function getBaitBuffForMap(mapLevel) {
     return parseNumber(baitBuffByMap[String(mapLevel)]);
   }
@@ -255,19 +265,30 @@
     setNestBuffRefreshButtonState(true);
 
     try {
-      const response = await fetch(nestBuffApiUrl, {
-        cache: "no-store",
-      });
+      let lastError = null;
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+      for (const requestUrl of getNestBuffFetchUrls()) {
+        try {
+          const response = await fetch(requestUrl, {
+            cache: "no-store",
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          const payload = await response.json();
+          applyNestBuffSnapshot(payload);
+          setNestBuffLastRefreshAt(Date.now());
+          showNestBuffSuccessStatus();
+          render({ skipMapCardRebuild: true });
+          return;
+        } catch (error) {
+          lastError = error;
+        }
       }
 
-      const payload = await response.json();
-      applyNestBuffSnapshot(payload);
-      setNestBuffLastRefreshAt(Date.now());
-      showNestBuffSuccessStatus();
-      render({ skipMapCardRebuild: true });
+      throw lastError || new Error("获取实时打窝buff失败");
     } catch (error) {
       console.error("获取实时打窝buff失败", error);
       showNestBuffStatus("获取实时打窝buff失败，请稍后重试。", "error");
