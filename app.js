@@ -30,6 +30,7 @@
     selectedMapProbability: document.getElementById("selectedMapProbability"),
     selectedBestBait: document.getElementById("selectedBestBait"),
     selectedBestNet: document.getElementById("selectedBestNet"),
+    fishPriceTooltip: document.getElementById("fishPriceTooltip"),
     bestBaitName: document.getElementById("bestBaitName"),
     bestBaitNet: document.getElementById("bestBaitNet"),
     resultBody: document.getElementById("resultBody"),
@@ -258,6 +259,70 @@
     };
   }
 
+  function renderFishPriceTooltip(selectedMapRow, visibleRarities) {
+    const tooltip = elements.fishPriceTooltip;
+    if (!tooltip) {
+      return;
+    }
+    if (!selectedMapRow || !visibleRarities.length) {
+      tooltip.hidden = true;
+      tooltip.innerHTML = "";
+      return;
+    }
+
+    const fishes = selectedMapRow.fishes || [];
+    if (!fishes.length) {
+      tooltip.hidden = true;
+      tooltip.innerHTML = "";
+      return;
+    }
+
+    const headerCells = visibleRarities
+      .map(
+        (rarity) =>
+          `<th><span class="tooltip-rarity" data-rarity="${rarity}" style="--rarity-color: ${rarityColor(rarity)};">${rarity}</span></th>`,
+      )
+      .join("");
+
+    const rows = fishes
+      .map((fish) => {
+        const cells = visibleRarities
+          .map((rarity) => {
+            const multiplier = parseNumber(config.rarityMultipliers[rarity]);
+            const price = parseNumber(fish.nPrice) * multiplier;
+            return `<td>¥${formatNumber(price, 0)}</td>`;
+          })
+          .join("");
+        return `<tr><td>${fish.name}</td>${cells}</tr>`;
+      })
+      .join("");
+
+    tooltip.hidden = false;
+    tooltip.innerHTML = `
+      <div class="tooltip-title">各稀有度单鱼价格</div>
+      <table class="tooltip-table">
+        <thead><tr><th>鱼种</th>${headerCells}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  function rarityColor(rarity) {
+    switch (rarity) {
+      case "UR":
+        return "#ff4d1a";
+      case "SSR":
+        return "#ffcc00";
+      case "SR":
+        return "#a44bff";
+      case "R":
+        return "#3b82f6";
+      case "N":
+      default:
+        return "#9ca3af";
+    }
+  }
+
   function renderSummary(selectedMapRow, bestBaitRow) {
     elements.selectedMapName.textContent = selectedMapRow
       ? ` Lv.${selectedMapRow.map.level} ${selectedMapRow.map.name}`
@@ -268,17 +333,30 @@
     elements.selectedFishPrice.textContent = selectedMapRow
       ? `¥${formatNumber(selectedMapRow.expectedPrice, 2)}`
       : "-";
-    elements.selectedMapProbability.textContent = selectedMapRow
-      ? `${config.rarityOrder
-          .map(
-            (rarity) =>
-              `${rarity} ${formatNumber(
-                parseNumber(selectedMapRow.profile[rarity]),
-                2,
-              )}%`,
-          )
-          .join(" / ")}`
-      : "-";
+    if (selectedMapRow) {
+      const visibleRarities = config.rarityOrder
+        .slice()
+        .reverse()
+        .filter((rarity) => parseNumber(selectedMapRow.profile[rarity]) > 0);
+
+      const chips = visibleRarities
+        .map(
+          (rarity) =>
+            `<span class="rarity-chip" data-rarity="${rarity}">${rarity} ${formatNumber(
+              parseNumber(selectedMapRow.profile[rarity]),
+              2,
+            )}%</span>`,
+        )
+        .join("");
+      elements.selectedMapProbability.className = "small rarity-chips";
+      elements.selectedMapProbability.innerHTML = chips;
+
+      renderFishPriceTooltip(selectedMapRow, visibleRarities);
+    } else {
+      elements.selectedMapProbability.className = "small";
+      elements.selectedMapProbability.textContent = "-";
+      renderFishPriceTooltip(null, []);
+    }
     elements.selectedBestBait.textContent = bestBaitRow
       ? bestBaitRow.bait.name
       : "-";
