@@ -110,10 +110,7 @@
     } else {
       baitBuffByMap[key] = rawValue;
     }
-    setStoredValue(
-      storageKeys.baitBuffByMap,
-      JSON.stringify(baitBuffByMap),
-    );
+    setStoredValue(storageKeys.baitBuffByMap, JSON.stringify(baitBuffByMap));
   }
 
   function getHookConfig(level) {
@@ -133,8 +130,7 @@
   function getSystemBuffConfig(id) {
     return (
       systemBuffs.find((item) => item.id === id) ||
-      systemBuffs[0] ||
-      { id: "none", name: "无", value: 0 }
+      systemBuffs[0] || { id: "none", name: "无", value: 0 }
     );
   }
 
@@ -328,7 +324,7 @@
       ? ` Lv.${selectedMapRow.map.level} ${selectedMapRow.map.name}`
       : "-";
     elements.selectedMapDelta.textContent = selectedMapRow
-      ? `鱼竿等级 - 地图等级 = ${selectedMapRow.delta} / 打窝 buff ${formatNumber(selectedMapRow.baitBuff, 2)}%`
+      ? `渔力 ${selectedMapRow.delta} / 打窝 buff ${formatNumber(selectedMapRow.baitBuff, 2)}%`
       : "-";
     elements.selectedFishPrice.textContent = selectedMapRow
       ? `¥${formatNumber(selectedMapRow.expectedPrice, 2)}`
