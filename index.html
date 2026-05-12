@@ -640,34 +640,88 @@
         gap: 10px;
       }
 
-      .refresh-nest-buff-btn {
-        appearance: none;
+      .auto-nest-buff-switch {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
         border: 1px solid rgba(125, 211, 252, 0.28);
         background: linear-gradient(135deg, rgba(125, 211, 252, 0.18), rgba(255, 255, 255, 0.05));
         color: var(--text);
         border-radius: 999px;
-        padding: 10px 14px;
+        padding: 8px 12px 8px 9px;
         font: inherit;
         font-size: 12px;
         font-weight: 700;
-        letter-spacing: 0.02em;
         cursor: pointer;
         transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+        user-select: none;
       }
 
-      .refresh-nest-buff-btn:hover:not(:disabled) {
+      .auto-nest-buff-switch:hover {
         transform: translateY(-1px);
         border-color: rgba(125, 211, 252, 0.48);
         background: linear-gradient(135deg, rgba(125, 211, 252, 0.24), rgba(255, 255, 255, 0.08));
       }
 
-      .refresh-nest-buff-btn:active:not(:disabled) {
+      .auto-nest-buff-switch:active {
         transform: translateY(0);
       }
 
-      .refresh-nest-buff-btn:disabled {
-        opacity: 0.65;
-        cursor: progress;
+      .auto-nest-buff-switch.is-loading {
+        opacity: 0.82;
+      }
+
+      .auto-nest-buff-switch input {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+
+      .auto-nest-buff-switch-track {
+        position: relative;
+        flex: 0 0 auto;
+        width: 34px;
+        height: 20px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.16);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+        transition: background 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      .auto-nest-buff-switch-track::after {
+        content: "";
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 14px;
+        height: 14px;
+        border-radius: 999px;
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+        transition: transform 0.15s ease;
+      }
+
+      .auto-nest-buff-switch input:checked + .auto-nest-buff-switch-track {
+        background: rgba(126, 224, 129, 0.48);
+        box-shadow: inset 0 0 0 1px rgba(126, 224, 129, 0.26);
+      }
+
+      .auto-nest-buff-switch input:checked + .auto-nest-buff-switch-track::after {
+        transform: translateX(14px);
+      }
+
+      .auto-nest-buff-switch input:focus-visible + .auto-nest-buff-switch-track {
+        outline: 2px solid rgba(125, 211, 252, 0.7);
+        outline-offset: 2px;
+      }
+
+      .auto-nest-buff-switch-text {
+        white-space: nowrap;
       }
 
       .chip {
@@ -879,7 +933,11 @@
                 <div class="refresh-nest-buff-status error" id="refreshNestBuffError" hidden></div>
               </div>
               <div class="refresh-nest-buff-actions">
-                <button type="button" class="refresh-nest-buff-btn" id="refreshNestBuffBtn">获取实时打窝buff</button>
+                <label class="auto-nest-buff-switch">
+                  <input type="checkbox" id="autoNestBuffSwitch" role="switch" aria-label="自动更新打窝buff">
+                  <span class="auto-nest-buff-switch-track" aria-hidden="true"></span>
+                  <span class="auto-nest-buff-switch-text">自动更新打窝buff</span>
+                </label>
               </div>
             </div>
           </div>

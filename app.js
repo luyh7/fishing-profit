@@ -12,13 +12,14 @@
     ? config.systemBuffs
     : [];
   const nestBuffSourceUrl = config.nestBuffSourceUrl || "./nest-buff.json";
-  const nestBuffRefreshCooldownMs = 1 * 60 * 1000;
+  const nestBuffAutoRefreshIntervalMs = 1 * 60 * 1000;
   const storageKeys = {
     hookLevel: "fish_calculator_hook_level",
     rodLevel: "fish_calculator_rod_level",
     systemBuff: "fish_calculator_system_buff",
     mapLevel: "fish_calculator_map_level",
     baitBuffByMap: "fish_calculator_bait_buff_by_map",
+    autoNestBuff: "fish_calculator_auto_nest_buff",
   };
 
   const elements = {
@@ -33,7 +34,7 @@
     selectedMapProbability: document.getElementById("selectedMapProbability"),
     selectedBestBait: document.getElementById("selectedBestBait"),
     selectedBestNet: document.getElementById("selectedBestNet"),
-    refreshNestBuffBtn: document.getElementById("refreshNestBuffBtn"),
+    autoNestBuffSwitch: document.getElementById("autoNestBuffSwitch"),
     refreshNestBuffStatus: document.getElementById("refreshNestBuffStatus"),
     refreshNestBuffError: document.getElementById("refreshNestBuffError"),
     fishPriceTooltip: document.getElementById("fishPriceTooltip"),
@@ -119,6 +120,9 @@
 
   let baitBuffByMap = loadBaitBuffMap();
   let isRefreshingNestBuff = false;
+  let isAutoNestBuffEnabled = getStoredValue(storageKeys.autoNestBuff) === "true";
+  let autoNestBuffIntervalId = null;
+  let autoNestBuffTimeoutId = null;
   let nestBuffStatusIntervalId = null;
   let nestBuffStatusTimeoutId = null;
   let nestBuffLastRefreshAt = 0;
@@ -138,6 +142,12 @@
 
   function getNestBuffLastUpdateAt() {
     return nestBuffLastUpdateAt;
+  }
+
+  function clearNestBuffUpdateMark() {
+    setNestBuffLastRefreshAt(0);
+    setNestBuffLastUpdateAt("");
+    clearNestBuffStatus();
   }
 
   function clearNestBuffStatus() {
@@ -192,38 +202,6 @@
     elements.refreshNestBuffError.className = "refresh-nest-buff-status error";
   }
 
-  function formatCountdown(remainingMs) {
-    const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-  }
-
-  function showNestBuffCooldownStatus() {
-    clearNestBuffStatusTimers();
-    clearNestBuffError();
-
-    const update = () => {
-      const remainingMs = getNestBuffCooldownRemainingMs();
-      if (remainingMs <= 0) {
-        clearNestBuffStatusTimers();
-        clearNestBuffError();
-        return false;
-      }
-
-      showNestBuffError(
-        `获取过于频繁，请 ${formatCountdown(remainingMs)} 后再试。`,
-      );
-      return true;
-    };
-
-    if (!update()) {
-      return;
-    }
-
-    nestBuffStatusIntervalId = window.setInterval(update, 1000);
-  }
-
   function showNestBuffSuccessStatus() {
     clearNestBuffStatusTimers();
     clearNestBuffError();
@@ -231,14 +209,14 @@
     showNestBuffStatus(`数据更新于 ${formatDateTime(updateAt)}`, "success");
   }
 
-  function getNestBuffCooldownRemainingMs() {
+  function getNestBuffAutoRefreshDelayMs() {
     const lastRefreshAt = getNestBuffLastRefreshAt();
     if (!Number.isFinite(lastRefreshAt) || lastRefreshAt <= 0) {
       return 0;
     }
 
     const elapsed = Date.now() - lastRefreshAt;
-    return Math.max(0, nestBuffRefreshCooldownMs - elapsed);
+    return Math.max(0, nestBuffAutoRefreshIntervalMs - elapsed);
   }
 
   function getBaitBuffForMap(mapLevel) {
@@ -255,15 +233,97 @@
     setStoredValue(storageKeys.baitBuffByMap, JSON.stringify(baitBuffByMap));
   }
 
-  function setNestBuffRefreshButtonState(isLoading) {
-    if (!elements.refreshNestBuffBtn) {
+  function setAutoNestBuffSwitchState(isLoading = false) {
+    if (!elements.autoNestBuffSwitch) {
       return;
     }
 
-    elements.refreshNestBuffBtn.disabled = isLoading;
-    elements.refreshNestBuffBtn.textContent = isLoading
-      ? "获取中..."
-      : "获取实时打窝buff";
+    elements.autoNestBuffSwitch.checked = isAutoNestBuffEnabled;
+    elements.autoNestBuffSwitch.setAttribute(
+      "aria-checked",
+      String(isAutoNestBuffEnabled),
+    );
+    elements.autoNestBuffSwitch.closest(".auto-nest-buff-switch")?.classList.toggle(
+      "is-loading",
+      isLoading,
+    );
+  }
+
+  function persistAutoNestBuffEnabled() {
+    setStoredValue(storageKeys.autoNestBuff, String(isAutoNestBuffEnabled));
+  }
+
+  function stopAutoNestBuff({ persist = true } = {}) {
+    isAutoNestBuffEnabled = false;
+    if (autoNestBuffIntervalId !== null) {
+      window.clearInterval(autoNestBuffIntervalId);
+      autoNestBuffIntervalId = null;
+    }
+    if (autoNestBuffTimeoutId !== null) {
+      window.clearTimeout(autoNestBuffTimeoutId);
+      autoNestBuffTimeoutId = null;
+    }
+    if (persist) {
+      persistAutoNestBuffEnabled();
+    }
+    setAutoNestBuffSwitchState(isRefreshingNestBuff);
+  }
+
+  function startAutoNestBuff({ persist = true, fetchImmediately = true } = {}) {
+    isAutoNestBuffEnabled = true;
+    if (persist) {
+      persistAutoNestBuffEnabled();
+    }
+    setAutoNestBuffSwitchState(isRefreshingNestBuff);
+
+    if (autoNestBuffIntervalId !== null) {
+      window.clearInterval(autoNestBuffIntervalId);
+      autoNestBuffIntervalId = null;
+    }
+    if (autoNestBuffTimeoutId !== null) {
+      window.clearTimeout(autoNestBuffTimeoutId);
+      autoNestBuffTimeoutId = null;
+    }
+
+    const startInterval = () => {
+      autoNestBuffIntervalId = window.setInterval(() => {
+        if (!isAutoNestBuffEnabled) {
+          return;
+        }
+        clearNestBuffError();
+        refreshNestBuffs();
+      }, nestBuffAutoRefreshIntervalMs);
+    };
+
+    if (fetchImmediately) {
+      const delayMs = getNestBuffAutoRefreshDelayMs();
+      if (delayMs <= 0) {
+        clearNestBuffError();
+        refreshNestBuffs();
+        startInterval();
+        return;
+      }
+
+      autoNestBuffTimeoutId = window.setTimeout(() => {
+        autoNestBuffTimeoutId = null;
+        if (!isAutoNestBuffEnabled) {
+          return;
+        }
+        clearNestBuffError();
+        refreshNestBuffs();
+        startInterval();
+      }, delayMs);
+      return;
+    }
+
+    startInterval();
+  }
+
+  function disableAutoNestBuffForManualEdit() {
+    if (isAutoNestBuffEnabled) {
+      stopAutoNestBuff();
+    }
+    clearNestBuffUpdateMark();
   }
 
   function applyNestBuffSnapshot(payload) {
@@ -294,7 +354,7 @@
     }
 
     isRefreshingNestBuff = true;
-    setNestBuffRefreshButtonState(true);
+    setAutoNestBuffSwitchState(true);
 
     try {
       const response = await fetch(nestBuffSourceUrl, {
@@ -306,6 +366,9 @@
       }
 
       const payload = await response.json();
+      if (!isAutoNestBuffEnabled) {
+        return;
+      }
       applyNestBuffSnapshot(payload);
       setNestBuffLastUpdateAt(payload?.updated_at);
       setNestBuffLastRefreshAt(Date.now());
@@ -316,7 +379,7 @@
       showNestBuffError("获取实时打窝buff失败，请稍后重试。");
     } finally {
       isRefreshingNestBuff = false;
-      setNestBuffRefreshButtonState(false);
+      setAutoNestBuffSwitchState(false);
     }
   }
 
@@ -926,7 +989,7 @@
           const current = getBaitBuffForMap(mapLevel);
           const next = Math.max(0, current + stepValue);
           setBaitBuffForMap(mapLevel, next === 0 ? "" : String(next));
-          clearNestBuffStatus();
+          disableAutoNestBuffForManualEdit();
           render({ skipMapCardRebuild: true });
           return;
         }
@@ -964,24 +1027,22 @@
       });
     }
 
-    if (elements.refreshNestBuffBtn) {
-      elements.refreshNestBuffBtn.addEventListener("click", () => {
-        const cooldownRemainingMs = getNestBuffCooldownRemainingMs();
-        if (cooldownRemainingMs > 0) {
-          showNestBuffCooldownStatus();
+    if (elements.autoNestBuffSwitch) {
+      elements.autoNestBuffSwitch.addEventListener("change", () => {
+        if (elements.autoNestBuffSwitch.checked) {
+          startAutoNestBuff();
           return;
         }
 
-        clearNestBuffError();
-        refreshNestBuffs();
+        stopAutoNestBuff();
       });
     }
 
     persist();
-    setNestBuffRefreshButtonState(false);
+    setAutoNestBuffSwitchState(false);
 
-    if (getNestBuffCooldownRemainingMs() > 0) {
-      showNestBuffCooldownStatus();
+    if (isAutoNestBuffEnabled) {
+      startAutoNestBuff({ persist: false });
     }
 
     render();
