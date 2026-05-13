@@ -14,8 +14,10 @@
   const baseRarityOrder = config.rarityOrder.filter(
     (rarity) => rarity !== "UTR",
   );
+  const collectionRarities = baseRarityOrder;
   const nestBuffSourceUrl = config.nestBuffSourceUrl || "./nest-buff.json";
   const nestBuffAutoRefreshIntervalMs = 1 * 60 * 1000;
+  const collectionLongPressMs = 280;
   const storageKeys = {
     hookLevel: "fish_calculator_hook_level",
     rodLevel: "fish_calculator_rod_level",
@@ -24,12 +26,18 @@
     baitBuffByMap: "fish_calculator_bait_buff_by_map",
     weatherOverrideByMap: "fish_calculator_weather_override_by_map",
     autoNestBuff: "fish_calculator_auto_nest_buff",
+    fishCollection: "fish_calculator_fish_collection",
   };
 
   const elements = {
     hookLevel: document.getElementById("hookLevel"),
     rodLevel: document.getElementById("rodLevel"),
     systemBuff: document.getElementById("systemBuff"),
+    openCollectionModal: document.getElementById("openCollectionModal"),
+    collectionProgress: document.getElementById("collectionProgress"),
+    collectionModal: document.getElementById("collectionModal"),
+    collectionLegend: document.getElementById("collectionLegend"),
+    collectionMapList: document.getElementById("collectionMapList"),
     versionBadge: document.getElementById("versionBadge"),
     mapCardList: document.getElementById("mapCardList"),
     selectedMapName: document.getElementById("selectedMapName"),
@@ -84,6 +92,25 @@
     )} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(
       date.getSeconds(),
     )}`;
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, (char) => {
+      switch (char) {
+        case "&":
+          return "&amp;";
+        case "<":
+          return "&lt;";
+        case ">":
+          return "&gt;";
+        case '"':
+          return "&quot;";
+        case "'":
+          return "&#39;";
+        default:
+          return char;
+      }
+    });
   }
 
   function formatDurationCountdown(value) {
@@ -204,6 +231,16 @@
     };
   }
 
+  function buildCollectionGatedSunnyWeather(weather) {
+    return {
+      ...(weather || {}),
+      type: "sunny",
+      is_active: false,
+      collection_gated: true,
+      original_type: normalizeWeatherType(weather?.type),
+    };
+  }
+
   function getWeatherForMap(mapLevel) {
     const key = String(mapLevel);
     const overrideType = weatherOverrideByMap[key];
@@ -211,14 +248,19 @@
       return buildManualWeather(overrideType);
     }
 
-    return (
+    const weather =
       sourceWeatherByMap[key] || {
         type: "sunny",
         is_active: false,
         start_time: null,
         end_time: null,
-      }
-    );
+      };
+
+    if (shouldGateLostWindForMap(mapLevel, weather)) {
+      return buildCollectionGatedSunnyWeather(weather);
+    }
+
+    return weather;
   }
 
   function getWeatherMultiplier(weather) {
@@ -490,7 +532,56 @@
     }
   }
 
+  function normalizeFishCollection(parsed) {
+    const source =
+      parsed?.items && typeof parsed.items === "object"
+        ? parsed.items
+        : parsed;
+    if (!source || typeof source !== "object" || Array.isArray(source)) {
+      return {};
+    }
+
+    return Object.entries(source).reduce((normalized, [fishKey, value]) => {
+      const rarities = Array.isArray(value)
+        ? value
+        : value && typeof value === "object"
+          ? Object.keys(value).filter((rarity) => value[rarity])
+          : [];
+      const rarityMap = rarities.reduce((map, rarity) => {
+        if (collectionRarities.includes(rarity)) {
+          map[rarity] = true;
+        }
+        return map;
+      }, {});
+      if (Object.keys(rarityMap).length > 0) {
+        normalized[fishKey] = rarityMap;
+      }
+      return normalized;
+    }, {});
+  }
+
+  function loadFishCollection() {
+    const raw = getStoredValue(storageKeys.fishCollection);
+    if (!raw) return {};
+    try {
+      return normalizeFishCollection(JSON.parse(raw));
+    } catch (_error) {
+      return {};
+    }
+  }
+
+  function persistFishCollection() {
+    setStoredValue(
+      storageKeys.fishCollection,
+      JSON.stringify({
+        version: 1,
+        items: fishCollection,
+      }),
+    );
+  }
+
   let baitBuffByMap = loadBaitBuffMap();
+  let fishCollection = loadFishCollection();
   let sourceWeatherByMap = {};
   let weatherOverrideByMap = loadWeatherOverrideMap();
   let isRefreshingNestBuff = false;
@@ -503,6 +594,18 @@
   let nestBuffStatusTimeoutId = null;
   let nestBuffLastRefreshAt = 0;
   let nestBuffLastUpdateAt = "";
+  const collectionPointerState = {
+    pointerId: null,
+    startDot: null,
+    longPressTimerId: null,
+    isDragSelecting: false,
+    targetCollected: false,
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    lastY: 0,
+  };
+  let suppressCollectionClickUntil = 0;
 
   function getNestBuffLastRefreshAt() {
     return nestBuffLastRefreshAt;
@@ -652,8 +755,8 @@
   }
 
   function stopAutoNestBuff({ persist = true } = {}) {
-    isAutoNestBuffEnabled = false;
     freezeAllCurrentWeatherAsManualOverrides();
+    isAutoNestBuffEnabled = false;
     if (autoNestBuffIntervalId !== null) {
       window.clearInterval(autoNestBuffIntervalId);
       autoNestBuffIntervalId = null;
@@ -1064,6 +1167,397 @@
       default:
         return "#9ca3af";
     }
+  }
+
+  function getFishCollectionKey(map, fish) {
+    return `${map.id}:${fish.name}`;
+  }
+
+  function getMapByLevel(mapLevel) {
+    return config.maps.find(
+      (map) => String(map.difficulty) === String(mapLevel),
+    );
+  }
+
+  function hasLatestAutoNestBuffData() {
+    return (
+      isAutoNestBuffEffectivelyEnabled() &&
+      getNestBuffLastRefreshAt() > 0 &&
+      Object.keys(sourceWeatherByMap).length > 0
+    );
+  }
+
+  function isMapRarityCollectionComplete(mapLevel, rarity) {
+    const map = getMapByLevel(mapLevel);
+    const fishes = map ? getMapFishes(map) : [];
+    if (!fishes.length) {
+      return false;
+    }
+
+    return fishes.every((fish) =>
+      isFishRarityCollected(getFishCollectionKey(map, fish), rarity),
+    );
+  }
+
+  function shouldGateLostWindForMap(mapLevel, weather) {
+    return (
+      hasLatestAutoNestBuffData() &&
+      normalizeWeatherType(weather?.type) === "lost_wind" &&
+      !isMapRarityCollectionComplete(mapLevel, "UR")
+    );
+  }
+
+  function isFishRarityCollected(fishKey, rarity) {
+    return Boolean(fishCollection[fishKey]?.[rarity]);
+  }
+
+  function setFishRarityCollected(fishKey, rarity, isCollected) {
+    if (!collectionRarities.includes(rarity)) {
+      return;
+    }
+
+    if (isCollected) {
+      fishCollection[fishKey] = {
+        ...(fishCollection[fishKey] || {}),
+        [rarity]: true,
+      };
+    } else if (fishCollection[fishKey]) {
+      delete fishCollection[fishKey][rarity];
+      if (Object.keys(fishCollection[fishKey]).length === 0) {
+        delete fishCollection[fishKey];
+      }
+    }
+
+    persistFishCollection();
+    renderCollectionProgress();
+    if (rarity === "UR" && hasLatestAutoNestBuffData()) {
+      render({ skipMapCardRebuild: true });
+    }
+  }
+
+  function getCollectionStats() {
+    let collected = 0;
+    let total = 0;
+
+    config.maps.forEach((map) => {
+      getMapFishes(map).forEach((fish) => {
+        const fishKey = getFishCollectionKey(map, fish);
+        collectionRarities.forEach((rarity) => {
+          total += 1;
+          if (isFishRarityCollected(fishKey, rarity)) {
+            collected += 1;
+          }
+        });
+      });
+    });
+
+    return { collected, total };
+  }
+
+  function renderCollectionProgress() {
+    if (!elements.collectionProgress) {
+      return;
+    }
+
+    const { collected, total } = getCollectionStats();
+    elements.collectionProgress.textContent = `已收集 ${collected}/${total}`;
+  }
+
+  function setCollectionDotVisualState(dot, isCollected) {
+    dot.classList.toggle("is-collected", isCollected);
+    dot.dataset.collected = isCollected ? "true" : "false";
+    dot.setAttribute("aria-pressed", String(isCollected));
+    dot.setAttribute(
+      "aria-label",
+      `${dot.dataset.mapName || ""} ${dot.dataset.fishName || ""} ${dot.dataset.rarity || ""} ${isCollected ? "已收集" : "未收集"}`.trim(),
+    );
+  }
+
+  function isCollectionDotCollected(dot) {
+    return dot?.dataset.collected === "true";
+  }
+
+  function applyCollectionDotState(dot, shouldCollect) {
+    if (!dot) {
+      return;
+    }
+
+    const fishKey = dot.dataset.fishKey;
+    const rarity = dot.dataset.rarity;
+    if (!fishKey || !rarity) {
+      return;
+    }
+
+    if (isCollectionDotCollected(dot) === shouldCollect) {
+      return;
+    }
+
+    setFishRarityCollected(fishKey, rarity, shouldCollect);
+    setCollectionDotVisualState(dot, shouldCollect);
+  }
+
+  function toggleCollectionDot(dot) {
+    applyCollectionDotState(dot, !isCollectionDotCollected(dot));
+  }
+
+  function renderCollectionLegend() {
+    if (!elements.collectionLegend) {
+      return;
+    }
+
+    elements.collectionLegend.innerHTML = collectionRarities
+      .map(
+        (rarity) => `
+          <span class="collection-legend-item">
+            <span class="collection-legend-dot" style="--rarity-color: ${rarityColor(rarity)};"></span>
+            <span>${escapeHtml(rarity)}</span>
+          </span>
+        `,
+      )
+      .join("");
+  }
+
+  function renderCollectionModal() {
+    if (!elements.collectionMapList) {
+      return;
+    }
+
+    renderCollectionLegend();
+
+    elements.collectionMapList.innerHTML = config.maps
+      .map((map) => {
+        const fishCards = getMapFishes(map)
+          .map((fish) => {
+            const fishKey = getFishCollectionKey(map, fish);
+            const dots = collectionRarities
+              .map((rarity) => {
+                const isCollected = isFishRarityCollected(fishKey, rarity);
+                return `
+                  <button
+                    type="button"
+                    class="collection-rarity-dot ${isCollected ? "is-collected" : ""}"
+                    style="--rarity-color: ${rarityColor(rarity)};"
+                    data-fish-key="${escapeHtml(fishKey)}"
+                    data-rarity="${escapeHtml(rarity)}"
+                    data-map-name="${escapeHtml(map.name)}"
+                    data-fish-name="${escapeHtml(fish.name)}"
+                    data-collected="${isCollected ? "true" : "false"}"
+                    aria-pressed="${isCollected ? "true" : "false"}"
+                    aria-label="${escapeHtml(`${map.name} ${fish.name} ${rarity} ${isCollected ? "已收集" : "未收集"}`)}"
+                  ></button>
+                `;
+              })
+              .join("");
+
+            return `
+              <article class="collection-fish-card">
+                <div class="collection-fish-name" title="${escapeHtml(fish.name)}">${escapeHtml(fish.name)}</div>
+                <div class="collection-rarity-dots">${dots}</div>
+              </article>
+            `;
+          })
+          .join("");
+
+        return `
+          <section class="collection-map-row">
+            <div class="collection-map-name">${escapeHtml(map.name)}</div>
+            <div class="collection-fish-grid">${fishCards}</div>
+          </section>
+        `;
+      })
+      .join("");
+  }
+
+  function openCollectionModal() {
+    if (!elements.collectionModal) {
+      return;
+    }
+
+    renderCollectionModal();
+    elements.collectionModal.hidden = false;
+    document.body.classList.add("collection-modal-open");
+    elements.collectionModal
+      .querySelector(".collection-modal-panel")
+      ?.focus({ preventScroll: true });
+  }
+
+  function clearCollectionLongPressTimer() {
+    if (collectionPointerState.longPressTimerId !== null) {
+      window.clearTimeout(collectionPointerState.longPressTimerId);
+      collectionPointerState.longPressTimerId = null;
+    }
+  }
+
+  function resetCollectionPointerState(event) {
+    clearCollectionLongPressTimer();
+    collectionPointerState.startDot?.classList.remove("is-drag-source");
+    if (
+      event &&
+      collectionPointerState.startDot?.hasPointerCapture?.(
+        collectionPointerState.pointerId,
+      )
+    ) {
+      try {
+        collectionPointerState.startDot.releasePointerCapture(
+          collectionPointerState.pointerId,
+        );
+      } catch (_error) {
+        // Pointer capture may already be released by the browser.
+      }
+    }
+    collectionPointerState.pointerId = null;
+    collectionPointerState.startDot = null;
+    collectionPointerState.isDragSelecting = false;
+    collectionPointerState.targetCollected = false;
+    collectionPointerState.startX = 0;
+    collectionPointerState.startY = 0;
+    collectionPointerState.lastX = 0;
+    collectionPointerState.lastY = 0;
+  }
+
+  function closeCollectionModal() {
+    if (!elements.collectionModal) {
+      return;
+    }
+
+    resetCollectionPointerState();
+    elements.collectionModal.hidden = true;
+    document.body.classList.remove("collection-modal-open");
+    elements.openCollectionModal?.focus({ preventScroll: true });
+  }
+
+  function getCollectionDotFromEvent(event) {
+    if (!(event.target instanceof Element)) {
+      return null;
+    }
+    return event.target.closest(".collection-rarity-dot");
+  }
+
+  function getCollectionDotAtPoint(clientX, clientY) {
+    const elementAtPoint = document.elementFromPoint(clientX, clientY);
+    const dot = elementAtPoint?.closest(".collection-rarity-dot");
+    if (!dot || !elements.collectionMapList?.contains(dot)) {
+      return null;
+    }
+    return dot;
+  }
+
+  function updateCollectionDragSourceStyle(currentDot) {
+    if (!collectionPointerState.startDot) {
+      return;
+    }
+
+    collectionPointerState.startDot.classList.toggle(
+      "is-drag-source",
+      collectionPointerState.isDragSelecting &&
+        currentDot === collectionPointerState.startDot,
+    );
+  }
+
+  function startCollectionDragSelection() {
+    if (
+      !collectionPointerState.startDot ||
+      collectionPointerState.isDragSelecting
+    ) {
+      return;
+    }
+
+    collectionPointerState.longPressTimerId = null;
+    collectionPointerState.isDragSelecting = true;
+    applyCollectionDotState(
+      collectionPointerState.startDot,
+      collectionPointerState.targetCollected,
+    );
+
+    const currentDot = getCollectionDotAtPoint(
+      collectionPointerState.lastX,
+      collectionPointerState.lastY,
+    );
+    updateCollectionDragSourceStyle(currentDot);
+    if (currentDot) {
+      applyCollectionDotState(
+        currentDot,
+        collectionPointerState.targetCollected,
+      );
+    }
+  }
+
+  function handleCollectionPointerDown(event) {
+    if (event.button !== undefined && event.button !== 0) {
+      return;
+    }
+
+    const dot = getCollectionDotFromEvent(event);
+    if (!dot) {
+      return;
+    }
+
+    resetCollectionPointerState();
+    collectionPointerState.pointerId = event.pointerId;
+    collectionPointerState.startDot = dot;
+    collectionPointerState.targetCollected = !isCollectionDotCollected(dot);
+    collectionPointerState.startX = event.clientX;
+    collectionPointerState.startY = event.clientY;
+    collectionPointerState.lastX = event.clientX;
+    collectionPointerState.lastY = event.clientY;
+    dot.setPointerCapture?.(event.pointerId);
+    collectionPointerState.longPressTimerId = window.setTimeout(
+      startCollectionDragSelection,
+      collectionLongPressMs,
+    );
+  }
+
+  function handleCollectionPointerMove(event) {
+    if (collectionPointerState.pointerId !== event.pointerId) {
+      return;
+    }
+
+    collectionPointerState.lastX = event.clientX;
+    collectionPointerState.lastY = event.clientY;
+
+    if (!collectionPointerState.isDragSelecting) {
+      const deltaX = event.clientX - collectionPointerState.startX;
+      const deltaY = event.clientY - collectionPointerState.startY;
+      const dot = getCollectionDotAtPoint(event.clientX, event.clientY);
+      if (
+        Math.hypot(deltaX, deltaY) > 10 &&
+        dot &&
+        dot !== collectionPointerState.startDot
+      ) {
+        clearCollectionLongPressTimer();
+        startCollectionDragSelection();
+        applyCollectionDotState(dot, collectionPointerState.targetCollected);
+        event.preventDefault();
+      }
+      return;
+    }
+
+    event.preventDefault();
+    const dot = getCollectionDotAtPoint(event.clientX, event.clientY);
+    updateCollectionDragSourceStyle(dot);
+    if (dot) {
+      applyCollectionDotState(dot, collectionPointerState.targetCollected);
+    }
+  }
+
+  function handleCollectionPointerUp(event) {
+    if (collectionPointerState.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (collectionPointerState.isDragSelecting) {
+      suppressCollectionClickUntil = Date.now() + 600;
+      event.preventDefault();
+    }
+
+    resetCollectionPointerState(event);
+  }
+
+  function handleCollectionPointerCancel(event) {
+    if (collectionPointerState.pointerId !== event.pointerId) {
+      return;
+    }
+    resetCollectionPointerState(event);
   }
 
   function highlightPercentValues(text, className) {
@@ -1497,7 +1991,65 @@
       });
     }
 
+    if (elements.openCollectionModal) {
+      elements.openCollectionModal.addEventListener("click", () => {
+        openCollectionModal();
+      });
+    }
+
+    if (elements.collectionModal) {
+      elements.collectionModal.addEventListener("click", (event) => {
+        if (
+          event.target instanceof Element &&
+          event.target.closest("[data-collection-close]")
+        ) {
+          closeCollectionModal();
+        }
+      });
+
+      elements.collectionModal.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeCollectionModal();
+        }
+      });
+    }
+
+    if (elements.collectionMapList) {
+      elements.collectionMapList.addEventListener("click", (event) => {
+        const dot = getCollectionDotFromEvent(event);
+        if (!dot) {
+          return;
+        }
+
+        if (Date.now() < suppressCollectionClickUntil) {
+          event.preventDefault();
+          return;
+        }
+
+        toggleCollectionDot(dot);
+      });
+
+      elements.collectionMapList.addEventListener(
+        "pointerdown",
+        handleCollectionPointerDown,
+      );
+      elements.collectionMapList.addEventListener(
+        "pointermove",
+        handleCollectionPointerMove,
+      );
+      elements.collectionMapList.addEventListener(
+        "pointerup",
+        handleCollectionPointerUp,
+      );
+      elements.collectionMapList.addEventListener(
+        "pointercancel",
+        handleCollectionPointerCancel,
+      );
+    }
+
     persist();
+    renderCollectionProgress();
     setAutoNestBuffSwitchState(false);
 
     if (isAutoNestBuffEnabled) {
