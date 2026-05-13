@@ -27,11 +27,20 @@
         margin: 0;
         min-height: 100%;
         background:
-          radial-gradient(circle at top left, rgba(56, 189, 248, 0.2), transparent 28%),
-          radial-gradient(circle at top right, rgba(126, 224, 129, 0.12), transparent 24%),
+          radial-gradient(
+            circle at top left,
+            rgba(56, 189, 248, 0.2),
+            transparent 28%
+          ),
+          radial-gradient(
+            circle at top right,
+            rgba(126, 224, 129, 0.12),
+            transparent 24%
+          ),
           linear-gradient(160deg, #0b1020 0%, #111726 52%, #090d16 100%);
         color: var(--text);
-        font-family: "Microsoft YaHei UI", "PingFang SC", "Noto Sans SC", sans-serif;
+        font-family:
+          "Microsoft YaHei UI", "PingFang SC", "Noto Sans SC", sans-serif;
       }
 
       .page {
@@ -165,24 +174,24 @@
         font-size: 12px;
       }
 
-        .selected-map-delta {
-          display: flex;
-          flex-wrap: wrap;
-          align-items: baseline;
-          justify-content: flex-start;
-          gap: 4px 12px;
-        }
+      .selected-map-delta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: flex-start;
+        gap: 4px 12px;
+      }
 
-        .selected-map-delta-item {
-          display: inline-flex;
-          align-items: baseline;
-          min-width: 0;
-          gap: 4px;
-        }
+      .selected-map-delta-item {
+        display: inline-flex;
+        align-items: baseline;
+        min-width: 0;
+        gap: 4px;
+      }
 
-        .selected-map-delta-label {
-          white-space: nowrap;
-        }
+      .selected-map-delta-label {
+        white-space: nowrap;
+      }
 
       .metric-value,
       .summary-card .value,
@@ -226,11 +235,21 @@
         flex-shrink: 0;
       }
 
-      .rarity-chip[data-rarity="UR"] { --rarity-color: #ff4d1a; }
-      .rarity-chip[data-rarity="SSR"] { --rarity-color: #ffcc00; }
-      .rarity-chip[data-rarity="SR"] { --rarity-color: #a44bff; }
-      .rarity-chip[data-rarity="R"] { --rarity-color: #3b82f6; }
-      .rarity-chip[data-rarity="N"] { --rarity-color: #9ca3af; }
+      .rarity-chip[data-rarity="UR"] {
+        --rarity-color: #ff4d1a;
+      }
+      .rarity-chip[data-rarity="SSR"] {
+        --rarity-color: #ffcc00;
+      }
+      .rarity-chip[data-rarity="SR"] {
+        --rarity-color: #a44bff;
+      }
+      .rarity-chip[data-rarity="R"] {
+        --rarity-color: #3b82f6;
+      }
+      .rarity-chip[data-rarity="N"] {
+        --rarity-color: #9ca3af;
+      }
 
       .has-tooltip {
         position: relative;
@@ -241,7 +260,7 @@
         right: 0;
         top: calc(100% + 8px);
         z-index: 20;
-        width: min(420px, calc(100vw - 24px));
+        width: min(200px, calc(100vw - 24px));
         padding: 12px 14px;
         border-radius: 14px;
         background: rgba(15, 18, 26, 0.96);
@@ -352,7 +371,11 @@
       }
 
       .map-card.selected {
-        background: linear-gradient(135deg, rgba(125, 211, 252, 0.16), rgba(126, 224, 129, 0.1));
+        background: linear-gradient(
+          135deg,
+          rgba(125, 211, 252, 0.16),
+          rgba(126, 224, 129, 0.1)
+        );
         border-color: rgba(125, 211, 252, 0.55);
       }
 
@@ -363,8 +386,72 @@
       .map-card-badges {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
+        align-self: center;
         flex-shrink: 0;
+      }
+
+      .map-card-weather {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        min-height: 23px;
+        padding: 1px 4px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        line-height: 1;
+        position: relative;
+      }
+
+      .map-card-weather.is-expired {
+        border-color: rgba(248, 113, 113, 0.95);
+        box-shadow:
+          0 0 0 1px rgba(248, 113, 113, 0.55),
+          0 0 0 3px rgba(248, 113, 113, 0.12);
+      }
+
+      .map-card-weather .tooltip {
+        right: 0;
+        left: auto;
+        min-width: 0;
+      }
+
+      .weather-step-btn {
+        width: 15px;
+        height: 15px;
+        border: none;
+        border-radius: 999px;
+        background: transparent;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        transition:
+          background 0.15s ease,
+          color 0.15s ease;
+      }
+
+      .weather-step-btn:hover {
+        background: rgba(125, 211, 252, 0.16);
+        color: var(--text);
+      }
+
+      .weather-step-btn:focus-visible {
+        outline: 2px solid rgba(125, 211, 252, 0.7);
+        outline-offset: 2px;
+      }
+
+      .weather-emoji {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 15px;
+        font-size: 13px;
       }
 
       .map-card-badges .badge {
@@ -438,14 +525,15 @@
       .map-card-header {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
+        align-items: center;
         gap: 8px;
       }
 
       .map-card-title {
         display: flex;
         align-items: center;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        min-width: 0;
         font-size: 14px;
         font-weight: 700;
         line-height: 1.35;
@@ -646,7 +734,11 @@
         align-items: center;
         gap: 9px;
         border: 1px solid rgba(125, 211, 252, 0.28);
-        background: linear-gradient(135deg, rgba(125, 211, 252, 0.18), rgba(255, 255, 255, 0.05));
+        background: linear-gradient(
+          135deg,
+          rgba(125, 211, 252, 0.18),
+          rgba(255, 255, 255, 0.05)
+        );
         color: var(--text);
         border-radius: 999px;
         padding: 8px 12px 8px 9px;
@@ -654,14 +746,22 @@
         font-size: 12px;
         font-weight: 700;
         cursor: pointer;
-        transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+        transition:
+          transform 0.15s ease,
+          border-color 0.15s ease,
+          background 0.15s ease,
+          opacity 0.15s ease;
         user-select: none;
       }
 
       .auto-nest-buff-switch:hover {
         transform: translateY(-1px);
         border-color: rgba(125, 211, 252, 0.48);
-        background: linear-gradient(135deg, rgba(125, 211, 252, 0.24), rgba(255, 255, 255, 0.08));
+        background: linear-gradient(
+          135deg,
+          rgba(125, 211, 252, 0.24),
+          rgba(255, 255, 255, 0.08)
+        );
       }
 
       .auto-nest-buff-switch:active {
@@ -690,7 +790,9 @@
         border-radius: 999px;
         background: rgba(255, 255, 255, 0.16);
         box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-        transition: background 0.15s ease, box-shadow 0.15s ease;
+        transition:
+          background 0.15s ease,
+          box-shadow 0.15s ease;
       }
 
       .auto-nest-buff-switch-track::after {
@@ -711,11 +813,15 @@
         box-shadow: inset 0 0 0 1px rgba(126, 224, 129, 0.26);
       }
 
-      .auto-nest-buff-switch input:checked + .auto-nest-buff-switch-track::after {
+      .auto-nest-buff-switch
+        input:checked
+        + .auto-nest-buff-switch-track::after {
         transform: translateX(14px);
       }
 
-      .auto-nest-buff-switch input:focus-visible + .auto-nest-buff-switch-track {
+      .auto-nest-buff-switch
+        input:focus-visible
+        + .auto-nest-buff-switch-track {
         outline: 2px solid rgba(125, 211, 252, 0.7);
         outline-offset: 2px;
       }
@@ -830,8 +936,14 @@
       }
 
       .best-row {
-        background: linear-gradient(90deg, rgba(255, 255, 255, 0.1), rgba(183, 232, 255, 0.12));
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+        background: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.1),
+          rgba(183, 232, 255, 0.12)
+        );
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.12),
+          inset 0 -1px 0 rgba(255, 255, 255, 0.08);
       }
 
       .disabled-row {
@@ -892,17 +1004,19 @@
           align-items: flex-start;
         }
       }
-
     </style>
   </head>
   <body>
     <main class="page">
       <section class="hero">
         <article class="card hero-copy">
-          <div class="eyebrow">Fishing Calculator <span class="version-badge" id="versionBadge">v1.1.5</span></div>
+          <div class="eyebrow">
+            Fishing Calculator
+            <span class="version-badge" id="versionBadge">v1.1.5</span>
+          </div>
           <h1>钓鱼收益计算器</h1>
 
-          <div class="panel hero-params" style="margin-top: 18px;">
+          <div class="panel hero-params" style="margin-top: 18px">
             <div class="panel-head">
               <h2>原始计算参数</h2>
             </div>
@@ -929,14 +1043,32 @@
             <h2>地图选择</h2>
             <div class="panel-head-actions">
               <div class="refresh-nest-buff-statuses">
-                <div class="refresh-nest-buff-status" id="refreshNestBuffStatus" hidden></div>
-                <div class="refresh-nest-buff-status error" id="refreshNestBuffError" hidden></div>
+                <div
+                  class="refresh-nest-buff-status"
+                  id="refreshNestBuffStatus"
+                  hidden
+                ></div>
+                <div
+                  class="refresh-nest-buff-status error"
+                  id="refreshNestBuffError"
+                  hidden
+                ></div>
               </div>
               <div class="refresh-nest-buff-actions">
                 <label class="auto-nest-buff-switch">
-                  <input type="checkbox" id="autoNestBuffSwitch" role="switch" aria-label="自动更新打窝buff">
-                  <span class="auto-nest-buff-switch-track" aria-hidden="true"></span>
-                  <span class="auto-nest-buff-switch-text">自动更新打窝buff</span>
+                  <input
+                    type="checkbox"
+                    id="autoNestBuffSwitch"
+                    role="switch"
+                    aria-label="自动更新打窝buff"
+                  />
+                  <span
+                    class="auto-nest-buff-switch-track"
+                    aria-hidden="true"
+                  ></span>
+                  <span class="auto-nest-buff-switch-text"
+                    >自动更新打窝buff</span
+                  >
                 </label>
               </div>
             </div>
@@ -967,7 +1099,10 @@
       <section class="card section table-card">
         <div class="table-head">
           <h2>鱼饵收益对比</h2>
-          <div class="muted">最佳鱼饵：<strong id="bestBaitName">-</strong> / 24h 净收益 <strong id="bestBaitNet">-</strong></div>
+          <div class="muted">
+            最佳鱼饵：<strong id="bestBaitName">-</strong> / 24h 净收益
+            <strong id="bestBaitNet">-</strong>
+          </div>
         </div>
         <div class="table-wrap">
           <table>

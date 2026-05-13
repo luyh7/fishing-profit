@@ -19,6 +19,7 @@
     systemBuff: "fish_calculator_system_buff",
     mapLevel: "fish_calculator_map_level",
     baitBuffByMap: "fish_calculator_bait_buff_by_map",
+    weatherOverrideByMap: "fish_calculator_weather_override_by_map",
     autoNestBuff: "fish_calculator_auto_nest_buff",
   };
 
@@ -82,6 +83,323 @@
     )}`;
   }
 
+  function formatDurationCountdown(value) {
+    if (!Number.isFinite(value)) {
+      return "-";
+    }
+
+    const totalSeconds = Math.max(0, Math.floor(value / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const pad = (number) => String(number).padStart(2, "0");
+    if (hours > 0) {
+      return `${hours}时${pad(minutes)}分后`;
+    }
+
+    return `${minutes}分${pad(seconds)}秒后`;
+  }
+
+  function formatDurationElapsed(value) {
+    if (!Number.isFinite(value)) {
+      return "-";
+    }
+
+    const totalSeconds = Math.max(0, Math.floor(value / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const pad = (number) => String(number).padStart(2, "0");
+    if (hours > 0) {
+      return `已持续 ${hours}时${pad(minutes)}分`;
+    }
+
+    return `已持续 ${minutes}分${pad(seconds)}秒`;
+  }
+
+  const weatherMetaByType = {
+    sunny: {
+      label: "晴天",
+      emoji: "☀️",
+      effectText: "",
+      multiplier: 1,
+    },
+    rain: {
+      label: "雨天",
+      emoji: "🌧️",
+      effectText: "上鱼速度+10%",
+      multiplier: 1.1,
+    },
+  };
+
+  const weatherCycleTypes = ["sunny", "rain"];
+
+  function normalizeWeatherType(type) {
+    return typeof type === "string" && type ? type : "sunny";
+  }
+
+  function parseWeatherTime(value) {
+    if (Number.isFinite(value)) {
+      return value;
+    }
+
+    const parsed = Date.parse(value || "");
+    return Number.isFinite(parsed) ? parsed : Number.NaN;
+  }
+
+  function getWeatherMeta(type) {
+    const normalizedType = normalizeWeatherType(type);
+    return (
+      weatherMetaByType[normalizedType] || {
+        label: normalizedType,
+        emoji: "🌤️",
+        effectText: "",
+        multiplier: 1,
+      }
+    );
+  }
+
+  function isManualWeather(weather) {
+    return Boolean(weather?.manual);
+  }
+
+  function isAutoNestBuffEffectivelyEnabled() {
+    return isAutoNestBuffEnabled;
+  }
+
+  function isExpiredWeather(weather) {
+    if (
+      !weather ||
+      isManualWeather(weather) ||
+      !isAutoNestBuffEffectivelyEnabled()
+    ) {
+      return false;
+    }
+
+    if (normalizeWeatherType(weather.type) === "sunny") {
+      return false;
+    }
+
+    const endTime = Date.parse(weather.end_time || "");
+    return Number.isFinite(endTime) && Date.now() > endTime;
+  }
+
+  function buildManualWeather(type) {
+    const normalizedType = normalizeWeatherType(type);
+    return {
+      type: normalizedType,
+      is_active: true,
+      start_time: null,
+      end_time: null,
+      manual: true,
+    };
+  }
+
+  function getWeatherForMap(mapLevel) {
+    const key = String(mapLevel);
+    const overrideType = weatherOverrideByMap[key];
+    if (overrideType) {
+      return buildManualWeather(overrideType);
+    }
+
+    return (
+      sourceWeatherByMap[key] || {
+        type: "sunny",
+        is_active: false,
+        start_time: null,
+        end_time: null,
+      }
+    );
+  }
+
+  function getWeatherMultiplier(weather) {
+    const type = normalizeWeatherType(weather?.type);
+    const meta = getWeatherMeta(type);
+    if (
+      type === "rain" &&
+      weather?.is_active !== false &&
+      !isExpiredWeather(weather)
+    ) {
+      return meta.multiplier;
+    }
+
+    return 1;
+  }
+
+  function getWeatherTooltipContent(weather) {
+    const type = normalizeWeatherType(weather?.type);
+    const meta = getWeatherMeta(type);
+
+    if (type === "sunny") {
+      return "晴天";
+    }
+
+    const lines = [
+      meta.effectText
+        ? `<div class="tooltip-title" style="display:flex;justify-content:space-between;gap:8px;align-items:center;"><span>${meta.emoji} ${meta.label}</span><span>${meta.effectText}</span></div>`
+        : `<div class="tooltip-title">${meta.emoji} ${meta.label}</div>`,
+    ];
+
+    if (isManualWeather(weather)) {
+      lines.push("<div>手动模式下不会结束</div>");
+      return lines.join("");
+    }
+
+    if (!isAutoNestBuffEffectivelyEnabled()) {
+      lines.push("<div>手动模式下不会结束</div>");
+      return lines.join("");
+    }
+
+    const startTime = parseWeatherTime(weather?.start_time);
+    lines.push(
+      `<div><span data-weather-elapsed data-weather-start-time="${Number.isFinite(startTime) ? startTime : ""}">${getWeatherElapsedText(weather)}</span></div>`,
+    );
+    const endTime = parseWeatherTime(weather?.end_time);
+    lines.push(
+      `<div>结束于 <span data-weather-countdown data-weather-end-time="${Number.isFinite(endTime) ? endTime : ""}">${getWeatherCountdownText(weather)}</span></div>`,
+    );
+
+    return lines.join("");
+  }
+
+  function getWeatherCountdownText(weather) {
+    if (isExpiredWeather(weather)) {
+      return "已结束";
+    }
+
+    const endTime = parseWeatherTime(weather?.end_time);
+    if (!Number.isFinite(endTime)) {
+      return "-";
+    }
+
+    return formatDurationCountdown(endTime - Date.now());
+  }
+
+  function getWeatherElapsedText(weather) {
+    const startTime = parseWeatherTime(weather?.start_time);
+    if (!Number.isFinite(startTime)) {
+      return "-";
+    }
+
+    return formatDurationElapsed(Date.now() - startTime);
+  }
+
+  function updateWeatherTooltipCountdowns() {
+    if (!elements.mapCardList) {
+      return;
+    }
+
+    const now = Date.now();
+    elements.mapCardList
+      .querySelectorAll("[data-weather-countdown]")
+      .forEach((countdownEl) => {
+        const endTime = Number.parseInt(
+          countdownEl.dataset.weatherEndTime || "",
+          10,
+        );
+        if (!Number.isFinite(endTime)) {
+          countdownEl.textContent = "-";
+          return;
+        }
+
+        const remainingMs = endTime - now;
+        const isExpired =
+          isAutoNestBuffEffectivelyEnabled() && remainingMs <= 0;
+        countdownEl.textContent = isExpired
+          ? "已结束"
+          : formatDurationCountdown(remainingMs);
+
+        countdownEl
+          .closest(".map-card-weather")
+          ?.classList.toggle("is-expired", isExpired);
+      });
+
+    elements.mapCardList
+      .querySelectorAll("[data-weather-elapsed]")
+      .forEach((elapsedEl) => {
+        const startTime = Number.parseInt(
+          elapsedEl.dataset.weatherStartTime || "",
+          10,
+        );
+        if (!Number.isFinite(startTime)) {
+          elapsedEl.textContent = "-";
+          return;
+        }
+
+        elapsedEl.textContent = getWeatherElapsedText({
+          start_time: startTime,
+        });
+      });
+  }
+
+  function getWeatherCycleType(currentType, stepValue) {
+    const normalizedType = normalizeWeatherType(currentType);
+    const currentIndex = weatherCycleTypes.indexOf(normalizedType);
+    const safeIndex = currentIndex >= 0 ? currentIndex : 0;
+    const nextIndex =
+      (safeIndex + stepValue + weatherCycleTypes.length) %
+      weatherCycleTypes.length;
+    return weatherCycleTypes[nextIndex];
+  }
+
+  function persistWeatherOverrides() {
+    setStoredValue(
+      storageKeys.weatherOverrideByMap,
+      JSON.stringify(weatherOverrideByMap),
+    );
+  }
+
+  function freezeAllCurrentWeatherAsManualOverrides() {
+    const nextWeatherOverrides = {};
+
+    config.maps.forEach((map) => {
+      const mapLevel = String(map.difficulty);
+      const currentWeather = getWeatherForMap(map.difficulty);
+      nextWeatherOverrides[mapLevel] = normalizeWeatherType(
+        currentWeather?.type,
+      );
+    });
+
+    weatherOverrideByMap = nextWeatherOverrides;
+    persistWeatherOverrides();
+  }
+
+  function setWeatherOverrideForMap(mapLevel, weatherType) {
+    const key = String(mapLevel);
+    if (!weatherType) {
+      delete weatherOverrideByMap[key];
+    } else {
+      weatherOverrideByMap[key] = normalizeWeatherType(weatherType);
+    }
+    persistWeatherOverrides();
+  }
+
+  function clearWeatherOverrides() {
+    weatherOverrideByMap = {};
+    persistWeatherOverrides();
+  }
+
+  function getWeatherBadgeClass(weather) {
+    return `map-card-weather ${isExpiredWeather(weather) ? "is-expired" : ""}`.trim();
+  }
+
+  function buildWeatherControlHtml(row) {
+    const weather = row.weather || getWeatherForMap(row.map.difficulty);
+    const tooltip = getWeatherTooltipContent(weather);
+    return `
+      <div class="${getWeatherBadgeClass(weather)} has-tooltip" data-map-weather="${row.map.difficulty}">
+        <button type="button" class="weather-step-btn" data-weather-step="-1" data-weather-map="${row.map.difficulty}" aria-label="切换到前一个天气">‹</button>
+        <span class="weather-emoji" aria-hidden="true">${getWeatherMeta(weather.type).emoji}</span>
+        <button type="button" class="weather-step-btn" data-weather-step="1" data-weather-map="${row.map.difficulty}" aria-label="切换到下一个天气">›</button>
+        <div class="tooltip" data-map-weather-tooltip="${row.map.difficulty}">${tooltip}</div>
+      </div>
+    `;
+  }
+
+  function buildMapCardBadgesHtml(row, isBest) {
+    return buildWeatherControlHtml(row);
+  }
+
   function buildOption(selectElement, items, getValue, getLabel) {
     selectElement.innerHTML = items
       .map(
@@ -118,11 +436,26 @@
     }
   }
 
+  function loadWeatherOverrideMap() {
+    const raw = getStoredValue(storageKeys.weatherOverrideByMap);
+    if (!raw) return {};
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (_error) {
+      return {};
+    }
+  }
+
   let baitBuffByMap = loadBaitBuffMap();
+  let sourceWeatherByMap = {};
+  let weatherOverrideByMap = loadWeatherOverrideMap();
   let isRefreshingNestBuff = false;
-  let isAutoNestBuffEnabled = getStoredValue(storageKeys.autoNestBuff) === "true";
+  let isAutoNestBuffEnabled =
+    getStoredValue(storageKeys.autoNestBuff) === "true";
   let autoNestBuffIntervalId = null;
   let autoNestBuffTimeoutId = null;
+  let weatherTooltipRefreshIntervalId = null;
   let nestBuffStatusIntervalId = null;
   let nestBuffStatusTimeoutId = null;
   let nestBuffLastRefreshAt = 0;
@@ -243,18 +576,41 @@
       "aria-checked",
       String(isAutoNestBuffEnabled),
     );
-    elements.autoNestBuffSwitch.closest(".auto-nest-buff-switch")?.classList.toggle(
-      "is-loading",
-      isLoading,
-    );
+    elements.autoNestBuffSwitch
+      .closest(".auto-nest-buff-switch")
+      ?.classList.toggle("is-loading", isLoading);
   }
 
   function persistAutoNestBuffEnabled() {
     setStoredValue(storageKeys.autoNestBuff, String(isAutoNestBuffEnabled));
   }
 
+  function startWeatherTooltipRefresh() {
+    if (weatherTooltipRefreshIntervalId !== null) {
+      return;
+    }
+
+    updateWeatherTooltipCountdowns();
+    weatherTooltipRefreshIntervalId = window.setInterval(() => {
+      if (!isAutoNestBuffEnabled) {
+        return;
+      }
+      updateWeatherTooltipCountdowns();
+    }, 1000);
+  }
+
+  function stopWeatherTooltipRefresh() {
+    if (weatherTooltipRefreshIntervalId === null) {
+      return;
+    }
+
+    window.clearInterval(weatherTooltipRefreshIntervalId);
+    weatherTooltipRefreshIntervalId = null;
+  }
+
   function stopAutoNestBuff({ persist = true } = {}) {
     isAutoNestBuffEnabled = false;
+    freezeAllCurrentWeatherAsManualOverrides();
     if (autoNestBuffIntervalId !== null) {
       window.clearInterval(autoNestBuffIntervalId);
       autoNestBuffIntervalId = null;
@@ -266,6 +622,7 @@
     if (persist) {
       persistAutoNestBuffEnabled();
     }
+    stopWeatherTooltipRefresh();
     setAutoNestBuffSwitchState(isRefreshingNestBuff);
   }
 
@@ -275,6 +632,7 @@
       persistAutoNestBuffEnabled();
     }
     setAutoNestBuffSwitchState(isRefreshingNestBuff);
+    startWeatherTooltipRefresh();
 
     if (autoNestBuffIntervalId !== null) {
       window.clearInterval(autoNestBuffIntervalId);
@@ -317,6 +675,7 @@
     }
 
     startInterval();
+    startWeatherTooltipRefresh();
   }
 
   function disableAutoNestBuffForManualEdit() {
@@ -328,6 +687,7 @@
 
   function applyNestBuffSnapshot(payload) {
     const nextBaitBuffByMap = {};
+    const nextWeatherByMap = {};
     const locations = Array.isArray(payload?.locations)
       ? payload.locations
       : [];
@@ -342,10 +702,21 @@
       if (nestValue > 0) {
         nextBaitBuffByMap[String(mapLevel)] = String(nestValue);
       }
+
+      const weather = location?.weather;
+      if (weather && typeof weather === "object") {
+        nextWeatherByMap[String(mapLevel)] = {
+          type: normalizeWeatherType(weather.type),
+          is_active: Boolean(weather.is_active),
+          start_time: weather.start_time ?? null,
+          end_time: weather.end_time ?? null,
+        };
+      }
     });
 
     baitBuffByMap = nextBaitBuffByMap;
     setStoredValue(storageKeys.baitBuffByMap, JSON.stringify(baitBuffByMap));
+    sourceWeatherByMap = nextWeatherByMap;
   }
 
   async function refreshNestBuffs() {
@@ -369,6 +740,7 @@
       if (!isAutoNestBuffEnabled) {
         return;
       }
+      clearWeatherOverrides();
       applyNestBuffSnapshot(payload);
       setNestBuffLastUpdateAt(payload?.updated_at);
       setNestBuffLastRefreshAt(Date.now());
@@ -425,16 +797,36 @@
     return total / fishes.length;
   }
 
-  function calculateIntervalHours(hookSpeed, baitSpeed, baitBuff, systemBuff) {
+  function calculateIntervalHours(
+    hookSpeed,
+    baitSpeed,
+    baitBuff,
+    systemBuff,
+    weatherMultiplier,
+  ) {
     const hookFactor = 1 + hookSpeed;
     const baitFactor = 1 + baitSpeed + baitBuff / 100;
     const systemFactor = 1 + systemBuff / 100;
+    const weatherFactor = Number.isFinite(weatherMultiplier)
+      ? weatherMultiplier
+      : 1;
 
-    if (hookFactor <= 0 || baitFactor <= 0 || systemFactor <= 0) {
+    if (
+      hookFactor <= 0 ||
+      baitFactor <= 0 ||
+      systemFactor <= 0 ||
+      weatherFactor <= 0
+    ) {
       return Number.NaN;
     }
 
-    return config.baseIntervalHours / hookFactor / baitFactor / systemFactor;
+    return (
+      config.baseIntervalHours /
+      hookFactor /
+      baitFactor /
+      systemFactor /
+      weatherFactor
+    );
   }
 
   function getProbabilityProfile(delta) {
@@ -460,12 +852,17 @@
   }
 
   function calculateBaitRows(inputs, averageFishPrice, baitBuff) {
+    const weatherMultiplier = Number.isFinite(inputs.weatherMultiplier)
+      ? inputs.weatherMultiplier
+      : 1;
+
     return config.baitList.map((bait) => {
       const intervalHours = calculateIntervalHours(
         inputs.hookConfig.speed,
         bait.speed,
         baitBuff,
         inputs.systemBuff,
+        weatherMultiplier,
       );
       const theoreticalCount = Number.isFinite(intervalHours)
         ? statisticsHours / intervalHours
@@ -502,8 +899,17 @@
           ? calculateExpectedFishPrice(profile, averageNPrice)
           : Number.NaN;
         const baitBuff = getBaitBuffForMap(map.difficulty);
+        const weather = getWeatherForMap(map.difficulty);
+        const weatherMultiplier = getWeatherMultiplier(weather);
         const baitRows = isSelectable
-          ? calculateBaitRows(inputs, expectedPrice, baitBuff)
+          ? calculateBaitRows(
+              {
+                ...inputs,
+                weatherMultiplier,
+              },
+              expectedPrice,
+              baitBuff,
+            )
           : [];
         const bestBaitRow = baitRows.length
           ? [...baitRows].sort((left, right) => {
@@ -522,6 +928,8 @@
           profile,
           expectedPrice,
           baitBuff,
+          weather,
+          weatherMultiplier,
           baitRows,
           bestBaitRow,
           isSelectable,
@@ -624,7 +1032,7 @@
       ? "small selected-map-delta"
       : "small";
     elements.selectedMapDelta.innerHTML = selectedMapRow
-      ? `<span class="selected-map-delta-item"><span class="selected-map-delta-label">🎣渔力</span><span class="selected-map-delta-value">${selectedMapRow.delta}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">🪝鱼钩</span><span class="selected-map-buff-value">${formatPercent(inputs?.hookConfig?.speed ?? 0, 2)}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">⚡${highlightPercentValues(inputs?.systemBuffConfig?.name ?? "", "selected-map-buff-value")}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">🌽打窝</span><span class="selected-map-buff-value">${formatNumber(selectedMapRow.baitBuff, 2)}%</span></span>`
+      ? `<span class="selected-map-delta-item"><span class="selected-map-delta-label">🎣渔力</span><span class="selected-map-delta-value">${selectedMapRow.delta}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">🪝鱼钩</span><span class="selected-map-buff-value">${formatPercent(inputs?.hookConfig?.speed ?? 0, 2)}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">⚡${highlightPercentValues(inputs?.systemBuffConfig?.name ?? "", "selected-map-buff-value")}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">🌽打窝</span><span class="selected-map-buff-value">${formatNumber(selectedMapRow.baitBuff, 2)}%</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">${getWeatherMeta(selectedMapRow.weather?.type).emoji}天气</span><span class="selected-map-buff-value">${getWeatherMeta(selectedMapRow.weather?.type).label}</span></span>`
       : "-";
     elements.selectedFishPrice.textContent = selectedMapRow
       ? `¥${formatNumber(selectedMapRow.expectedPrice, 2)}`
@@ -722,7 +1130,7 @@
                   <span>Lv.${row.map.difficulty} ${row.map.name}</span>
                 </div>
                 <div class="map-card-badges" data-map-badges="${row.map.difficulty}">
-                  ${isBest ? '<span class="badge badge-best">最优</span>' : ""}
+                  ${buildMapCardBadgesHtml(row, isBest)}
                 </div>
               </div>
               ${cardContent}
@@ -749,38 +1157,29 @@
         cardEl.setAttribute("tabindex", isUnavailable ? "-1" : "0");
       }
 
-      if (isUnavailable) {
-        const unavailableEl = elements.mapCardList.querySelector(
-          `[data-map-unavailable="${row.map.difficulty}"]`,
-        );
-        if (unavailableEl) {
-          unavailableEl.textContent = row.unavailableReason;
-        }
-        const badgesEl = elements.mapCardList.querySelector(
-          `[data-map-badges="${row.map.difficulty}"]`,
-        );
-        if (badgesEl) {
-          badgesEl.innerHTML = "";
-        }
-        return;
+      const unavailableEl = elements.mapCardList.querySelector(
+        `[data-map-unavailable="${row.map.difficulty}"]`,
+      );
+      if (unavailableEl) {
+        unavailableEl.textContent = row.unavailableReason;
       }
 
       const priceEl = elements.mapCardList.querySelector(
         `[data-map-price="${row.map.difficulty}"]`,
       );
-      if (priceEl) {
+      if (priceEl && row.isSelectable) {
         priceEl.textContent = ` ¥${formatNumber(row.bestBaitRow?.netRevenue ?? 0, 0)}`;
       }
       const bestBaitEl = elements.mapCardList.querySelector(
         `[data-map-best-bait="${row.map.difficulty}"]`,
       );
-      if (bestBaitEl) {
+      if (bestBaitEl && row.isSelectable) {
         bestBaitEl.textContent = `最优鱼饵：${row.bestBaitRow ? row.bestBaitRow.bait.name : "-"}`;
       }
       const buffValueEl = elements.mapCardList.querySelector(
         `[data-bait-buff-value="${row.map.difficulty}"]`,
       );
-      if (buffValueEl) {
+      if (buffValueEl && row.isSelectable) {
         buffValueEl.textContent = formatNumber(row.baitBuff, 0);
       }
 
@@ -792,9 +1191,7 @@
         cardEl.classList.toggle("best", isBest);
       }
       if (badgesEl) {
-        badgesEl.innerHTML = `
-          ${isBest ? '<span class="badge badge-best">最优</span>' : ""}
-        `;
+        badgesEl.innerHTML = buildMapCardBadgesHtml(row, isBest);
       }
     });
   }
@@ -977,6 +1374,19 @@
 
     if (elements.mapCardList) {
       elements.mapCardList.addEventListener("click", (event) => {
+        const weatherButton = event.target.closest("[data-weather-step]");
+        if (weatherButton) {
+          event.stopPropagation();
+          const mapLevel = weatherButton.dataset.weatherMap;
+          const stepValue = parseNumber(weatherButton.dataset.weatherStep);
+          const currentWeather = getWeatherForMap(mapLevel);
+          const nextType = getWeatherCycleType(currentWeather.type, stepValue);
+          setWeatherOverrideForMap(mapLevel, nextType);
+          disableAutoNestBuffForManualEdit();
+          render({ skipMapCardRebuild: true });
+          return;
+        }
+
         const stepButton = event.target.closest("[data-bait-buff-step]");
         if (stepButton) {
           event.stopPropagation();
@@ -1043,6 +1453,10 @@
 
     if (isAutoNestBuffEnabled) {
       startAutoNestBuff({ persist: false });
+    }
+
+    if (!isAutoNestBuffEnabled) {
+      stopWeatherTooltipRefresh();
     }
 
     render();
