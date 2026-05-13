@@ -27,12 +27,19 @@
     weatherOverrideByMap: "fish_calculator_weather_override_by_map",
     autoNestBuff: "fish_calculator_auto_nest_buff",
     fishCollection: "fish_calculator_fish_collection",
+    playerQQ: "fish_calculator_player_qq",
   };
 
   const elements = {
     hookLevel: document.getElementById("hookLevel"),
     rodLevel: document.getElementById("rodLevel"),
     systemBuff: document.getElementById("systemBuff"),
+    playerQQ: document.getElementById("playerQQ"),
+    playerQQError: document.getElementById("playerQQError"),
+    playerLocationPanel: document.getElementById("playerLocationPanel"),
+    playerLocationValue: document.getElementById("playerLocationValue"),
+    playerBaitPanel: document.getElementById("playerBaitPanel"),
+    playerBaitValue: document.getElementById("playerBaitValue"),
     openCollectionModal: document.getElementById("openCollectionModal"),
     collectionProgress: document.getElementById("collectionProgress"),
     collectionModal: document.getElementById("collectionModal"),
@@ -231,12 +238,12 @@
     };
   }
 
-  function buildCollectionGatedSunnyWeather(weather) {
+  function buildGatedSunnyWeather(weather) {
     return {
       ...(weather || {}),
       type: "sunny",
       is_active: false,
-      collection_gated: true,
+      gated: true,
       original_type: normalizeWeatherType(weather?.type),
     };
   }
@@ -248,16 +255,15 @@
       return buildManualWeather(overrideType);
     }
 
-    const weather =
-      sourceWeatherByMap[key] || {
-        type: "sunny",
-        is_active: false,
-        start_time: null,
-        end_time: null,
-      };
+    const weather = sourceWeatherByMap[key] || {
+      type: "sunny",
+      is_active: false,
+      start_time: null,
+      end_time: null,
+    };
 
     if (shouldGateLostWindForMap(mapLevel, weather)) {
-      return buildCollectionGatedSunnyWeather(weather);
+      return buildGatedSunnyWeather(weather);
     }
 
     return weather;
@@ -366,7 +372,12 @@
       return "-";
     }
 
-    return formatDurationElapsed(Date.now() - startTime);
+    const elapsedMs = Date.now() - startTime;
+    if (elapsedMs < 0) {
+      return "尚未开始";
+    }
+
+    return formatDurationElapsed(elapsedMs);
   }
 
   function updateWeatherTooltipCountdowns() {
@@ -411,9 +422,9 @@
           return;
         }
 
-        elapsedEl.textContent = getWeatherElapsedText({
-          start_time: startTime,
-        });
+        const elapsedMs = now - startTime;
+        elapsedEl.textContent =
+          elapsedMs < 0 ? "尚未开始" : formatDurationElapsed(elapsedMs);
       });
   }
 
@@ -534,9 +545,7 @@
 
   function normalizeFishCollection(parsed) {
     const source =
-      parsed?.items && typeof parsed.items === "object"
-        ? parsed.items
-        : parsed;
+      parsed?.items && typeof parsed.items === "object" ? parsed.items : parsed;
     if (!source || typeof source !== "object" || Array.isArray(source)) {
       return {};
     }
@@ -582,11 +591,14 @@
 
   let baitBuffByMap = loadBaitBuffMap();
   let fishCollection = loadFishCollection();
+  let latestNestBuffPayload = null;
   let sourceWeatherByMap = {};
+  let activePlayerData = null;
   let weatherOverrideByMap = loadWeatherOverrideMap();
   let isRefreshingNestBuff = false;
   let isAutoNestBuffEnabled =
     getStoredValue(storageKeys.autoNestBuff) === "true";
+  let isApplyingAutoPlayerData = false;
   let autoNestBuffIntervalId = null;
   let autoNestBuffTimeoutId = null;
   let weatherTooltipRefreshIntervalId = null;
@@ -757,6 +769,8 @@
   function stopAutoNestBuff({ persist = true } = {}) {
     freezeAllCurrentWeatherAsManualOverrides();
     isAutoNestBuffEnabled = false;
+    activePlayerData = null;
+    setPlayerQQError("");
     if (autoNestBuffIntervalId !== null) {
       window.clearInterval(autoNestBuffIntervalId);
       autoNestBuffIntervalId = null;
@@ -774,6 +788,8 @@
 
   function startAutoNestBuff({ persist = true, fetchImmediately = true } = {}) {
     isAutoNestBuffEnabled = true;
+    activePlayerData = null;
+    const snapshotResult = applyLatestNestBuffSnapshot();
     if (persist) {
       persistAutoNestBuffEnabled();
     }
@@ -801,7 +817,7 @@
 
     if (fetchImmediately) {
       const delayMs = getNestBuffAutoRefreshDelayMs();
-      if (delayMs <= 0) {
+      if (delayMs <= 0 || !snapshotResult.hasSnapshot) {
         clearNestBuffError();
         refreshNestBuffs();
         startInterval();
@@ -817,11 +833,13 @@
         refreshNestBuffs();
         startInterval();
       }, delayMs);
+      render({ skipMapCardRebuild: !snapshotResult.rodChanged });
       return;
     }
 
     startInterval();
     startWeatherTooltipRefresh();
+    render({ skipMapCardRebuild: !snapshotResult.rodChanged });
   }
 
   function disableAutoNestBuffForManualEdit() {
@@ -829,6 +847,117 @@
       stopAutoNestBuff();
     }
     clearNestBuffUpdateMark();
+  }
+
+  function findPlayerData(payload) {
+    const playerQQ = getPlayerQQValue();
+    if (!playerQQ) {
+      return null;
+    }
+
+    const players = Array.isArray(payload?.players) ? payload.players : [];
+    return (
+      players.find(
+        (player) => String(player?.user_id || "").trim() === playerQQ,
+      ) || null
+    );
+  }
+
+  function setPlayerQQError(message = "") {
+    if (!elements.playerQQError) {
+      return;
+    }
+
+    elements.playerQQError.hidden = !message;
+    elements.playerQQError.textContent = message;
+  }
+
+  function setSelectValueIfOptionExists(selectElement, value) {
+    if (!selectElement) {
+      return false;
+    }
+
+    const normalizedValue = String(value);
+    const hasOption = Array.from(selectElement.options).some(
+      (option) => option.value === normalizedValue,
+    );
+    if (!hasOption) {
+      return false;
+    }
+
+    selectElement.value = normalizedValue;
+    return true;
+  }
+
+  function applyPlayerLevels(player) {
+    if (!player) {
+      return { changed: false, rodChanged: false };
+    }
+
+    let changed = false;
+    let rodChanged = false;
+    isApplyingAutoPlayerData = true;
+    try {
+      const hookLevel = Number.parseInt(player.hook_level, 10);
+      const previousHookLevel = elements.hookLevel?.value;
+      if (
+        Number.isInteger(hookLevel) &&
+        setSelectValueIfOptionExists(elements.hookLevel, hookLevel)
+      ) {
+        changed = changed || previousHookLevel !== String(hookLevel);
+        setStoredValue(storageKeys.hookLevel, String(hookLevel));
+      }
+
+      const rodLevel = Number.parseInt(player.rod_level, 10);
+      const previousRodLevel = elements.rodLevel?.value;
+      if (
+        Number.isInteger(rodLevel) &&
+        setSelectValueIfOptionExists(elements.rodLevel, rodLevel)
+      ) {
+        rodChanged = previousRodLevel !== String(rodLevel);
+        changed = changed || rodChanged;
+        setStoredValue(storageKeys.rodLevel, String(rodLevel));
+      }
+    } finally {
+      isApplyingAutoPlayerData = false;
+    }
+
+    return { changed, rodChanged };
+  }
+
+  function applyPlayerSnapshot(payload) {
+    const playerQQ = getPlayerQQValue();
+    if (!playerQQ || !payload) {
+      activePlayerData = null;
+      setPlayerQQError("");
+      return { changed: false, rodChanged: false };
+    }
+
+    activePlayerData = findPlayerData(payload);
+    if (activePlayerData) {
+      setPlayerQQError("");
+      return applyPlayerLevels(activePlayerData);
+    }
+
+    setPlayerQQError(`未在数据中找到 QQ 号 ${playerQQ}`);
+    return { changed: false, rodChanged: false };
+  }
+
+  function applyLatestPlayerSnapshot() {
+    return applyPlayerSnapshot(latestNestBuffPayload);
+  }
+
+  function applyLatestNestBuffSnapshot() {
+    if (!latestNestBuffPayload) {
+      return { changed: false, rodChanged: false, hasSnapshot: false };
+    }
+
+    clearWeatherOverrides();
+    applyNestBuffSnapshot(latestNestBuffPayload);
+    return {
+      ...applyPlayerSnapshot(latestNestBuffPayload),
+      hasSnapshot: true,
+    };
   }
 
   function applyNestBuffSnapshot(payload) {
@@ -886,12 +1015,14 @@
       if (!isAutoNestBuffEnabled) {
         return;
       }
+      latestNestBuffPayload = payload;
       clearWeatherOverrides();
       applyNestBuffSnapshot(payload);
+      const playerSyncResult = applyPlayerSnapshot(payload);
       setNestBuffLastUpdateAt(payload?.updated_at);
       setNestBuffLastRefreshAt(Date.now());
       showNestBuffSuccessStatus();
-      render({ skipMapCardRebuild: true });
+      render({ skipMapCardRebuild: !playerSyncResult.rodChanged });
     } catch (error) {
       console.error("获取实时打窝buff失败", error);
       showNestBuffError("获取实时打窝buff失败，请稍后重试。");
@@ -1179,6 +1310,10 @@
     );
   }
 
+  function getPlayerQQValue() {
+    return String(elements.playerQQ?.value || "").trim();
+  }
+
   function hasLatestAutoNestBuffData() {
     return (
       isAutoNestBuffEffectivelyEnabled() &&
@@ -1187,23 +1322,24 @@
     );
   }
 
-  function isMapRarityCollectionComplete(mapLevel, rarity) {
+  function getMapAchievementKey(mapLevel) {
     const map = getMapByLevel(mapLevel);
-    const fishes = map ? getMapFishes(map) : [];
-    if (!fishes.length) {
-      return false;
-    }
+    return map ? `collect_scene_${map.id}` : "";
+  }
 
-    return fishes.every((fish) =>
-      isFishRarityCollected(getFishCollectionKey(map, fish), rarity),
-    );
+  function hasPlayerAchievementForMap(mapLevel) {
+    const achievementKey = getMapAchievementKey(mapLevel);
+    const achievements = Array.isArray(activePlayerData?.achievements)
+      ? activePlayerData.achievements
+      : [];
+    return Boolean(achievementKey && achievements.includes(achievementKey));
   }
 
   function shouldGateLostWindForMap(mapLevel, weather) {
     return (
       hasLatestAutoNestBuffData() &&
       normalizeWeatherType(weather?.type) === "lost_wind" &&
-      !isMapRarityCollectionComplete(mapLevel, "UR")
+      !hasPlayerAchievementForMap(mapLevel)
     );
   }
 
@@ -1739,6 +1875,31 @@
     });
   }
 
+  function canUpdateMapCardsInPlace(mapRows, selectedMapLevel) {
+    if (!elements.mapCardList) {
+      return false;
+    }
+
+    const cards = Array.from(
+      elements.mapCardList.querySelectorAll(".map-card[data-map-level]"),
+    );
+    if (cards.length !== mapRows.length) {
+      return false;
+    }
+
+    const selectedLevel = String(selectedMapLevel);
+    return cards.every((card, index) => {
+      const expectedLevel = String(mapRows[index]?.map?.difficulty ?? "");
+      const cardLevel = card.dataset.mapLevel || "";
+      const shouldBeSelected =
+        selectedLevel !== "" && cardLevel === selectedLevel;
+      return (
+        cardLevel === expectedLevel &&
+        card.classList.contains("selected") === shouldBeSelected
+      );
+    });
+  }
+
   function renderTable(rows, bestRow) {
     elements.bestBaitName.textContent = bestRow ? bestRow.bait.name : "-";
     elements.bestBaitNet.textContent = bestRow
@@ -1788,6 +1949,57 @@
       .join("");
   }
 
+  function hidePlayerInfo() {
+    if (!isAutoNestBuffEnabled || !activePlayerData) {
+      if (elements.playerLocationPanel && elements.playerLocationValue) {
+        elements.playerLocationPanel.hidden = true;
+        elements.playerLocationValue.textContent = "-";
+      }
+      if (elements.playerBaitPanel && elements.playerBaitValue) {
+        elements.playerBaitPanel.hidden = true;
+        elements.playerBaitValue.textContent = "-";
+      }
+      return true;
+    }
+
+    return false;
+  }
+
+  function renderPlayerInfo() {
+    if (hidePlayerInfo()) {
+      return;
+    }
+
+    if (elements.playerLocationPanel && elements.playerLocationValue) {
+      const locationId = String(activePlayerData.location_id || "").trim();
+      const locationName = String(activePlayerData.location_name || "").trim();
+      elements.playerLocationValue.innerHTML = locationId
+        ? `<span class="player-map-code">${escapeHtml(locationId)}</span><span>Lv.${escapeHtml(locationId)}</span>${locationName ? `<span>${escapeHtml(locationName)}</span>` : ""}`
+        : "-";
+      elements.playerLocationPanel.hidden = !locationId;
+    }
+
+    if (elements.playerBaitPanel && elements.playerBaitValue) {
+      const baitName = String(activePlayerData.bait_name || "").trim();
+      const baitId = String(activePlayerData.bait_id || "").trim();
+      const baitRemaining = activePlayerData.bait_remaining;
+      const hasRemaining =
+        baitRemaining !== null &&
+        baitRemaining !== undefined &&
+        baitRemaining !== "";
+      const baitParts = [
+        baitName || (baitId ? `鱼饵 ${baitId}` : ""),
+        hasRemaining
+          ? `剩余 ${formatNumber(parseNumber(baitRemaining), 0)}`
+          : "",
+      ].filter(Boolean);
+      elements.playerBaitValue.textContent = baitParts.length
+        ? baitParts.join(" / ")
+        : "-";
+      elements.playerBaitPanel.hidden = baitParts.length === 0;
+    }
+  }
+
   function render(options = {}) {
     const inputs = getInputs();
     const selectedRodLevel = Number.parseInt(elements.rodLevel.value, 10);
@@ -1825,10 +2037,15 @@
       mapRows,
       averageNPrice: selectedMapRow ? selectedMapRow.averageNPrice : Number.NaN,
       systemBuff: inputs.systemBuffConfig,
+      player: activePlayerData,
     };
 
     renderSummary(selectedMapRow, bestBaitRow, inputs);
-    if (options.skipMapCardRebuild) {
+    renderPlayerInfo();
+    if (
+      options.skipMapCardRebuild &&
+      canUpdateMapCardsInPlace(mapRows, activeMapLevel)
+    ) {
       updateMapCardValues(mapRows);
     } else {
       renderMapCards(mapRows, activeMapLevel);
@@ -1875,6 +2092,7 @@
       10,
     );
     const storedSystemBuffId = getStoredValue(storageKeys.systemBuff);
+    const storedPlayerQQ = getStoredValue(storageKeys.playerQQ) || "";
 
     const defaultHookLevel = config.hookLevels[0]?.level ?? 1;
     const defaultRodLevel = config.rodLevels[0]?.level ?? 1;
@@ -1895,6 +2113,9 @@
     )
       ? storedSystemBuffId
       : defaultSystemBuffId;
+    if (elements.playerQQ) {
+      elements.playerQQ.value = storedPlayerQQ;
+    }
 
     const persist = () => {
       setStoredValue(storageKeys.hookLevel, elements.hookLevel.value);
@@ -1902,18 +2123,44 @@
       setStoredValue(storageKeys.systemBuff, elements.systemBuff.value);
     };
 
-    [elements.hookLevel, elements.rodLevel, elements.systemBuff].forEach(
-      (element) => {
-        element.addEventListener("input", () => {
-          persist();
-          render();
-        });
-        element.addEventListener("change", () => {
-          persist();
-          render();
-        });
-      },
-    );
+    const handleManualLevelChange = () => {
+      if (isAutoNestBuffEnabled && !isApplyingAutoPlayerData) {
+        disableAutoNestBuffForManualEdit();
+      }
+      persist();
+      render();
+    };
+
+    [elements.hookLevel, elements.rodLevel].forEach((element) => {
+      element.addEventListener("input", handleManualLevelChange);
+      element.addEventListener("change", handleManualLevelChange);
+    });
+
+    elements.systemBuff.addEventListener("input", () => {
+      persist();
+      render();
+    });
+    elements.systemBuff.addEventListener("change", () => {
+      persist();
+      render();
+    });
+
+    if (elements.playerQQ) {
+      const persistPlayerQQ = () => {
+        setStoredValue(storageKeys.playerQQ, getPlayerQQValue());
+      };
+      const syncPlayerQQ = () => {
+        persistPlayerQQ();
+        activePlayerData = null;
+        let playerSyncResult = { changed: false, rodChanged: false };
+        if (isAutoNestBuffEnabled) {
+          playerSyncResult = applyLatestPlayerSnapshot();
+        }
+        render({ skipMapCardRebuild: !playerSyncResult.rodChanged });
+      };
+      elements.playerQQ.addEventListener("input", syncPlayerQQ);
+      elements.playerQQ.addEventListener("change", syncPlayerQQ);
+    }
 
     if (elements.mapCardList) {
       elements.mapCardList.addEventListener("click", (event) => {
@@ -1988,6 +2235,7 @@
         }
 
         stopAutoNestBuff();
+        render({ skipMapCardRebuild: true });
       });
     }
 

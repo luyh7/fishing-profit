@@ -578,10 +578,10 @@
       }
 
       .map-card.best .map-card-code {
-        background: rgba(126, 224, 129, 0.98);
-        border-color: rgba(177, 244, 181, 0.9);
-        color: #0f172a;
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+        background: rgba(185, 229, 255, 0.62);
+        border-color: rgba(205, 236, 255, 0.72);
+        color: var(--text);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
       }
 
       .map-card-price {
@@ -591,7 +591,7 @@
       }
 
       .map-card.best .map-card-price {
-        color: inherit;
+        color: var(--good);
       }
 
       .map-card-note {
@@ -935,7 +935,146 @@
       }
 
       .collection-setting {
+        display: none;
         margin-top: 2px;
+      }
+
+      .field-label-badge {
+        display: inline-flex;
+        align-items: center;
+        margin-left: 6px;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        vertical-align: middle;
+      }
+
+      .field-label-badge.manual {
+        border-color: rgba(255, 204, 0, 0.24);
+        background: rgba(255, 204, 0, 0.08);
+        color: #facc15;
+      }
+
+      .field-label-with-help {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        width: max-content;
+        line-height: 1;
+      }
+
+      .field-label-help {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        font: inherit;
+        line-height: 1;
+        cursor: help;
+        user-select: none;
+        transition:
+          color 0.15s ease,
+          transform 0.15s ease;
+      }
+
+      .field-label-help:hover {
+        transform: translateY(-1px);
+        color: var(--text);
+      }
+
+      .field-label-help-icon {
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .field-label-help .tooltip {
+        left: 50%;
+        right: auto;
+        top: calc(100% + 8px);
+        transform: translateX(-50%);
+        width: max-content;
+        max-width: min(280px, calc(100vw - 24px));
+        white-space: normal;
+        z-index: 60;
+      }
+
+      .player-location-panel {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        border: 1px solid rgba(125, 211, 252, 0.22);
+        background: rgba(125, 211, 252, 0.08);
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .player-location-panel + .player-location-panel {
+        margin-top: 8px;
+      }
+
+      .player-location-panel[hidden] {
+        display: none;
+      }
+
+      .player-location-label {
+        white-space: nowrap;
+      }
+
+      .player-location-value {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 5px;
+        color: var(--text);
+        font-weight: 900;
+        text-align: right;
+        overflow-wrap: anywhere;
+      }
+
+      .player-map-code {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 5px;
+        border-radius: 4px;
+        background: rgba(125, 211, 252, 0.98);
+        border: 1px solid rgba(180, 233, 255, 0.9);
+        color: #0f172a;
+        font-size: 12px;
+        font-weight: 900;
+        line-height: 1;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+      }
+
+      .field-error {
+        margin-top: -2px;
+        color: #ffb8c2;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .field-error[hidden] {
+        display: none;
       }
 
       .collection-open-btn {
@@ -1545,10 +1684,52 @@
                 <select id="rodLevel"></select>
               </div>
               <div class="field full">
-                <label for="systemBuff">系统 buff</label>
+                <label for="systemBuff"
+                  >系统 buff
+                  <span class="field-label-badge manual">手动</span></label
+                >
                 <select id="systemBuff"></select>
               </div>
-              <div class="field full collection-setting">
+              <div class="field full">
+                <label for="playerQQ" class="field-label-with-help"
+                  >QQ 号
+                  <span
+                    class="field-label-help has-tooltip"
+                    aria-label="QQ 号说明"
+                    ><span class="field-label-help-icon" aria-hidden="true"
+                      >ⓘ</span
+                    ><span class="tooltip"
+                      >自动更新数据时，如果玩家填写了qq号，则可以自动更新鱼钩等级、鱼竿等级</span
+                    ></span
+                  ></label
+                >
+                <input
+                  id="playerQQ"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  placeholder="填写后自动同步鱼钩 / 鱼竿等级"
+                />
+                <div class="field-error" id="playerQQError" hidden></div>
+              </div>
+              <div class="field full">
+                <div
+                  class="player-location-panel"
+                  id="playerLocationPanel"
+                  hidden
+                >
+                  <span class="player-location-label">玩家当前地图</span>
+                  <span class="player-location-value" id="playerLocationValue"
+                    >-</span
+                  >
+                </div>
+                <div class="player-location-panel" id="playerBaitPanel" hidden>
+                  <span class="player-location-label">玩家当前鱼饵</span>
+                  <span class="player-location-value" id="playerBaitValue"
+                    >-</span
+                  >
+                </div>
+              </div>
+              <div class="field full collection-setting" hidden>
                 <label for="openCollectionModal">图鉴设置</label>
                 <button
                   type="button"
@@ -1593,15 +1774,13 @@
                     type="checkbox"
                     id="autoNestBuffSwitch"
                     role="switch"
-                    aria-label="自动更新打窝buff"
+                    aria-label="自动更新数据"
                   />
                   <span
                     class="auto-nest-buff-switch-track"
                     aria-hidden="true"
                   ></span>
-                  <span class="auto-nest-buff-switch-text"
-                    >自动更新地图数据</span
-                  >
+                  <span class="auto-nest-buff-switch-text">自动更新数据</span>
                 </label>
                 <span
                   class="auto-nest-buff-help has-tooltip"
@@ -1610,7 +1789,9 @@
                   <span class="auto-nest-buff-help-icon" aria-hidden="true"
                     >ⓘ</span
                   >
-                  <span class="tooltip">地图数据包括打窝 buff、天气</span>
+                  <span class="tooltip"
+                    >自动数据包括打窝 buff、天气；填写 QQ 后同步鱼钩和鱼竿等级</span
+                  >
                 </span>
               </div>
             </div>
