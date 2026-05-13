@@ -160,22 +160,39 @@
       emoji: "☀️",
       effectText: "",
       multiplier: 1,
+      baitCostMultiplier: 1,
     },
     rain: {
       label: "雨天",
       emoji: "🌧️",
       effectText: "上鱼速度+10%",
       multiplier: 1.1,
+      baitCostMultiplier: 1,
+    },
+    storm: {
+      label: "暴雨",
+      emoji: "⛈️",
+      effectText: "鱼饵消耗-50%",
+      multiplier: 1,
+      baitCostMultiplier: 0.5,
+    },
+    meteor: {
+      label: "流星",
+      emoji: "☄️",
+      effectText: "最高稀有度+2%",
+      multiplier: 1,
+      baitCostMultiplier: 1,
     },
     lost_wind: {
       label: "迷途风",
       emoji: "🌀",
       effectText: "有1%几率钓出UTR鱼",
       multiplier: 1,
+      baitCostMultiplier: 1,
     },
   };
 
-  const weatherCycleTypes = ["sunny", "rain", "lost_wind"];
+  const weatherCycleTypes = ["sunny", "rain", "storm", "meteor", "lost_wind"];
 
   function normalizeWeatherType(type) {
     return typeof type === "string" && type ? type : "sunny";
@@ -304,7 +321,9 @@
       return buildManualWeather(overrideType);
     }
 
-    const weather = sourceWeatherByMap[key] || {
+    const sourceKey =
+      mapId !== null && mapId !== undefined ? String(mapId) : key;
+    const weather = sourceWeatherByMap[sourceKey] || {
       type: "sunny",
       is_active: false,
       start_time: null,
@@ -328,9 +347,60 @@
     return 1;
   }
 
+  function getWeatherBaitCostMultiplier(weather) {
+    const type = normalizeWeatherType(weather?.type);
+    const meta = getWeatherMeta(type);
+    if (isWeatherEffectivelyInactive(weather)) {
+      return 1;
+    }
+
+    return Number.isFinite(meta.baitCostMultiplier)
+      ? meta.baitCostMultiplier
+      : 1;
+  }
+
+  function adjustMeteorProbabilityProfile(profile) {
+    const activeRarities = baseRarityOrder.filter(
+      (rarity) => parseNumber(profile?.[rarity]) > 0,
+    );
+
+    if (activeRarities.length < 2) {
+      return profile;
+    }
+
+    const highestRarity = activeRarities[0];
+    const secondHighestRarity = activeRarities[1];
+    const secondProbability = parseNumber(profile?.[secondHighestRarity]);
+    const shift = Math.min(2, secondProbability);
+
+    if (shift <= 0) {
+      return profile;
+    }
+
+    const adjustedProfile = { ...profile };
+    baseRarityOrder.forEach((rarity) => {
+      adjustedProfile[rarity] = parseNumber(profile?.[rarity]);
+    });
+    adjustedProfile[highestRarity] += shift;
+    adjustedProfile[secondHighestRarity] = Math.max(
+      0,
+      adjustedProfile[secondHighestRarity] - shift,
+    );
+
+    return adjustedProfile;
+  }
+
   function getWeatherAdjustedProbabilityProfile(profile, weather) {
     const type = normalizeWeatherType(weather?.type);
-    if (type !== "lost_wind" || isWeatherEffectivelyInactive(weather)) {
+    if (isWeatherEffectivelyInactive(weather)) {
+      return profile;
+    }
+
+    if (type === "meteor") {
+      return adjustMeteorProbabilityProfile(profile);
+    }
+
+    if (type !== "lost_wind") {
       return profile;
     }
 
@@ -1199,6 +1269,9 @@
     const weatherMultiplier = Number.isFinite(inputs.weatherMultiplier)
       ? inputs.weatherMultiplier
       : 1;
+    const baitCostMultiplier = Number.isFinite(inputs.baitCostMultiplier)
+      ? inputs.baitCostMultiplier
+      : 1;
 
     return config.baitList.map((bait) => {
       const intervalHours = calculateIntervalHours(
@@ -1215,7 +1288,7 @@
         ? Math.floor(theoreticalCount)
         : 0;
       const grossRevenue = completedCount * averageFishPrice;
-      const baitCost = completedCount * bait.price;
+      const baitCost = completedCount * bait.price * baitCostMultiplier;
       const netRevenue = grossRevenue - baitCost;
 
       return {
@@ -1249,11 +1322,13 @@
           : Number.NaN;
         const baitBuff = getBaitBuffForMap(map.id);
         const weatherMultiplier = getWeatherMultiplier(weather);
+        const baitCostMultiplier = getWeatherBaitCostMultiplier(weather);
         const baitRows = isSelectable
           ? calculateBaitRows(
               {
                 ...inputs,
                 weatherMultiplier,
+                baitCostMultiplier,
               },
               expectedPrice,
               baitBuff,
@@ -2037,8 +2112,16 @@
     if (elements.playerLocationPanel && elements.playerLocationValue) {
       const locationId = String(activePlayerData.location_id || "").trim();
       const locationName = String(activePlayerData.location_name || "").trim();
+      const locationMap = config.maps.find(
+        (map) => String(map.id) === locationId,
+      );
+      const locationLevel = locationMap
+        ? `Lv.${locationMap.difficulty}`
+        : locationId
+          ? `Lv.${locationId}`
+          : "";
       elements.playerLocationValue.innerHTML = locationId
-        ? `<span class="player-map-code">${escapeHtml(locationId)}</span><span>Lv.${escapeHtml(locationId)}</span>${locationName ? `<span>${escapeHtml(locationName)}</span>` : ""}`
+        ? `<span class="player-map-code">${escapeHtml(locationId)}</span><span>${escapeHtml(locationLevel)}</span>${locationName ? `<span>${escapeHtml(locationName)}</span>` : ""}`
         : "-";
       elements.playerLocationPanel.hidden = !locationId;
     }
