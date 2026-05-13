@@ -422,6 +422,56 @@
           0 0 0 3px rgba(248, 113, 113, 0.12);
       }
 
+      .map-card-weather.is-pending {
+        background: linear-gradient(
+          180deg,
+          rgba(96, 165, 250, 0.18),
+          rgba(255, 255, 255, 0.05)
+        );
+        border-color: rgba(96, 165, 250, 0.94);
+        box-shadow:
+          0 0 0 1px rgba(96, 165, 250, 0.52),
+          0 0 0 3px rgba(96, 165, 250, 0.16);
+      }
+
+      .map-card-weather.is-pending .weather-step-btn {
+        color: #b5d5ff;
+      }
+
+      .map-card-weather.is-pending .weather-step-btn:hover {
+        background: rgba(96, 165, 250, 0.2);
+        color: #ffffff;
+      }
+
+      .map-card-weather.is-pending .weather-emoji {
+        filter: drop-shadow(0 0 6px rgba(96, 165, 250, 0.35));
+      }
+
+      .map-card-weather.is-gated-achievement {
+        background: linear-gradient(
+          180deg,
+          rgba(248, 113, 113, 0.18),
+          rgba(255, 255, 255, 0.05)
+        );
+        border-color: rgba(248, 113, 113, 0.92);
+        box-shadow:
+          0 0 0 1px rgba(248, 113, 113, 0.5),
+          0 0 0 3px rgba(248, 113, 113, 0.14);
+      }
+
+      .map-card-weather.is-gated-achievement .weather-step-btn {
+        color: #ffb0ba;
+      }
+
+      .map-card-weather.is-gated-achievement .weather-step-btn:hover {
+        background: rgba(248, 113, 113, 0.2);
+        color: #fff2f4;
+      }
+
+      .map-card-weather.is-gated-achievement .weather-emoji {
+        filter: drop-shadow(0 0 6px rgba(255, 90, 103, 0.35));
+      }
+
       .map-card-weather .tooltip {
         right: 0;
         left: auto;
@@ -463,6 +513,22 @@
         justify-content: center;
         min-width: 15px;
         font-size: 13px;
+      }
+
+      .map-card-weather .tooltip [data-weather-elapsed].is-pending {
+        color: #7db8ff;
+        font-weight: 700;
+      }
+
+      .weather-tooltip-warning {
+        font-size: 12px;
+        line-height: 1.45;
+        margin-top: 2px;
+      }
+
+      .weather-tooltip-warning--error {
+        color: #ff8f9a;
+        font-weight: 700;
       }
 
       .map-card-badges .badge {
@@ -1299,12 +1365,11 @@
         max-height: min(78vh, 800px);
         overflow: hidden;
         border-radius: 18px;
-        background:
-          linear-gradient(
-            180deg,
-            rgba(24, 30, 43, 0.97),
-            rgba(13, 18, 28, 0.98)
-          );
+        background: linear-gradient(
+          180deg,
+          rgba(24, 30, 43, 0.97),
+          rgba(13, 18, 28, 0.98)
+        );
         border: 1px solid rgba(255, 255, 255, 0.1);
         color: var(--text);
         box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
@@ -1655,7 +1720,6 @@
           width: 19px;
           height: 25px;
         }
-
       }
     </style>
   </head>
@@ -1790,7 +1854,8 @@
                     >ⓘ</span
                   >
                   <span class="tooltip"
-                    >自动数据包括打窝 buff、天气；填写 QQ 后同步鱼钩和鱼竿等级</span
+                    >自动数据包括打窝 buff、天气；填写 QQ
+                    后同步鱼钩和鱼竿等级</span
                   >
                 </span>
               </div>

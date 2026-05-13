@@ -227,6 +227,54 @@
     return Number.isFinite(endTime) && Date.now() > endTime;
   }
 
+  function isAchievementGatedLostWindWeather(weather) {
+    return Boolean(
+      weather?.gated &&
+      weather?.gated_reason === "achievement" &&
+      normalizeWeatherType(weather?.type) === "lost_wind",
+    );
+  }
+
+  function isWeatherPending(weather) {
+    if (
+      !weather ||
+      isManualWeather(weather) ||
+      isAchievementGatedLostWindWeather(weather) ||
+      !isAutoNestBuffEffectivelyEnabled()
+    ) {
+      return false;
+    }
+
+    const startTime = parseWeatherTime(weather.start_time);
+    return (
+      Number.isFinite(startTime) &&
+      Date.now() < startTime &&
+      normalizeWeatherType(weather.type) !== "sunny"
+    );
+  }
+
+  function isWeatherEffectivelyInactive(weather) {
+    return (
+      weather?.is_active === false ||
+      isExpiredWeather(weather) ||
+      isWeatherPending(weather) ||
+      isAchievementGatedLostWindWeather(weather)
+    );
+  }
+
+  function formatWeatherElapsedText(startTime, now = Date.now()) {
+    if (!Number.isFinite(startTime)) {
+      return "-";
+    }
+
+    const elapsedMs = now - startTime;
+    if (elapsedMs < 0) {
+      return `即将开始于${formatDurationCountdown(-elapsedMs)}`;
+    }
+
+    return formatDurationElapsed(elapsedMs);
+  }
+
   function buildManualWeather(type) {
     const normalizedType = normalizeWeatherType(type);
     return {
@@ -238,17 +286,18 @@
     };
   }
 
-  function buildGatedSunnyWeather(weather) {
+  function buildGatedAchievementLostWindWeather(weather) {
     return {
       ...(weather || {}),
-      type: "sunny",
+      type: normalizeWeatherType(weather?.type),
       is_active: false,
       gated: true,
+      gated_reason: "achievement",
       original_type: normalizeWeatherType(weather?.type),
     };
   }
 
-  function getWeatherForMap(mapLevel) {
+  function getWeatherForMap(mapLevel, mapId) {
     const key = String(mapLevel);
     const overrideType = weatherOverrideByMap[key];
     if (overrideType) {
@@ -262,8 +311,8 @@
       end_time: null,
     };
 
-    if (shouldGateLostWindForMap(mapLevel, weather)) {
-      return buildGatedSunnyWeather(weather);
+    if (shouldGateLostWindForMap(mapId, weather)) {
+      return buildGatedAchievementLostWindWeather(weather);
     }
 
     return weather;
@@ -272,11 +321,7 @@
   function getWeatherMultiplier(weather) {
     const type = normalizeWeatherType(weather?.type);
     const meta = getWeatherMeta(type);
-    if (
-      type === "rain" &&
-      weather?.is_active !== false &&
-      !isExpiredWeather(weather)
-    ) {
+    if (type === "rain" && !isWeatherEffectivelyInactive(weather)) {
       return meta.multiplier;
     }
 
@@ -285,11 +330,7 @@
 
   function getWeatherAdjustedProbabilityProfile(profile, weather) {
     const type = normalizeWeatherType(weather?.type);
-    if (
-      type !== "lost_wind" ||
-      weather?.is_active === false ||
-      isExpiredWeather(weather)
-    ) {
+    if (type !== "lost_wind" || isWeatherEffectivelyInactive(weather)) {
       return profile;
     }
 
@@ -331,6 +372,12 @@
         : `<div class="tooltip-title">${meta.emoji} ${meta.label}</div>`,
     ];
 
+    if (isAchievementGatedLostWindWeather(weather)) {
+      lines.push(
+        '<div class="weather-tooltip-warning weather-tooltip-warning--error" data-weather-gate-warning>成就未完成，不生效</div>',
+      );
+    }
+
     if (isManualWeather(weather)) {
       lines.push("<div>手动模式下不会结束</div>");
       return lines.join("");
@@ -342,8 +389,10 @@
     }
 
     const startTime = parseWeatherTime(weather?.start_time);
+    const isPending = isWeatherPending(weather);
+    const elapsedClassName = isPending ? ' class="is-pending"' : "";
     lines.push(
-      `<div><span data-weather-elapsed data-weather-start-time="${Number.isFinite(startTime) ? startTime : ""}">${getWeatherElapsedText(weather)}</span></div>`,
+      `<div><span data-weather-elapsed data-weather-start-time="${Number.isFinite(startTime) ? startTime : ""}"${elapsedClassName}>${getWeatherElapsedText(weather)}</span></div>`,
     );
     const endTime = parseWeatherTime(weather?.end_time);
     lines.push(
@@ -366,18 +415,8 @@
     return formatDurationCountdown(endTime - Date.now());
   }
 
-  function getWeatherElapsedText(weather) {
-    const startTime = parseWeatherTime(weather?.start_time);
-    if (!Number.isFinite(startTime)) {
-      return "-";
-    }
-
-    const elapsedMs = Date.now() - startTime;
-    if (elapsedMs < 0) {
-      return "尚未开始";
-    }
-
-    return formatDurationElapsed(elapsedMs);
+  function getWeatherElapsedText(weather, now = Date.now()) {
+    return formatWeatherElapsedText(parseWeatherTime(weather?.start_time), now);
   }
 
   function updateWeatherTooltipCountdowns() {
@@ -423,8 +462,14 @@
         }
 
         const elapsedMs = now - startTime;
-        elapsedEl.textContent =
-          elapsedMs < 0 ? "尚未开始" : formatDurationElapsed(elapsedMs);
+        const weatherCard = elapsedEl.closest(".map-card-weather");
+        const isAchievementGated = weatherCard?.classList.contains(
+          "is-gated-achievement",
+        );
+        const isPending = elapsedMs < 0 && !isAchievementGated;
+        elapsedEl.textContent = formatWeatherElapsedText(startTime, now);
+        elapsedEl.classList.toggle("is-pending", isPending);
+        weatherCard?.classList.toggle("is-pending", isPending);
       });
   }
 
@@ -450,7 +495,7 @@
 
     config.maps.forEach((map) => {
       const mapLevel = String(map.difficulty);
-      const currentWeather = getWeatherForMap(map.difficulty);
+      const currentWeather = getWeatherForMap(map.difficulty, map.id);
       nextWeatherOverrides[mapLevel] = normalizeWeatherType(
         currentWeather?.type,
       );
@@ -476,17 +521,28 @@
   }
 
   function getWeatherBadgeClass(weather) {
-    return `map-card-weather ${isExpiredWeather(weather) ? "is-expired" : ""}`.trim();
+    const classes = ["map-card-weather"];
+    if (isAchievementGatedLostWindWeather(weather)) {
+      classes.push("is-gated-achievement");
+    } else if (isWeatherPending(weather)) {
+      classes.push("is-pending");
+    }
+    if (isExpiredWeather(weather)) {
+      classes.push("is-expired");
+    }
+
+    return classes.join(" ");
   }
 
   function buildWeatherControlHtml(row) {
-    const weather = row.weather || getWeatherForMap(row.map.difficulty);
+    const weather =
+      row.weather || getWeatherForMap(row.map.difficulty, row.map.id);
     const tooltip = getWeatherTooltipContent(weather);
     return `
-      <div class="${getWeatherBadgeClass(weather)} has-tooltip" data-map-weather="${row.map.difficulty}">
-        <button type="button" class="weather-step-btn" data-weather-step="-1" data-weather-map="${row.map.difficulty}" aria-label="切换到前一个天气">‹</button>
+      <div class="${getWeatherBadgeClass(weather)} has-tooltip" data-map-weather="${row.map.difficulty}" data-map-id="${row.map.id}">
+        <button type="button" class="weather-step-btn" data-weather-step="-1" data-weather-map="${row.map.difficulty}" data-weather-map-id="${row.map.id}" aria-label="切换到前一个天气">‹</button>
         <span class="weather-emoji" aria-hidden="true">${getWeatherMeta(weather.type).emoji}</span>
-        <button type="button" class="weather-step-btn" data-weather-step="1" data-weather-map="${row.map.difficulty}" aria-label="切换到下一个天气">›</button>
+        <button type="button" class="weather-step-btn" data-weather-step="1" data-weather-map="${row.map.difficulty}" data-weather-map-id="${row.map.id}" aria-label="切换到下一个天气">›</button>
         <div class="tooltip" data-map-weather-tooltip="${row.map.difficulty}">${tooltip}</div>
       </div>
     `;
@@ -526,7 +582,18 @@
     if (!raw) return {};
     try {
       const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === "object" ? parsed : {};
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return {};
+      }
+
+      return config.maps.reduce((normalized, map) => {
+        const idKey = String(map.id);
+        const value = parsed[idKey];
+        if (value !== undefined && value !== null && value !== "") {
+          normalized[idKey] = value;
+        }
+        return normalized;
+      }, {});
     } catch (_error) {
       return {};
     }
@@ -710,12 +777,12 @@
     return Math.max(0, nestBuffAutoRefreshIntervalMs - elapsed);
   }
 
-  function getBaitBuffForMap(mapLevel) {
-    return parseNumber(baitBuffByMap[String(mapLevel)]);
+  function getBaitBuffForMap(mapId) {
+    return parseNumber(baitBuffByMap[String(mapId)]);
   }
 
-  function setBaitBuffForMap(mapLevel, rawValue) {
-    const key = String(mapLevel);
+  function setBaitBuffForMap(mapId, rawValue) {
+    const key = String(mapId);
     if (rawValue === "" || rawValue === null || rawValue === undefined) {
       delete baitBuffByMap[key];
     } else {
@@ -968,19 +1035,19 @@
       : [];
 
     locations.forEach((location) => {
-      const mapLevel = Number.parseInt(location?.id, 10) - 1;
-      if (!Number.isInteger(mapLevel) || mapLevel < 0) {
+      const mapId = Number.parseInt(location?.id, 10);
+      if (!Number.isInteger(mapId) || mapId <= 0) {
         return;
       }
 
       const nestValue = parseNumber(location?.buffs?.nest) * 5;
       if (nestValue > 0) {
-        nextBaitBuffByMap[String(mapLevel)] = String(nestValue);
+        nextBaitBuffByMap[String(mapId)] = String(nestValue);
       }
 
       const weather = location?.weather;
       if (weather && typeof weather === "object") {
-        nextWeatherByMap[String(mapLevel)] = {
+        nextWeatherByMap[String(mapId)] = {
           type: normalizeWeatherType(weather.type),
           is_active: Boolean(weather.is_active),
           start_time: weather.start_time ?? null,
@@ -1171,7 +1238,7 @@
         const averageNPrice = calculateAverageNPrice(fishes);
         const delta = rodLevel - map.difficulty;
         const baseProfile = getProbabilityProfile(delta);
-        const weather = getWeatherForMap(map.difficulty);
+        const weather = getWeatherForMap(map.difficulty, map.id);
         const profile = getWeatherAdjustedProbabilityProfile(
           baseProfile,
           weather,
@@ -1180,7 +1247,7 @@
         const expectedPrice = isSelectable
           ? calculateExpectedFishPrice(profile, averageNPrice)
           : Number.NaN;
-        const baitBuff = getBaitBuffForMap(map.difficulty);
+        const baitBuff = getBaitBuffForMap(map.id);
         const weatherMultiplier = getWeatherMultiplier(weather);
         const baitRows = isSelectable
           ? calculateBaitRows(
@@ -1304,12 +1371,6 @@
     return `${map.id}:${fish.name}`;
   }
 
-  function getMapByLevel(mapLevel) {
-    return config.maps.find(
-      (map) => String(map.difficulty) === String(mapLevel),
-    );
-  }
-
   function getPlayerQQValue() {
     return String(elements.playerQQ?.value || "").trim();
   }
@@ -1322,24 +1383,27 @@
     );
   }
 
-  function getMapAchievementKey(mapLevel) {
-    const map = getMapByLevel(mapLevel);
-    return map ? `collect_scene_${map.id}` : "";
+  function getMapAchievementKey(mapId) {
+    if (mapId === null || mapId === undefined || mapId === "") {
+      return "";
+    }
+
+    return `collect_scene_${String(mapId)}`;
   }
 
-  function hasPlayerAchievementForMap(mapLevel) {
-    const achievementKey = getMapAchievementKey(mapLevel);
+  function hasPlayerAchievementForMap(mapId) {
+    const achievementKey = getMapAchievementKey(mapId);
     const achievements = Array.isArray(activePlayerData?.achievements)
       ? activePlayerData.achievements
       : [];
     return Boolean(achievementKey && achievements.includes(achievementKey));
   }
 
-  function shouldGateLostWindForMap(mapLevel, weather) {
+  function shouldGateLostWindForMap(mapId, weather) {
     return (
       hasLatestAutoNestBuffData() &&
       normalizeWeatherType(weather?.type) === "lost_wind" &&
-      !hasPlayerAchievementForMap(mapLevel)
+      !hasPlayerAchievementForMap(mapId)
     );
   }
 
@@ -1794,10 +1858,10 @@
               <div class="map-card-note map-card-best-bait" data-map-best-bait="${row.map.difficulty}">最优鱼饵：${row.bestBaitRow ? row.bestBaitRow.bait.name : "-"}</div>
               <label class="map-card-buff">
                 <span>打窝 buff（%）</span>
-                <div class="map-card-buff-stepper" data-bait-buff-stepper="${row.map.difficulty}">
-                  <button type="button" class="stepper-btn" data-bait-buff-step="-5" data-bait-buff-map="${row.map.difficulty}" aria-label="减少">−</button>
-                  <span class="stepper-value" data-bait-buff-value="${row.map.difficulty}">${formatNumber(row.baitBuff, 0)}</span>
-                  <button type="button" class="stepper-btn" data-bait-buff-step="5" data-bait-buff-map="${row.map.difficulty}" aria-label="增加">+</button>
+                <div class="map-card-buff-stepper" data-bait-buff-stepper="${row.map.id}">
+                  <button type="button" class="stepper-btn" data-bait-buff-step="-5" data-bait-buff-map-id="${row.map.id}" aria-label="减少">−</button>
+                  <span class="stepper-value" data-bait-buff-value="${row.map.id}">${formatNumber(row.baitBuff, 0)}</span>
+                  <button type="button" class="stepper-btn" data-bait-buff-step="5" data-bait-buff-map-id="${row.map.id}" aria-label="增加">+</button>
                 </div>
               </label>`;
         return `
@@ -1856,7 +1920,7 @@
         bestBaitEl.textContent = `最优鱼饵：${row.bestBaitRow ? row.bestBaitRow.bait.name : "-"}`;
       }
       const buffValueEl = elements.mapCardList.querySelector(
-        `[data-bait-buff-value="${row.map.difficulty}"]`,
+        `[data-bait-buff-value="${row.map.id}"]`,
       );
       if (buffValueEl && row.isSelectable) {
         buffValueEl.textContent = formatNumber(row.baitBuff, 0);
@@ -2168,8 +2232,9 @@
         if (weatherButton) {
           event.stopPropagation();
           const mapLevel = weatherButton.dataset.weatherMap;
+          const mapId = weatherButton.dataset.weatherMapId;
           const stepValue = parseNumber(weatherButton.dataset.weatherStep);
-          const currentWeather = getWeatherForMap(mapLevel);
+          const currentWeather = getWeatherForMap(mapLevel, mapId);
           const nextType = getWeatherCycleType(currentWeather.type, stepValue);
           setWeatherOverrideForMap(mapLevel, nextType);
           disableAutoNestBuffForManualEdit();
@@ -2184,11 +2249,12 @@
           if (stepCard?.dataset.mapDisabled === "true") {
             return;
           }
-          const mapLevel = stepButton.dataset.baitBuffMap;
+          const mapId =
+            stepButton.dataset.baitBuffMapId || stepButton.dataset.baitBuffMap;
           const stepValue = parseNumber(stepButton.dataset.baitBuffStep);
-          const current = getBaitBuffForMap(mapLevel);
+          const current = getBaitBuffForMap(mapId);
           const next = Math.max(0, current + stepValue);
-          setBaitBuffForMap(mapLevel, next === 0 ? "" : String(next));
+          setBaitBuffForMap(mapId, next === 0 ? "" : String(next));
           disableAutoNestBuffForManualEdit();
           render({ skipMapCardRebuild: true });
           return;
