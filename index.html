@@ -995,6 +995,31 @@
         outline: none;
       }
 
+      .player-qq-input-shell {
+        position: relative;
+      }
+
+      .player-qq-input-shell.has-player-nickname input {
+        padding-right: 11em;
+      }
+
+      .player-qq-nickname {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        max-width: calc(100% - 96px);
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.2;
+        text-align: right;
+        text-overflow: ellipsis;
+        transform: translateY(-50%);
+        white-space: nowrap;
+        pointer-events: none;
+        user-select: none;
+      }
+
       .field input:focus,
       .field select:focus {
         border-color: rgba(125, 211, 252, 0.85);
@@ -1767,12 +1792,20 @@
                     ></span
                   ></label
                 >
-                <input
-                  id="playerQQ"
-                  inputmode="numeric"
-                  autocomplete="off"
-                  placeholder="填写后自动同步鱼钩 / 鱼竿等级"
-                />
+                <div class="player-qq-input-shell">
+                  <input
+                    id="playerQQ"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    placeholder="填写后自动同步鱼钩 / 鱼竿等级"
+                  />
+                  <span
+                    id="playerQQNickname"
+                    class="player-qq-nickname"
+                    hidden
+                    aria-hidden="true"
+                  ></span>
+                </div>
                 <div class="field-error" id="playerQQError" hidden></div>
               </div>
               <div class="field full">

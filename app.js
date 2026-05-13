@@ -35,6 +35,7 @@
     rodLevel: document.getElementById("rodLevel"),
     systemBuff: document.getElementById("systemBuff"),
     playerQQ: document.getElementById("playerQQ"),
+    playerQQNickname: document.getElementById("playerQQNickname"),
     playerQQError: document.getElementById("playerQQError"),
     playerLocationPanel: document.getElementById("playerLocationPanel"),
     playerLocationValue: document.getElementById("playerLocationValue"),
@@ -2104,7 +2105,23 @@
     return false;
   }
 
+  function renderPlayerQQNickname() {
+    if (!elements.playerQQ || !elements.playerQQNickname) {
+      return;
+    }
+
+    const nickname = String(activePlayerData?.nickname || "").trim();
+    const hasNickname = Boolean(nickname);
+    const inputShell = elements.playerQQ.closest(".player-qq-input-shell");
+
+    elements.playerQQNickname.textContent = nickname;
+    elements.playerQQNickname.hidden = !hasNickname;
+    elements.playerQQNickname.title = nickname;
+    inputShell?.classList.toggle("has-player-nickname", hasNickname);
+  }
+
   function renderPlayerInfo() {
+    renderPlayerQQNickname();
     if (hidePlayerInfo()) {
       return;
     }
