@@ -11,6 +11,9 @@
   const systemBuffs = Array.isArray(config.systemBuffs)
     ? config.systemBuffs
     : [];
+  const baseRarityOrder = config.rarityOrder.filter(
+    (rarity) => rarity !== "UTR",
+  );
   const nestBuffSourceUrl = config.nestBuffSourceUrl || "./nest-buff.json";
   const nestBuffAutoRefreshIntervalMs = 1 * 60 * 1000;
   const storageKeys = {
@@ -130,9 +133,15 @@
       effectText: "上鱼速度+10%",
       multiplier: 1.1,
     },
+    lost_wind: {
+      label: "迷途风",
+      emoji: "🌀",
+      effectText: "有1%几率钓出UTR鱼",
+      multiplier: 1,
+    },
   };
 
-  const weatherCycleTypes = ["sunny", "rain"];
+  const weatherCycleTypes = ["sunny", "rain", "lost_wind"];
 
   function normalizeWeatherType(type) {
     return typeof type === "string" && type ? type : "sunny";
@@ -224,6 +233,40 @@
     }
 
     return 1;
+  }
+
+  function getWeatherAdjustedProbabilityProfile(profile, weather) {
+    const type = normalizeWeatherType(weather?.type);
+    if (
+      type !== "lost_wind" ||
+      weather?.is_active === false ||
+      isExpiredWeather(weather)
+    ) {
+      return profile;
+    }
+
+    const baseProfile = {};
+    const baseTotal = baseRarityOrder.reduce((total, rarity) => {
+      const probability = parseNumber(profile?.[rarity]);
+      baseProfile[rarity] = probability;
+      return total + probability;
+    }, 0);
+
+    if (baseTotal <= 0) {
+      return config.rarityOrder.reduce((adjustedProfile, rarity) => {
+        adjustedProfile[rarity] = rarity === "UTR" ? 1 : 0;
+        return adjustedProfile;
+      }, {});
+    }
+
+    const scale = 99 / baseTotal;
+    const adjustedProfile = {};
+    baseRarityOrder.forEach((rarity) => {
+      adjustedProfile[rarity] = baseProfile[rarity] * scale;
+    });
+    adjustedProfile.UTR = 1;
+
+    return adjustedProfile;
   }
 
   function getWeatherTooltipContent(weather) {
@@ -836,7 +879,7 @@
   function isMapDataSelectable(fishes, profile) {
     const hasValidFishPrices =
       fishes.length > 0 && fishes.every((fish) => parseNumber(fish.nPrice) > 0);
-    const hasValidProbability = config.rarityOrder.some(
+    const hasValidProbability = baseRarityOrder.some(
       (rarity) => parseNumber(profile?.[rarity]) > 0,
     );
 
@@ -893,13 +936,17 @@
         const fishes = getMapFishes(map);
         const averageNPrice = calculateAverageNPrice(fishes);
         const delta = rodLevel - map.difficulty;
-        const profile = getProbabilityProfile(delta);
-        const isSelectable = isMapDataSelectable(fishes, profile);
+        const baseProfile = getProbabilityProfile(delta);
+        const weather = getWeatherForMap(map.difficulty);
+        const profile = getWeatherAdjustedProbabilityProfile(
+          baseProfile,
+          weather,
+        );
+        const isSelectable = isMapDataSelectable(fishes, baseProfile);
         const expectedPrice = isSelectable
           ? calculateExpectedFishPrice(profile, averageNPrice)
           : Number.NaN;
         const baitBuff = getBaitBuffForMap(map.difficulty);
-        const weather = getWeatherForMap(map.difficulty);
         const weatherMultiplier = getWeatherMultiplier(weather);
         const baitRows = isSelectable
           ? calculateBaitRows(
@@ -1003,6 +1050,8 @@
 
   function rarityColor(rarity) {
     switch (rarity) {
+      case "UTR":
+        return "#ff3b30";
       case "UR":
         return "#ff4d1a";
       case "SSR":

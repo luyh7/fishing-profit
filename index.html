@@ -238,6 +238,9 @@
       .rarity-chip[data-rarity="UR"] {
         --rarity-color: #ff4d1a;
       }
+      .rarity-chip[data-rarity="UTR"] {
+        --rarity-color: #ff3b30;
+      }
       .rarity-chip[data-rarity="SSR"] {
         --rarity-color: #ffcc00;
       }
@@ -273,6 +276,14 @@
         transition: opacity 0.15s ease;
         font-size: 12px;
         line-height: 1.5;
+      }
+
+      #fishPriceTooltip {
+        left: -14px;
+        right: -14px;
+        width: auto;
+        max-width: none;
+        box-sizing: border-box;
       }
 
       .tooltip[hidden] {
@@ -652,6 +663,11 @@
         margin-bottom: 14px;
       }
 
+      aside.panel > .panel-head {
+        position: relative;
+        z-index: 5;
+      }
+
       .title-row h2,
       .panel-head h2,
       .section-head h2 {
@@ -675,6 +691,51 @@
         gap: 10px;
         flex: 0 0 auto;
         justify-self: end;
+      }
+
+      .auto-nest-buff-help {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        font: inherit;
+        line-height: 1;
+        cursor: help;
+        user-select: none;
+        transition:
+          color 0.15s ease,
+          transform 0.15s ease;
+      }
+
+      .auto-nest-buff-help:hover {
+        transform: translateY(-1px);
+        color: var(--text);
+      }
+
+      .auto-nest-buff-help-icon {
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .auto-nest-buff-help .tooltip {
+        left: 50%;
+        right: auto;
+        top: calc(100% + 8px);
+        transform: translateX(-50%);
+        z-index: 60;
+        width: max-content;
+        max-width: min(280px, calc(100vw - 24px));
+        white-space: normal;
+        background: #101521;
+        backdrop-filter: none;
       }
 
       .refresh-nest-buff-statuses {
@@ -1067,9 +1128,18 @@
                     aria-hidden="true"
                   ></span>
                   <span class="auto-nest-buff-switch-text"
-                    >自动更新打窝buff</span
+                    >自动更新地图数据</span
                   >
                 </label>
+                <span
+                  class="auto-nest-buff-help has-tooltip"
+                  aria-label="地图数据说明"
+                >
+                  <span class="auto-nest-buff-help-icon" aria-hidden="true"
+                    >ⓘ</span
+                  >
+                  <span class="tooltip">地图数据包括打窝 buff、天气</span>
+                </span>
               </div>
             </div>
           </div>

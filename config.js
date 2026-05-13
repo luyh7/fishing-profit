@@ -5,8 +5,9 @@ window.FISH_FISHING_CONFIG = {
     "https://fishing-profit-nest-buff.470103427.workers.dev/nest-buff.json",
   baseIntervalHours: 1,
   statisticsHours: 24,
-  rarityOrder: ["UR", "SSR", "SR", "R", "N"],
+  rarityOrder: ["UTR", "UR", "SSR", "SR", "R", "N"],
   rarityMultipliers: {
+    UTR: 32,
     UR: 16,
     SSR: 8,
     SR: 4,
