@@ -132,10 +132,10 @@
     const seconds = totalSeconds % 60;
     const pad = (number) => String(number).padStart(2, "0");
     if (hours > 0) {
-      return `${hours}时${pad(minutes)}分后`;
+      return `${hours}时${pad(minutes)}分`;
     }
 
-    return `${minutes}分${pad(seconds)}秒后`;
+    return `${minutes}分${pad(seconds)}秒`;
   }
 
   function formatDurationElapsed(value) {
@@ -460,34 +460,41 @@
     }
 
     const startTime = parseWeatherTime(weather?.start_time);
+    const endTime = parseWeatherTime(weather?.end_time);
     const isPending = isWeatherPending(weather);
     const elapsedClassName = isPending ? ' class="is-pending"' : "";
     lines.push(
-      `<div><span data-weather-elapsed data-weather-start-time="${Number.isFinite(startTime) ? startTime : ""}"${elapsedClassName}>${getWeatherElapsedText(weather)}</span></div>`,
+      `<div><span data-weather-elapsed data-weather-start-time="${Number.isFinite(startTime) ? startTime : ""}" data-weather-end-time="${Number.isFinite(endTime) ? endTime : ""}"${elapsedClassName}>${getWeatherElapsedText(weather)}</span></div>`,
     );
-    const endTime = parseWeatherTime(weather?.end_time);
+    const isExpired = isExpiredWeather(weather);
     lines.push(
-      `<div>结束于 <span data-weather-countdown data-weather-end-time="${Number.isFinite(endTime) ? endTime : ""}">${getWeatherCountdownText(weather)}</span></div>`,
+      `<div class="weather-tooltip-countdown${isExpired ? " is-expired" : ""}" data-weather-countdown-line><span data-weather-countdown-label>${isExpired ? "结束于 " : "还剩余 "}</span><span data-weather-countdown data-weather-end-time="${Number.isFinite(endTime) ? endTime : ""}">${getWeatherCountdownText(weather)}</span></div>`,
     );
 
     return lines.join("");
   }
 
   function getWeatherCountdownText(weather) {
-    if (isExpiredWeather(weather)) {
-      return "已结束";
-    }
-
     const endTime = parseWeatherTime(weather?.end_time);
     if (!Number.isFinite(endTime)) {
       return "-";
+    }
+
+    if (isExpiredWeather(weather)) {
+      return `${formatDurationCountdown(Date.now() - endTime)}前`;
     }
 
     return formatDurationCountdown(endTime - Date.now());
   }
 
   function getWeatherElapsedText(weather, now = Date.now()) {
-    return formatWeatherElapsedText(parseWeatherTime(weather?.start_time), now);
+    const endTime = parseWeatherTime(weather?.end_time);
+    const effectiveNow =
+      isExpiredWeather(weather) && Number.isFinite(endTime) ? endTime : now;
+    return formatWeatherElapsedText(
+      parseWeatherTime(weather?.start_time),
+      effectiveNow,
+    );
   }
 
   function updateWeatherTooltipCountdowns() {
@@ -511,9 +518,19 @@
         const remainingMs = endTime - now;
         const isExpired =
           isAutoNestBuffEffectivelyEnabled() && remainingMs <= 0;
+        const countdownLine = countdownEl.closest(
+          "[data-weather-countdown-line]",
+        );
+        const countdownLabel = countdownLine?.querySelector(
+          "[data-weather-countdown-label]",
+        );
         countdownEl.textContent = isExpired
-          ? "已结束"
+          ? `${formatDurationCountdown(now - endTime)}前`
           : formatDurationCountdown(remainingMs);
+        if (countdownLabel) {
+          countdownLabel.textContent = isExpired ? "结束于 " : "还剩余 ";
+        }
+        countdownLine?.classList.toggle("is-expired", isExpired);
 
         countdownEl
           .closest(".map-card-weather")
@@ -527,18 +544,30 @@
           elapsedEl.dataset.weatherStartTime || "",
           10,
         );
+        const endTime = Number.parseInt(
+          elapsedEl.dataset.weatherEndTime || "",
+          10,
+        );
         if (!Number.isFinite(startTime)) {
           elapsedEl.textContent = "-";
           return;
         }
 
         const elapsedMs = now - startTime;
+        const isExpired =
+          isAutoNestBuffEffectivelyEnabled() &&
+          Number.isFinite(endTime) &&
+          endTime <= now;
+        const effectiveNow = isExpired ? endTime : now;
         const weatherCard = elapsedEl.closest(".map-card-weather");
         const isAchievementGated = weatherCard?.classList.contains(
           "is-gated-achievement",
         );
         const isPending = elapsedMs < 0 && !isAchievementGated;
-        elapsedEl.textContent = formatWeatherElapsedText(startTime, now);
+        elapsedEl.textContent = formatWeatherElapsedText(
+          startTime,
+          effectiveNow,
+        );
         elapsedEl.classList.toggle("is-pending", isPending);
         weatherCard?.classList.toggle("is-pending", isPending);
       });
@@ -621,6 +650,13 @@
 
   function buildMapCardBadgesHtml(row, isBest) {
     return buildWeatherControlHtml(row);
+  }
+
+  function buildMapCardCodeHtml(map) {
+    const collectionCrown = hasPlayerAchievementForMap(map.id)
+      ? `<span class="map-card-crown has-tooltip" aria-label="全收集"><svg class="map-card-crown-icon" viewBox="0 0 24 20" aria-hidden="true" focusable="false"><path d="M3 17.5h18l-1.4-11.2-5.2 4.4L12 3.2 9.6 10.7 4.4 6.3 3 17.5Z"></path></svg><span class="tooltip">全收集</span></span>`
+      : "";
+    return `<span class="map-card-code">${formatNumber(getMapCode(map), 0)}${collectionCrown}</span>`;
   }
 
   function buildOption(selectElement, items, getValue, getLabel) {
@@ -1945,8 +1981,8 @@
             <div class="map-card-compact">
               <div class="map-card-header">
                 <div class="map-card-title">
-                  <span class="map-card-code">${formatNumber(getMapCode(row.map), 0)}</span>
-                  <span>Lv.${row.map.difficulty} ${row.map.name}</span>
+                  ${buildMapCardCodeHtml(row.map)}
+                  <span>${row.map.name}</span>
                 </div>
                 <div class="map-card-badges" data-map-badges="${row.map.difficulty}">
                   ${buildMapCardBadgesHtml(row, isBest)}
@@ -2000,6 +2036,10 @@
       );
       if (buffValueEl && row.isSelectable) {
         buffValueEl.textContent = formatNumber(row.baitBuff, 0);
+      }
+      const codeEl = cardEl?.querySelector(".map-card-code");
+      if (codeEl) {
+        codeEl.outerHTML = buildMapCardCodeHtml(row.map);
       }
 
       const badgesEl = elements.mapCardList.querySelector(

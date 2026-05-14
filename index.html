@@ -520,6 +520,15 @@
         font-weight: 700;
       }
 
+      .map-card-weather .tooltip .weather-tooltip-countdown {
+        color: #4ade80;
+        font-weight: 700;
+      }
+
+      .map-card-weather .tooltip .weather-tooltip-countdown.is-expired {
+        color: #ff8f9a;
+      }
+
       .weather-tooltip-warning {
         font-size: 12px;
         line-height: 1.45;
@@ -621,6 +630,7 @@
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+        position: relative;
         margin-right: 8px;
         width: 26px;
         height: 26px;
@@ -634,6 +644,48 @@
         line-height: 1;
         letter-spacing: 0;
         box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+      }
+
+      .map-card-crown {
+        position: absolute;
+        top: -11px;
+        left: -10px;
+        z-index: 2;
+        width: 24px;
+        height: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: help;
+        line-height: 1;
+      }
+
+      .map-card-crown-icon {
+        width: 22px;
+        height: 19px;
+        overflow: visible;
+        fill: #facc15;
+        stroke: rgba(254, 240, 138, 0.96);
+        stroke-width: 1.35;
+        stroke-linejoin: round;
+        transform: rotate(-45deg);
+        transform-origin: 50% 58%;
+        filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.42));
+      }
+
+      .map-card-crown .tooltip {
+        left: -6px;
+        right: auto;
+        top: calc(100% + 6px);
+        width: max-content;
+        min-width: 52px;
+        padding: 6px 8px;
+        border-radius: 8px;
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+        text-align: center;
       }
 
       .map-card.selected:not(.best) .map-card-code {
