@@ -1048,25 +1048,39 @@
       }
 
       .player-qq-input-shell {
-        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        min-width: 0;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(8, 11, 18, 0.9);
+      }
+
+      .player-qq-input-shell input {
+        flex: 1 1 10ch;
+        min-width: 0;
+        width: auto;
+        border: 0;
+        background: transparent;
       }
 
       .player-qq-input-shell.has-player-nickname input {
-        padding-right: 11em;
+        padding-right: 0;
       }
 
       .player-qq-nickname {
-        position: absolute;
-        right: 14px;
-        top: 50%;
-        max-width: calc(100% - 96px);
+        flex: 0 1 12em;
+        min-width: 0;
+        max-width: 44%;
+        margin-right: 14px;
         overflow: hidden;
         color: var(--muted);
         font-size: 12px;
         line-height: 1.2;
         text-align: right;
         text-overflow: ellipsis;
-        transform: translateY(-50%);
         white-space: nowrap;
         pointer-events: none;
         user-select: none;
@@ -1074,6 +1088,10 @@
 
       .field input:focus,
       .field select:focus {
+        border-color: rgba(125, 211, 252, 0.85);
+      }
+
+      .player-qq-input-shell:focus-within {
         border-color: rgba(125, 211, 252, 0.85);
       }
 
@@ -1774,6 +1792,17 @@
       }
 
       @media (max-width: 520px) {
+        .player-qq-input-shell {
+          gap: 6px;
+        }
+
+        .player-qq-nickname {
+          flex-basis: 36%;
+          max-width: 36%;
+          margin-right: 10px;
+          font-size: 11px;
+        }
+
         .collection-open-btn {
           align-items: flex-start;
           flex-direction: column;
