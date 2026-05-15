@@ -128,11 +128,11 @@ window.FISH_FISHING_CONFIG = {
       difficulty: 7,
       name: "河口交汇",
       fishes: [
-        { name: "海鲈", nPrice: 0 },
-        { name: "鲻鱼", nPrice: 0 },
+        { name: "海鲈", nPrice: 61 },
+        { name: "鲻鱼", nPrice: 75 },
         { name: "梭鱼", nPrice: 0 },
         { name: "弹涂鱼", nPrice: 0 },
-        { name: "小海鳗", nPrice: 0 },
+        { name: "小海鳗", nPrice: 72 },
       ],
     },
     {
