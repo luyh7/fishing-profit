@@ -30,6 +30,52 @@
     playerQQ: "fish_calculator_player_qq",
   };
 
+  const leaderboardTypes = [
+    {
+      key: "rod",
+      label: "鱼竿等级榜",
+      subtitle: "按鱼竿等级排序",
+      metricLabel: "鱼竿等级",
+      formatPrimaryValue: (entry) => `Lv.${formatNumber(entry.rodLevel, 0)}`,
+      formatDetailText: (entry) =>
+        `鱼钩 Lv.${formatNumber(entry.hookLevel, 0)} · 成就 ${formatNumber(entry.achievementCount, 0)} 项`,
+      compare: (left, right) =>
+        right.rodLevel - left.rodLevel ||
+        right.hookLevel - left.hookLevel ||
+        right.achievementCount - left.achievementCount ||
+        left.userId.localeCompare(right.userId, "zh-CN", { numeric: true }),
+    },
+    {
+      key: "hook",
+      label: "鱼钩等级榜",
+      subtitle: "按鱼钩等级排序",
+      metricLabel: "鱼钩等级",
+      formatPrimaryValue: (entry) => `Lv.${formatNumber(entry.hookLevel, 0)}`,
+      formatDetailText: (entry) =>
+        `鱼竿 Lv.${formatNumber(entry.rodLevel, 0)} · 成就 ${formatNumber(entry.achievementCount, 0)} 项`,
+      compare: (left, right) =>
+        right.hookLevel - left.hookLevel ||
+        right.rodLevel - left.rodLevel ||
+        right.achievementCount - left.achievementCount ||
+        left.userId.localeCompare(right.userId, "zh-CN", { numeric: true }),
+    },
+    {
+      key: "achievement",
+      label: "成就榜",
+      subtitle: "按成就数量排序",
+      metricLabel: "成就数量",
+      formatPrimaryValue: (entry) =>
+        `${formatNumber(entry.achievementCount, 0)} 项`,
+      formatDetailText: (entry) =>
+        `鱼竿 Lv.${formatNumber(entry.rodLevel, 0)} · 鱼钩 Lv.${formatNumber(entry.hookLevel, 0)}`,
+      compare: (left, right) =>
+        right.achievementCount - left.achievementCount ||
+        right.rodLevel - left.rodLevel ||
+        right.hookLevel - left.hookLevel ||
+        left.userId.localeCompare(right.userId, "zh-CN", { numeric: true }),
+    },
+  ];
+
   const elements = {
     hookLevel: document.getElementById("hookLevel"),
     rodLevel: document.getElementById("rodLevel"),
@@ -42,10 +88,20 @@
     playerBaitPanel: document.getElementById("playerBaitPanel"),
     playerBaitValue: document.getElementById("playerBaitValue"),
     openCollectionModal: document.getElementById("openCollectionModal"),
+    openLeaderboardModal: document.getElementById("openLeaderboardModal"),
     collectionProgress: document.getElementById("collectionProgress"),
     collectionModal: document.getElementById("collectionModal"),
     collectionLegend: document.getElementById("collectionLegend"),
     collectionMapList: document.getElementById("collectionMapList"),
+    leaderboardModal: document.getElementById("leaderboardModal"),
+    leaderboardTypeList: document.getElementById("leaderboardTypeList"),
+    leaderboardList: document.getElementById("leaderboardList"),
+    leaderboardSummary: document.getElementById("leaderboardSummary"),
+    leaderboardSummaryBadge: document.getElementById("leaderboardSummaryBadge"),
+    leaderboardContentTitle: document.getElementById("leaderboardContentTitle"),
+    leaderboardContentSubtitle: document.getElementById(
+      "leaderboardContentSubtitle",
+    ),
     versionBadge: document.getElementById("versionBadge"),
     mapCardList: document.getElementById("mapCardList"),
     selectedMapName: document.getElementById("selectedMapName"),
@@ -768,6 +824,7 @@
   let latestNestBuffPayload = null;
   let sourceWeatherByMap = {};
   let activePlayerData = null;
+  let leaderboardActiveType = leaderboardTypes[0]?.key || "rod";
   let weatherOverrideByMap = loadWeatherOverrideMap();
   let isRefreshingNestBuff = false;
   let isAutoNestBuffEnabled =
@@ -1491,6 +1548,33 @@
     return String(elements.playerQQ?.value || "").trim();
   }
 
+  function getPlayerAchievementCount(player) {
+    return Array.isArray(player?.achievements) ? player.achievements.length : 0;
+  }
+
+  function getLeaderboardTypeConfig(typeKey) {
+    return (
+      leaderboardTypes.find((type) => type.key === typeKey) ||
+      leaderboardTypes[0]
+    );
+  }
+
+  function getLeaderboardEntries() {
+    if (!Array.isArray(latestNestBuffPayload?.players)) {
+      return [];
+    }
+
+    return latestNestBuffPayload.players
+      .map((player) => ({
+        userId: String(player?.user_id || "").trim(),
+        nickname: String(player?.nickname || "").trim(),
+        rodLevel: Math.max(0, Number.parseInt(player?.rod_level, 10) || 0),
+        hookLevel: Math.max(0, Number.parseInt(player?.hook_level, 10) || 0),
+        achievementCount: getPlayerAchievementCount(player),
+      }))
+      .filter((entry) => Boolean(entry.userId));
+  }
+
   function hasLatestAutoNestBuffData() {
     return (
       isAutoNestBuffEffectivelyEnabled() &&
@@ -1682,6 +1766,94 @@
         `;
       })
       .join("");
+  }
+
+  function renderLeaderboardList() {
+    if (!elements.leaderboardList || !elements.leaderboardContentTitle) return;
+
+    const entries = getLeaderboardEntries();
+    const typeConfig = getLeaderboardTypeConfig(leaderboardActiveType);
+
+    const sorted = [...entries].sort(typeConfig.compare);
+
+    elements.leaderboardContentTitle.textContent = typeConfig.label;
+    // subtitle is intentionally hidden per UX: do not set subtitle text
+
+    elements.leaderboardList.innerHTML = sorted
+      .slice(0, 50)
+      .map((entry, idx) => {
+        const rank = idx + 1;
+        const isCurrent =
+          activePlayerData && String(activePlayerData.user_id) === entry.userId;
+        const topClass = idx < 3 ? ` top-${idx + 1}` : "";
+        let medalHtml = "";
+        if (idx === 0) {
+          medalHtml =
+            `<span class="leaderboard-medal" aria-hidden="true">` +
+            `<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="14" r="8" fill="#FFD54A"/><rect x="9" y="26" width="18" height="6" rx="2" fill="#FFB300"/><text x="18" y="17" font-size="10" text-anchor="middle" fill="#1b1b1b" font-weight="700">1</text></svg>` +
+            `</span>`;
+        } else if (idx === 1) {
+          medalHtml =
+            `<span class="leaderboard-medal" aria-hidden="true">` +
+            `<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="14" r="8" fill="#C0C8D6"/><rect x="9" y="26" width="18" height="6" rx="2" fill="#9AA3B8"/><text x="18" y="17" font-size="10" text-anchor="middle" fill="#1b1b1b" font-weight="700">2</text></svg>` +
+            `</span>`;
+        } else if (idx === 2) {
+          medalHtml =
+            `<span class="leaderboard-medal" aria-hidden="true">` +
+            `<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="14" r="8" fill="#E0B58B"/><rect x="9" y="26" width="18" height="6" rx="2" fill="#C6863A"/><text x="18" y="17" font-size="10" text-anchor="middle" fill="#1b1b1b" font-weight="700">3</text></svg>` +
+            `</span>`;
+        }
+
+        const rankContent =
+          idx < 3
+            ? medalHtml
+            : `<span class="leaderboard-rank-number">${rank}</span>`;
+        return `
+          <li class="leaderboard-row ${isCurrent ? "is-current" : ""}${topClass}" data-user-id="${escapeHtml(entry.userId)}" tabindex="0">
+            <div class="leaderboard-rank">${rankContent}</div>
+            <div class="leaderboard-main">
+              <div class="leaderboard-nick">${escapeHtml(entry.nickname || entry.userId)}</div>
+            </div>
+            <div class="leaderboard-value">${escapeHtml(typeConfig.formatPrimaryValue(entry))}</div>
+          </li>
+        `;
+      })
+      .join("");
+
+    // Do not display total count or badge in leaderboard per new UX requirements
+  }
+
+  function renderLeaderboardTypes() {
+    if (!elements.leaderboardTypeList) return;
+    elements.leaderboardTypeList.innerHTML = leaderboardTypes
+      .map((type) => {
+        const isActive = type.key === leaderboardActiveType ? " is-active" : "";
+        return `
+          <button type="button" class="leaderboard-type-btn${isActive}" data-leaderboard-type="${escapeHtml(type.key)}" aria-pressed="${type.key === leaderboardActiveType}">
+            <span class="leaderboard-type-dot" aria-hidden="true"></span>
+            <span class="leaderboard-type-label">${escapeHtml(type.label)}</span>
+          </button>
+        `;
+      })
+      .join("");
+  }
+
+  function openLeaderboardModal() {
+    if (!elements.leaderboardModal) return;
+    renderLeaderboardTypes();
+    renderLeaderboardList();
+    elements.leaderboardModal.hidden = false;
+    document.body.classList.add("collection-modal-open");
+    elements.leaderboardModal
+      .querySelector(".collection-modal-panel")
+      ?.focus({ preventScroll: true });
+  }
+
+  function closeLeaderboardModal() {
+    if (!elements.leaderboardModal) return;
+    elements.leaderboardModal.hidden = true;
+    document.body.classList.remove("collection-modal-open");
+    elements.openLeaderboardModal?.focus({ preventScroll: true });
   }
 
   function openCollectionModal() {
@@ -2255,6 +2427,11 @@
 
     renderSummary(selectedMapRow, bestBaitRow, inputs);
     renderPlayerInfo();
+    // If leaderboard modal is open, refresh its contents so it stays up-to-date
+    if (elements.leaderboardModal && !elements.leaderboardModal.hidden) {
+      renderLeaderboardTypes();
+      renderLeaderboardList();
+    }
     if (
       options.skipMapCardRebuild &&
       canUpdateMapCardsInPlace(mapRows, activeMapLevel)
@@ -2457,6 +2634,52 @@
     if (elements.openCollectionModal) {
       elements.openCollectionModal.addEventListener("click", () => {
         openCollectionModal();
+      });
+    }
+
+    if (elements.openLeaderboardModal) {
+      elements.openLeaderboardModal.addEventListener("click", () => {
+        openLeaderboardModal();
+      });
+    }
+
+    if (elements.leaderboardModal) {
+      elements.leaderboardModal.addEventListener("click", (event) => {
+        if (
+          event.target instanceof Element &&
+          event.target.closest("[data-collection-close]")
+        ) {
+          closeLeaderboardModal();
+        }
+      });
+
+      elements.leaderboardModal.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeLeaderboardModal();
+        }
+      });
+    }
+
+    if (elements.leaderboardTypeList) {
+      elements.leaderboardTypeList.addEventListener("click", (event) => {
+        const btn = event.target.closest("button[data-leaderboard-type]");
+        if (!btn) return;
+        const typeKey = btn.dataset.leaderboardType;
+        if (!typeKey) return;
+        leaderboardActiveType = typeKey;
+        renderLeaderboardTypes();
+        renderLeaderboardList();
+      });
+    }
+
+    if (elements.leaderboardList) {
+      elements.leaderboardList.addEventListener("click", (event) => {
+        const row = event.target.closest(".leaderboard-row");
+        if (!row) return;
+        const userId = row.dataset.userId;
+        if (!userId) return;
+        // focus or highlight logic could be added here
       });
     }
 

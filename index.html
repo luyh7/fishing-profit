@@ -1577,6 +1577,103 @@
         font-weight: 700;
       }
 
+      .collection-legend-item.is-active {
+        background: rgba(125, 211, 252, 0.08);
+        border-radius: 999px;
+        padding: 6px 10px;
+        color: var(--accent);
+        border: 1px solid rgba(125, 211, 252, 0.22);
+      }
+
+      /* Leaderboard type buttons (styled to match modal header) */
+      .leaderboard-type-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.02);
+        border: 1px solid rgba(255,255,255,0.03);
+        color: var(--muted);
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .leaderboard-type-btn .leaderboard-type-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--accent);
+        opacity: 0.18;
+        flex-shrink: 0;
+      }
+
+      .leaderboard-type-btn.is-active {
+        background: rgba(125, 211, 252, 0.08);
+        border: 1px solid rgba(125, 211, 252, 0.22);
+        color: var(--accent);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+      }
+
+      /* Hide subtitle and total count - managed by JS but hidden per design */
+      #leaderboardContentSubtitle,
+      #leaderboardSummary {
+        display: none !important;
+      }
+
+      /* Leaderboard row and top-3 medal styles */
+      .leaderboard-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 14px 18px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.01);
+        border: 1px solid rgba(255,255,255,0.02);
+        margin-bottom: 12px;
+      }
+
+      .leaderboard-rank {
+        width: 56px;
+        height: 56px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 18px;
+        color: var(--muted);
+        background: rgba(255,255,255,0.02);
+        border-radius: 8px;
+        flex-shrink: 0;
+      }
+
+      /* per-rank number decoration removed — full-row top styling used instead */
+
+      .leaderboard-nick { font-weight: 800; font-size: 18px; }
+      .leaderboard-value { margin-left: auto; font-weight: 800; font-size: 18px; }
+
+      /* Full-row backgrounds for top 3 */
+      .leaderboard-row.top-1 {
+        background: linear-gradient(180deg, rgba(255, 229, 153, 0.16), rgba(255, 209, 82, 0.08));
+        border: 1px solid rgba(255, 179, 0, 0.22);
+        box-shadow: 0 12px 36px rgba(255, 176, 0, 0.12) inset;
+      }
+      .leaderboard-row.top-2 {
+        background: linear-gradient(180deg, rgba(192, 200, 214, 0.12), rgba(154, 163, 184, 0.06));
+        border: 1px solid rgba(150, 160, 180, 0.14);
+        box-shadow: 0 10px 28px rgba(120, 130, 150, 0.06) inset;
+      }
+      .leaderboard-row.top-3 {
+        background: linear-gradient(180deg, rgba(224, 181, 139, 0.10), rgba(198, 134, 58, 0.05));
+        border: 1px solid rgba(198, 134, 58, 0.12);
+        box-shadow: 0 8px 20px rgba(160, 120, 70, 0.05) inset;
+      }
+
+      .leaderboard-medal { display:inline-flex; align-items:center; justify-content:center; width:48px; height:48px; margin:0; flex-shrink:0; }
+      .leaderboard-main { display:flex; align-items:center; gap:12px; }
+      .leaderboard-rank { width:64px; height:64px; display:flex; align-items:center; justify-content:center; border-radius:12px; background: rgba(255,255,255,0.01); margin-right:6px; flex-shrink:0; }
+      .leaderboard-rank-number { color: var(--muted); font-weight:800; font-size:18px; }
+
       .collection-legend-dot {
         width: 15px;
         height: 15px;
@@ -1649,6 +1746,74 @@
         justify-content: center;
         gap: 6px;
         padding: 6px 7px;
+      }
+
+      .leaderboard-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        margin-bottom: 8px;
+      }
+
+      /* Only apply current-player highlight for non-top-3 rows so top-N backgrounds remain intact */
+      .leaderboard-row:not(.top-1):not(.top-2):not(.top-3).is-current {
+        /* Brighter border-only highlight for current player (non-top3) */
+        box-shadow: none;
+        border: 2px solid rgba(125, 211, 252, 0.95);
+        background: linear-gradient(90deg, rgba(125,211,252,0.04), rgba(126,224,129,0.01));
+        outline: none;
+      }
+
+      /* For top-N rows that are current, add a subtle outline without changing their background */
+      .leaderboard-row.top-1.is-current,
+      .leaderboard-row.top-2.is-current,
+      .leaderboard-row.top-3.is-current {
+        /* Use a single pronounced colored border for top rows when current (no double-ring) */
+        box-shadow: none;
+        border: 2px solid rgba(125,211,252,0.95);
+        outline: none;
+      }
+
+      .leaderboard-rank {
+        width: 40px;
+        font-weight: 900;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      /* Prevent double-ring: remove inner rank border/shadow when the row is selected */
+      .leaderboard-row.is-current .leaderboard-rank {
+        box-shadow: none;
+        border: none;
+      }
+
+      .leaderboard-main {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+
+      .leaderboard-nick {
+        font-weight: 900;
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .leaderboard-detail {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .leaderboard-value {
+        flex: 0 0 auto;
+        font-weight: 900;
+        color: var(--text);
+        margin-left: 12px;
       }
 
       .collection-fish-name {
@@ -1926,6 +2091,23 @@
                   >
                 </button>
               </div>
+              <div class="field full">
+                <label for="openLeaderboardModal">排行榜</label>
+                <button
+                  type="button"
+                  class="collection-open-btn"
+                  id="openLeaderboardModal"
+                >
+                  <span class="collection-open-icon" aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </span>
+                  <span class="collection-open-text">打开排行榜</span>
+                  <span class="collection-progress" id="leaderboardSummaryBadge">-</span>
+                </button>
+              </div>
             </div>
           </div>
         </article>
@@ -2068,6 +2250,51 @@
         </p>
         <div class="collection-body">
           <div class="collection-map-list" id="collectionMapList"></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="collection-modal" id="leaderboardModal" hidden>
+      <div
+        class="collection-modal-backdrop"
+        data-collection-close
+        aria-hidden="true"
+      ></div>
+      <section
+        class="collection-modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="leaderboardContentTitle"
+        tabindex="-1"
+      >
+        <header class="collection-modal-head">
+          <h2 class="collection-modal-title" id="leaderboardContentTitle">
+            <span class="collection-title-icon" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+            排行榜
+          </h2>
+          <button
+            type="button"
+            class="collection-close-btn"
+            data-collection-close
+            aria-label="关闭排行榜"
+          >
+            ×
+          </button>
+        </header>
+        <div class="collection-legend" id="leaderboardTypeList"></div>
+        <p class="collection-note" id="leaderboardContentSubtitle"></p>
+        <div class="collection-body">
+          <div style="padding: 0 28px 30px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <div id="leaderboardSummary">-</div>
+            </div>
+            <ul class="collection-map-list" id="leaderboardList" style="list-style:none;padding:0;margin:0;">
+            </ul>
+          </div>
         </div>
       </section>
     </div>
