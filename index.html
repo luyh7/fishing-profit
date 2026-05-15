@@ -56,6 +56,19 @@
         margin-bottom: 18px;
       }
 
+      .hero > .card {
+        position: relative;
+      }
+
+      .hero-copy {
+        z-index: 30;
+        overflow: visible;
+      }
+
+      .hero > aside.card {
+        z-index: 10;
+      }
+
       .card {
         background: var(--panel);
         border: 1px solid var(--line);
@@ -320,13 +333,13 @@
       .tooltip-table th:first-child,
       .tooltip-table td:first-child {
         text-align: left;
-        padding-left: 0;
+        padding-left: 6px;
         width: 34%;
       }
 
       .tooltip-table th:last-child,
       .tooltip-table td:last-child {
-        padding-right: 0;
+        padding-right: 6px;
       }
 
       .tooltip-table thead th {
@@ -337,6 +350,10 @@
 
       .tooltip-table tbody tr + tr td {
         border-top: 1px solid rgba(255, 255, 255, 0.04);
+      }
+
+      .tooltip-table .tooltip-achievement-row td {
+        background: rgba(125, 211, 252, 0.08);
       }
 
       .tooltip-rarity {
@@ -688,7 +705,7 @@
         text-align: center;
       }
 
-      .map-card.selected:not(.best) .map-card-code {
+      .map-card.selected .map-card-code {
         background: rgba(125, 211, 252, 0.98);
         border-color: rgba(180, 233, 255, 0.9);
         color: #0f172a;
@@ -700,6 +717,13 @@
         border-color: rgba(205, 236, 255, 0.72);
         color: var(--text);
         box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+      }
+
+      .map-card.selected.best .map-card-code {
+        background: rgba(125, 211, 252, 0.98);
+        border-color: rgba(180, 233, 255, 0.9);
+        color: #0f172a;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
       }
 
       .map-card-price {
@@ -783,7 +807,7 @@
 
       aside.panel > .panel-head {
         position: relative;
-        z-index: 5;
+        z-index: 80;
       }
 
       .title-row h2,
@@ -848,7 +872,7 @@
         right: auto;
         top: calc(100% + 8px);
         transform: translateX(-50%);
-        z-index: 60;
+        z-index: 160;
         width: max-content;
         max-width: min(280px, calc(100vw - 24px));
         white-space: normal;
@@ -1047,6 +1071,61 @@
         outline: none;
       }
 
+      .select-shell {
+        position: relative;
+        width: 100%;
+        min-height: 48px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(8, 11, 18, 0.9);
+        overflow: hidden;
+        box-sizing: border-box;
+      }
+
+      .select-shell:focus-within {
+        border-color: rgba(125, 211, 252, 0.85);
+      }
+
+      .select-shell select {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        border: 0;
+        background: transparent;
+        color: var(--text);
+        cursor: pointer;
+        font: inherit;
+        text-indent: -9999px;
+      }
+
+      .select-shell select option {
+        color: var(--text);
+        background: rgba(8, 11, 18, 0.98);
+        font-size: 14px;
+        line-height: 1.4;
+        text-indent: 0;
+      }
+
+      .select-shell .select-display {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: var(--text);
+        font-weight: 700;
+        z-index: 1;
+        padding-right: 40px;
+        box-sizing: border-box;
+        width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
       .player-qq-input-shell {
         display: flex;
         align-items: center;
@@ -1056,6 +1135,7 @@
         border-radius: 14px;
         border: 1px solid rgba(255, 255, 255, 0.1);
         background: rgba(8, 11, 18, 0.9);
+        cursor: text;
       }
 
       .player-qq-input-shell input {
@@ -1064,6 +1144,7 @@
         width: auto;
         border: 0;
         background: transparent;
+        cursor: text;
       }
 
       .player-qq-input-shell.has-player-nickname input {
@@ -1168,7 +1249,7 @@
         width: max-content;
         max-width: min(280px, calc(100vw - 24px));
         white-space: normal;
-        z-index: 60;
+        z-index: 160;
       }
 
       .player-location-panel {
@@ -1187,6 +1268,219 @@
 
       .player-location-panel + .player-location-panel {
         margin-top: 8px;
+      }
+
+      .player-bait-panel {
+        position: relative;
+        z-index: 30;
+        align-items: flex-start;
+        flex-direction: column;
+        justify-content: flex-start;
+        overflow: visible;
+      }
+
+      .player-bait-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        min-width: 0;
+      }
+
+      .player-bait-panel .player-location-value {
+        margin-left: auto;
+        min-width: 0;
+      }
+
+      .bait-reminder-tools {
+        position: relative;
+        z-index: 31;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: 0;
+        flex: 0 0 auto;
+        white-space: nowrap;
+      }
+
+      .bait-reminder-row {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        width: 100%;
+        padding-left: 2px;
+        min-width: 0;
+        flex-wrap: nowrap;
+      }
+
+      .bait-reminder-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .bait-reminder-threshold {
+        height: 28px;
+        padding: 4px 8px;
+        border-radius: 8px;
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        background: rgba(15, 23, 42, 0.56);
+        color: var(--text);
+        font: inherit;
+        font-size: 12px;
+        line-height: 1;
+        outline: none;
+
+      }
+
+      .bait-reminder-label .bait-reminder-threshold {
+        flex: 0 0 72px;
+        width: auto;
+        min-width: 36px;
+        max-width: 66px;
+      }
+
+      .bait-reminder-threshold:focus {
+        border-color: rgba(125, 211, 252, 0.72);
+        box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.14);
+      }
+
+      .bait-reminder-threshold::-webkit-outer-spin-button,
+      .bait-reminder-threshold::-webkit-inner-spin-button {
+        margin: 0;
+        appearance: none;
+      }
+
+      .bait-reminder-toggle {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        user-select: none;
+        transition:
+          color 0.15s ease,
+          transform 0.15s ease;
+      }
+
+      .bait-reminder-toggle.has-tooltip:hover,
+      .bait-reminder-toggle.has-tooltip:focus-within {
+        transform: translateY(-1px);
+        color: var(--text);
+      }
+
+      .bait-reminder-toggle.has-tooltip:hover .tooltip {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: none;
+      }
+
+      .bait-reminder-toggle.has-tooltip:focus-within:not(:hover) .tooltip {
+        opacity: 0;
+      }
+
+      .bait-reminder-toggle .tooltip {
+        left: 50%;
+        right: auto;
+        top: calc(100% + 8px);
+        transform: translateX(-50%);
+        width: max-content;
+        max-width: min(280px, calc(100vw - 24px));
+        white-space: normal;
+        z-index: 120;
+        pointer-events: none;
+      }
+
+      .bait-reminder-toggle input {
+        width: 14px;
+        height: 14px;
+        margin: 0;
+        accent-color: var(--accent);
+        cursor: pointer;
+      }
+
+      .bait-reminder-notice[hidden] {
+        display: none;
+      }
+
+      .bait-reminder-notice {
+        position: fixed;
+        inset: 0;
+        z-index: 320;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: rgba(7, 11, 20, 0.34);
+        backdrop-filter: blur(8px) saturate(1.08);
+      }
+
+      .bait-reminder-notice-panel {
+        display: grid;
+        gap: 18px;
+        width: min(380px, calc(100vw - 32px));
+        padding: 20px 20px 18px;
+        transform: translateY(-7vh);
+        border: 1px solid rgba(125, 211, 252, 0.3);
+        border-radius: 14px;
+        background:
+          linear-gradient(
+            135deg,
+            rgba(125, 211, 252, 0.08),
+            rgba(126, 224, 129, 0.04)
+          ),
+          rgba(16, 20, 30, 0.96);
+        box-shadow: none;
+        color: var(--text);
+      }
+
+      .bait-reminder-notice-message {
+        min-width: 0;
+        flex: 1;
+        padding-left: 12px;
+        border-left: 3px solid var(--accent);
+        color: rgba(237, 242, 255, 0.94);
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.55;
+      }
+
+      .bait-reminder-notice-close {
+        justify-self: end;
+        min-width: 88px;
+        height: 34px;
+        padding: 0 16px;
+        border: 1px solid rgba(125, 211, 252, 0.34);
+        border-radius: 8px;
+        background: linear-gradient(
+          135deg,
+          rgba(125, 211, 252, 0.2),
+          rgba(126, 224, 129, 0.08)
+        );
+        color: var(--text);
+        cursor: pointer;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .bait-reminder-notice-close:hover,
+      .bait-reminder-notice-close:focus-visible {
+        border-color: rgba(125, 211, 252, 0.58);
+        background: linear-gradient(
+          135deg,
+          rgba(125, 211, 252, 0.26),
+          rgba(126, 224, 129, 0.12)
+        );
+      }
+
+      .bait-reminder-notice-close:focus-visible {
+        outline: 2px solid rgba(125, 211, 252, 0.72);
+        outline-offset: 2px;
       }
 
       .player-location-panel[hidden] {
@@ -1319,6 +1613,12 @@
         font-size: 12px;
         font-weight: 700;
         white-space: nowrap;
+      }
+
+      .leaderboard-my-level {
+        max-width: 54%;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .helper {
@@ -1615,10 +1915,26 @@
         box-shadow: 0 6px 18px rgba(0,0,0,0.28);
       }
 
-      /* Hide subtitle and total count - managed by JS but hidden per design */
-      #leaderboardContentSubtitle,
-      #leaderboardSummary {
+      /* Hide subtitle - managed by JS but hidden per design */
+      #leaderboardContentSubtitle {
         display: none !important;
+      }
+
+      #leaderboardSummary[hidden] {
+        display: none !important;
+      }
+
+      #leaderboardSummary {
+        width: 100%;
+        margin-bottom: 10px;
+        padding: 10px 12px;
+        border: 1px solid rgba(125, 211, 252, 0.22);
+        border-radius: 10px;
+        background: rgba(125, 211, 252, 0.08);
+        color: rgba(237, 242, 255, 0.88);
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.45;
       }
 
       /* Leaderboard row and top-3 medal styles */
@@ -1804,9 +2120,12 @@
         text-overflow: ellipsis;
       }
 
-      .leaderboard-detail {
+      .leaderboard-current-separator {
+        margin: 4px 0 8px;
         color: var(--muted);
         font-size: 12px;
+        font-weight: 800;
+        text-align: center;
       }
 
       .leaderboard-value {
@@ -2010,13 +2329,19 @@
             </div>
 
             <div class="controls">
-              <div class="field full">
-                <label for="hookLevel">鱼钩等级</label>
-                <select id="hookLevel"></select>
-              </div>
-              <div class="field full">
+              <div class="field">
                 <label for="rodLevel">鱼竿等级</label>
-                <select id="rodLevel"></select>
+                <div class="select-shell">
+                  <select id="rodLevel"></select>
+                  <span class="select-display" id="rodLevelDisplay" aria-hidden="true"></span>
+                </div>
+              </div>
+              <div class="field">
+                <label for="hookLevel">鱼钩等级</label>
+                <div class="select-shell">
+                  <select id="hookLevel"></select>
+                  <span class="select-display" id="hookLevelDisplay" aria-hidden="true"></span>
+                </div>
               </div>
               <div class="field full">
                 <label for="systemBuff"
@@ -2065,11 +2390,37 @@
                     >-</span
                   >
                 </div>
-                <div class="player-location-panel" id="playerBaitPanel" hidden>
-                  <span class="player-location-label">玩家当前鱼饵</span>
-                  <span class="player-location-value" id="playerBaitValue"
-                    >-</span
-                  >
+                <div class="player-location-panel player-bait-panel" id="playerBaitPanel" hidden>
+                  <div class="player-bait-row">
+                    <span class="player-location-label">玩家当前鱼饵</span>
+                    <span class="player-location-value" id="playerBaitValue"
+                      >-</span
+                    >
+                  </div>
+                  <div class="bait-reminder-row">
+                    <label class="bait-reminder-label" for="baitReminderThreshold">
+                      <span>少于</span>
+                      <input
+                        class="bait-reminder-threshold"
+                        id="baitReminderThreshold"
+                        type="number"
+                        min="1"
+                        step="1"
+                        inputmode="numeric"
+                        aria-label="鱼饵提醒阈值"
+                      />
+                      <span>时</span>
+                    </label>
+                    <span class="bait-reminder-tools">
+                      <label class="bait-reminder-toggle has-tooltip" for="baitReminderToggle">
+                        <span>提醒</span>
+                        <input type="checkbox" id="baitReminderToggle" />
+                        <span class="tooltip"
+                          >当玩家鱼饵数量少于自定义阈值时，每 10 分钟弹窗提醒一次。</span
+                        >
+                      </label>
+                    </span>
+                  </div>
                 </div>
               </div>
               <div class="field full collection-setting" hidden>
@@ -2105,7 +2456,12 @@
                     <span></span>
                   </span>
                   <span class="collection-open-text">打开排行榜</span>
-                  <span class="collection-progress" id="leaderboardSummaryBadge">-</span>
+                  <span
+                    class="collection-progress leaderboard-my-level"
+                    id="leaderboardSummaryBadge"
+                    hidden
+                    >-</span
+                  >
                 </button>
               </div>
             </div>
@@ -2184,7 +2540,7 @@
         <div class="table-head">
           <h2>鱼饵收益对比</h2>
           <div class="muted">
-            最佳鱼饵：<strong id="bestBaitName">-</strong> / 24h 净收益
+            最佳鱼饵：<strong id="bestBaitName">-</strong> / 24h 净利润
             <strong id="bestBaitNet">-</strong>
           </div>
         </div>
@@ -2201,7 +2557,7 @@
                 <th>1H 理论收入</th>
                 <th>24h 总收益</th>
                 <th>24h 鱼饵成本</th>
-                <th>24h 净收益</th>
+                <th>24h 净利润</th>
               </tr>
             </thead>
             <tbody id="resultBody"></tbody>
@@ -2300,6 +2656,28 @@
     </div>
 
     <script src="config.js"></script>
+    <div
+      class="bait-reminder-notice"
+      id="baitReminderNotice"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="baitReminderNoticeMessage"
+      hidden
+    >
+      <div class="bait-reminder-notice-panel">
+        <span
+          class="bait-reminder-notice-message"
+          id="baitReminderNoticeMessage"
+        ></span>
+        <button
+          type="button"
+          class="bait-reminder-notice-close"
+          id="baitReminderNoticeClose"
+        >
+          知道了
+        </button>
+      </div>
+    </div>
     <script src="app.js"></script>
   </body>
 </html>

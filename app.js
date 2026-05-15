@@ -28,6 +28,9 @@
     autoNestBuff: "fish_calculator_auto_nest_buff",
     fishCollection: "fish_calculator_fish_collection",
     playerQQ: "fish_calculator_player_qq",
+    baitReminderEnabled: "fish_calculator_bait_reminder_enabled",
+    baitReminderThreshold: "fish_calculator_bait_reminder_threshold",
+    baitReminderLastShownAt: "fish_calculator_bait_reminder_last_shown_at",
   };
 
   const leaderboardTypes = [
@@ -37,8 +40,6 @@
       subtitle: "按鱼竿等级排序",
       metricLabel: "鱼竿等级",
       formatPrimaryValue: (entry) => `Lv.${formatNumber(entry.rodLevel, 0)}`,
-      formatDetailText: (entry) =>
-        `鱼钩 Lv.${formatNumber(entry.hookLevel, 0)} · 成就 ${formatNumber(entry.achievementCount, 0)} 项`,
       compare: (left, right) =>
         right.rodLevel - left.rodLevel ||
         right.hookLevel - left.hookLevel ||
@@ -51,8 +52,6 @@
       subtitle: "按鱼钩等级排序",
       metricLabel: "鱼钩等级",
       formatPrimaryValue: (entry) => `Lv.${formatNumber(entry.hookLevel, 0)}`,
-      formatDetailText: (entry) =>
-        `鱼竿 Lv.${formatNumber(entry.rodLevel, 0)} · 成就 ${formatNumber(entry.achievementCount, 0)} 项`,
       compare: (left, right) =>
         right.hookLevel - left.hookLevel ||
         right.rodLevel - left.rodLevel ||
@@ -66,8 +65,6 @@
       metricLabel: "成就数量",
       formatPrimaryValue: (entry) =>
         `${formatNumber(entry.achievementCount, 0)} 项`,
-      formatDetailText: (entry) =>
-        `鱼竿 Lv.${formatNumber(entry.rodLevel, 0)} · 鱼钩 Lv.${formatNumber(entry.hookLevel, 0)}`,
       compare: (left, right) =>
         right.achievementCount - left.achievementCount ||
         right.rodLevel - left.rodLevel ||
@@ -79,6 +76,8 @@
   const elements = {
     hookLevel: document.getElementById("hookLevel"),
     rodLevel: document.getElementById("rodLevel"),
+    hookLevelDisplay: document.getElementById("hookLevelDisplay"),
+    rodLevelDisplay: document.getElementById("rodLevelDisplay"),
     systemBuff: document.getElementById("systemBuff"),
     playerQQ: document.getElementById("playerQQ"),
     playerQQNickname: document.getElementById("playerQQNickname"),
@@ -87,6 +86,13 @@
     playerLocationValue: document.getElementById("playerLocationValue"),
     playerBaitPanel: document.getElementById("playerBaitPanel"),
     playerBaitValue: document.getElementById("playerBaitValue"),
+    baitReminderToggle: document.getElementById("baitReminderToggle"),
+    baitReminderThreshold: document.getElementById("baitReminderThreshold"),
+    baitReminderNotice: document.getElementById("baitReminderNotice"),
+    baitReminderNoticeMessage: document.getElementById(
+      "baitReminderNoticeMessage",
+    ),
+    baitReminderNoticeClose: document.getElementById("baitReminderNoticeClose"),
     openCollectionModal: document.getElementById("openCollectionModal"),
     openLeaderboardModal: document.getElementById("openLeaderboardModal"),
     collectionProgress: document.getElementById("collectionProgress"),
@@ -832,11 +838,18 @@
   let isApplyingAutoPlayerData = false;
   let autoNestBuffIntervalId = null;
   let autoNestBuffTimeoutId = null;
+  let baitReminderIntervalId = null;
+  let baitReminderWarmupTimeoutId = null;
+  let baitReminderWarmupUntil = 0;
   let weatherTooltipRefreshIntervalId = null;
   let nestBuffStatusIntervalId = null;
   let nestBuffStatusTimeoutId = null;
   let nestBuffLastRefreshAt = 0;
   let nestBuffLastUpdateAt = "";
+  const baitReminderIntervalMs = 10 * 60 * 1000;
+  const baitReminderCheckIntervalMs = 60 * 1000;
+  const baitReminderWarmupDelayMs = 5000;
+  const baitReminderThresholdDefault = 20;
   const collectionPointerState = {
     pointerId: null,
     startDot: null,
@@ -1120,6 +1133,26 @@
     return true;
   }
 
+  function updateLevelDisplays() {
+    const defaultHookLevel = config.hookLevels[0]?.level ?? 1;
+    const defaultRodLevel = config.rodLevels[0]?.level ?? 1;
+    const parsedHookLevel = Number.parseInt(elements.hookLevel?.value, 10);
+    const parsedRodLevel = Number.parseInt(elements.rodLevel?.value, 10);
+    const hookVal = Number.isFinite(parsedHookLevel)
+      ? parsedHookLevel
+      : defaultHookLevel;
+    const rodVal = Number.isFinite(parsedRodLevel)
+      ? parsedRodLevel
+      : defaultRodLevel;
+
+    if (elements.hookLevelDisplay) {
+      elements.hookLevelDisplay.textContent = `Lv.${hookVal}`;
+    }
+    if (elements.rodLevelDisplay) {
+      elements.rodLevelDisplay.textContent = `Lv.${rodVal}`;
+    }
+  }
+
   function applyPlayerLevels(player) {
     if (!player) {
       return { changed: false, rodChanged: false };
@@ -1153,6 +1186,7 @@
       isApplyingAutoPlayerData = false;
     }
 
+    updateLevelDisplays();
     return { changed, rodChanged };
   }
 
@@ -1511,13 +1545,25 @@
         return `<tr><td>${fish.name}</td>${cells}</tr>`;
       })
       .join("");
+    const achievementCells = visibleRarities
+      .map((rarity) => {
+        const multiplier = parseNumber(config.rarityMultipliers[rarity]);
+        const totalPrice =
+          fishes.reduce(
+            (sum, fish) => sum + parseNumber(fish.nPrice) * multiplier,
+            0,
+          ) * 3;
+        return `<td>¥${formatNumber(totalPrice, 0)}</td>`;
+      })
+      .join("");
+    const achievementRow = `<tr class="tooltip-achievement-row"><td>成就</td>${achievementCells}</tr>`;
 
     tooltip.hidden = false;
     tooltip.innerHTML = `
       <div class="tooltip-title">各稀有度单鱼价格</div>
       <table class="tooltip-table">
         <thead><tr><th>鱼种</th>${headerCells}</tr></thead>
-        <tbody>${rows}</tbody>
+        <tbody>${rows}${achievementRow}</tbody>
       </table>
     `;
   }
@@ -1548,6 +1594,178 @@
     return String(elements.playerQQ?.value || "").trim();
   }
 
+  function getBaitReminderEnabled() {
+    return getStoredValue(storageKeys.baitReminderEnabled) === "true";
+  }
+
+  function setBaitReminderEnabled(enabled) {
+    setStoredValue(storageKeys.baitReminderEnabled, String(Boolean(enabled)));
+  }
+
+  function getBaitReminderThreshold() {
+    const value = Number.parseInt(
+      getStoredValue(storageKeys.baitReminderThreshold) || "",
+      10,
+    );
+    return Number.isFinite(value) && value > 0
+      ? Math.floor(value)
+      : baitReminderThresholdDefault;
+  }
+
+  function setBaitReminderThreshold(value) {
+    const threshold = Number.isFinite(value)
+      ? Math.max(1, Math.floor(value))
+      : baitReminderThresholdDefault;
+    setStoredValue(storageKeys.baitReminderThreshold, String(threshold));
+    return threshold;
+  }
+
+  function getBaitReminderLastShownAt() {
+    const value = Number.parseInt(
+      getStoredValue(storageKeys.baitReminderLastShownAt) || "",
+      10,
+    );
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  function setBaitReminderLastShownAt(timestamp) {
+    const value = Number.isFinite(timestamp) ? Math.max(0, timestamp) : 0;
+    setStoredValue(storageKeys.baitReminderLastShownAt, String(value));
+  }
+
+  function clearBaitReminderWarmupTimeout() {
+    if (baitReminderWarmupTimeoutId === null) {
+      return;
+    }
+
+    window.clearTimeout(baitReminderWarmupTimeoutId);
+    baitReminderWarmupTimeoutId = null;
+  }
+
+  function scheduleBaitReminderWarmup() {
+    clearBaitReminderWarmupTimeout();
+    baitReminderWarmupUntil = Date.now() + baitReminderWarmupDelayMs;
+    baitReminderWarmupTimeoutId = window.setTimeout(() => {
+      baitReminderWarmupTimeoutId = null;
+      baitReminderWarmupUntil = 0;
+      maybeShowBaitReminder();
+    }, baitReminderWarmupDelayMs);
+  }
+
+  function getActivePlayerBaitRemainingCount() {
+    const baitRemaining = activePlayerData?.bait_remaining;
+    if (
+      baitRemaining === null ||
+      baitRemaining === undefined ||
+      baitRemaining === ""
+    ) {
+      return Number.NaN;
+    }
+
+    return parseNumber(baitRemaining);
+  }
+
+  function isPlayerBaitReminderEligible() {
+    return (
+      getBaitReminderEnabled() &&
+      Boolean(activePlayerData) &&
+      Number.isFinite(getActivePlayerBaitRemainingCount())
+    );
+  }
+
+  function updateBaitReminderToggleState() {
+    if (elements.baitReminderToggle) {
+      elements.baitReminderToggle.checked = getBaitReminderEnabled();
+    }
+
+    if (elements.baitReminderThreshold) {
+      elements.baitReminderThreshold.value = String(getBaitReminderThreshold());
+    }
+  }
+
+  function showBaitReminderNotice(message) {
+    if (!elements.baitReminderNotice || !elements.baitReminderNoticeMessage) {
+      return;
+    }
+
+    elements.baitReminderNoticeMessage.textContent = message;
+    elements.baitReminderNotice.hidden = false;
+    elements.baitReminderNoticeClose?.focus();
+  }
+
+  function closeBaitReminderNotice() {
+    if (!elements.baitReminderNotice) {
+      return;
+    }
+
+    elements.baitReminderNotice.hidden = true;
+  }
+
+  function resetBaitReminderTiming({ warmup = true } = {}) {
+    setBaitReminderLastShownAt(0);
+    if (warmup) {
+      scheduleBaitReminderWarmup();
+      return;
+    }
+
+    clearBaitReminderWarmupTimeout();
+    baitReminderWarmupUntil = 0;
+  }
+
+  function maybeShowBaitReminder() {
+    if (!isPlayerBaitReminderEligible()) {
+      closeBaitReminderNotice();
+      return;
+    }
+
+    const threshold = getBaitReminderThreshold();
+    const now = Date.now();
+    if (baitReminderWarmupUntil > 0 && now < baitReminderWarmupUntil) {
+      return;
+    }
+
+    const baitRemaining = getActivePlayerBaitRemainingCount();
+    if (!Number.isFinite(baitRemaining) || baitRemaining >= threshold) {
+      closeBaitReminderNotice();
+      return;
+    }
+
+    if (document.hidden) {
+      return;
+    }
+
+    const lastShownAt = getBaitReminderLastShownAt();
+    if (lastShownAt > 0 && now - lastShownAt < baitReminderIntervalMs) {
+      return;
+    }
+
+    const baitName =
+      String(activePlayerData?.bait_name || "鱼饵").trim() || "鱼饵";
+    showBaitReminderNotice(
+      `提醒：当前${baitName}数量只剩 ${formatNumber(baitRemaining, 0)} 个，请及时补充。`,
+    );
+    setBaitReminderLastShownAt(now);
+  }
+
+  function startBaitReminderMonitor() {
+    if (baitReminderIntervalId !== null) {
+      return;
+    }
+
+    baitReminderIntervalId = window.setInterval(() => {
+      maybeShowBaitReminder();
+    }, baitReminderCheckIntervalMs);
+  }
+
+  function stopBaitReminderMonitor() {
+    if (baitReminderIntervalId === null) {
+      return;
+    }
+
+    window.clearInterval(baitReminderIntervalId);
+    baitReminderIntervalId = null;
+  }
+
   function getPlayerAchievementCount(player) {
     return Array.isArray(player?.achievements) ? player.achievements.length : 0;
   }
@@ -1559,20 +1777,68 @@
     );
   }
 
+  function normalizeLeaderboardEntry(player) {
+    return {
+      userId: String(player?.user_id || "").trim(),
+      nickname: String(player?.nickname || "").trim(),
+      rodLevel: Math.max(0, Number.parseInt(player?.rod_level, 10) || 0),
+      hookLevel: Math.max(0, Number.parseInt(player?.hook_level, 10) || 0),
+      achievementCount: getPlayerAchievementCount(player),
+    };
+  }
+
   function getLeaderboardEntries() {
     if (!Array.isArray(latestNestBuffPayload?.players)) {
       return [];
     }
 
     return latestNestBuffPayload.players
-      .map((player) => ({
-        userId: String(player?.user_id || "").trim(),
-        nickname: String(player?.nickname || "").trim(),
-        rodLevel: Math.max(0, Number.parseInt(player?.rod_level, 10) || 0),
-        hookLevel: Math.max(0, Number.parseInt(player?.hook_level, 10) || 0),
-        achievementCount: getPlayerAchievementCount(player),
-      }))
+      .map((player) => normalizeLeaderboardEntry(player))
       .filter((entry) => Boolean(entry.userId));
+  }
+
+  function getCurrentPlayerUserId() {
+    return String(activePlayerData?.user_id || "").trim();
+  }
+
+  function getCurrentLeaderboardInfo(typeConfig) {
+    const currentUserId = getCurrentPlayerUserId();
+    if (!currentUserId) {
+      return null;
+    }
+
+    const entries = getLeaderboardEntries();
+    const sorted = [...entries].sort(typeConfig.compare);
+    const index = sorted.findIndex((entry) => entry.userId === currentUserId);
+    if (index < 0) {
+      return null;
+    }
+
+    return {
+      entry: sorted[index],
+      rank: index + 1,
+      sorted,
+    };
+  }
+
+  function renderLeaderboardSummaryBadge() {
+    if (!elements.leaderboardSummaryBadge) {
+      return;
+    }
+
+    const typeConfig = getLeaderboardTypeConfig(leaderboardActiveType);
+    const currentInfo = getCurrentLeaderboardInfo(typeConfig);
+    if (!currentInfo) {
+      elements.leaderboardSummaryBadge.hidden = true;
+      elements.leaderboardSummaryBadge.textContent = "";
+      elements.leaderboardSummaryBadge.title = "";
+      return;
+    }
+
+    const text = `第 ${formatNumber(currentInfo.rank, 0)}`;
+    elements.leaderboardSummaryBadge.hidden = false;
+    elements.leaderboardSummaryBadge.textContent = text;
+    elements.leaderboardSummaryBadge.title = `我的排名：${text}`;
   }
 
   function hasLatestAutoNestBuffData() {
@@ -1773,42 +2039,52 @@
 
     const entries = getLeaderboardEntries();
     const typeConfig = getLeaderboardTypeConfig(leaderboardActiveType);
-
     const sorted = [...entries].sort(typeConfig.compare);
+    const currentUserId = getCurrentPlayerUserId();
+    const currentIndex = currentUserId
+      ? sorted.findIndex((entry) => entry.userId === currentUserId)
+      : -1;
 
     elements.leaderboardContentTitle.textContent = typeConfig.label;
     // subtitle is intentionally hidden per UX: do not set subtitle text
 
-    elements.leaderboardList.innerHTML = sorted
-      .slice(0, 50)
-      .map((entry, idx) => {
-        const rank = idx + 1;
-        const isCurrent =
-          activePlayerData && String(activePlayerData.user_id) === entry.userId;
-        const topClass = idx < 3 ? ` top-${idx + 1}` : "";
-        let medalHtml = "";
-        if (idx === 0) {
-          medalHtml =
-            `<span class="leaderboard-medal" aria-hidden="true">` +
-            `<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="14" r="8" fill="#FFD54A"/><rect x="9" y="26" width="18" height="6" rx="2" fill="#FFB300"/><text x="18" y="17" font-size="10" text-anchor="middle" fill="#1b1b1b" font-weight="700">1</text></svg>` +
-            `</span>`;
-        } else if (idx === 1) {
-          medalHtml =
-            `<span class="leaderboard-medal" aria-hidden="true">` +
-            `<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="14" r="8" fill="#C0C8D6"/><rect x="9" y="26" width="18" height="6" rx="2" fill="#9AA3B8"/><text x="18" y="17" font-size="10" text-anchor="middle" fill="#1b1b1b" font-weight="700">2</text></svg>` +
-            `</span>`;
-        } else if (idx === 2) {
-          medalHtml =
-            `<span class="leaderboard-medal" aria-hidden="true">` +
-            `<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="14" r="8" fill="#E0B58B"/><rect x="9" y="26" width="18" height="6" rx="2" fill="#C6863A"/><text x="18" y="17" font-size="10" text-anchor="middle" fill="#1b1b1b" font-weight="700">3</text></svg>` +
-            `</span>`;
-        }
+    if (elements.leaderboardSummary) {
+      if (currentIndex >= 0) {
+        elements.leaderboardSummary.hidden = false;
+        elements.leaderboardSummary.textContent = `我的排名：第 ${formatNumber(currentIndex + 1, 0)}`;
+      } else {
+        elements.leaderboardSummary.hidden = true;
+        elements.leaderboardSummary.textContent = "";
+      }
+    }
 
-        const rankContent =
-          idx < 3
-            ? medalHtml
-            : `<span class="leaderboard-rank-number">${rank}</span>`;
-        return `
+    const renderLeaderboardRow = (entry, idx) => {
+      const rank = idx + 1;
+      const isCurrent = currentUserId && currentUserId === entry.userId;
+      const topClass = idx < 3 ? ` top-${idx + 1}` : "";
+      let medalHtml = "";
+      if (idx === 0) {
+        medalHtml =
+          `<span class="leaderboard-medal" aria-hidden="true">` +
+          `<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="14" r="8" fill="#FFD54A"/><rect x="9" y="26" width="18" height="6" rx="2" fill="#FFB300"/><text x="18" y="17" font-size="10" text-anchor="middle" fill="#1b1b1b" font-weight="700">1</text></svg>` +
+          `</span>`;
+      } else if (idx === 1) {
+        medalHtml =
+          `<span class="leaderboard-medal" aria-hidden="true">` +
+          `<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="14" r="8" fill="#C0C8D6"/><rect x="9" y="26" width="18" height="6" rx="2" fill="#9AA3B8"/><text x="18" y="17" font-size="10" text-anchor="middle" fill="#1b1b1b" font-weight="700">2</text></svg>` +
+          `</span>`;
+      } else if (idx === 2) {
+        medalHtml =
+          `<span class="leaderboard-medal" aria-hidden="true">` +
+          `<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="14" r="8" fill="#E0B58B"/><rect x="9" y="26" width="18" height="6" rx="2" fill="#C6863A"/><text x="18" y="17" font-size="10" text-anchor="middle" fill="#1b1b1b" font-weight="700">3</text></svg>` +
+          `</span>`;
+      }
+
+      const rankContent =
+        idx < 3
+          ? medalHtml
+          : `<span class="leaderboard-rank-number">${rank}</span>`;
+      return `
           <li class="leaderboard-row ${isCurrent ? "is-current" : ""}${topClass}" data-user-id="${escapeHtml(entry.userId)}" tabindex="0">
             <div class="leaderboard-rank">${rankContent}</div>
             <div class="leaderboard-main">
@@ -1817,10 +2093,19 @@
             <div class="leaderboard-value">${escapeHtml(typeConfig.formatPrimaryValue(entry))}</div>
           </li>
         `;
-      })
-      .join("");
+    };
 
-    // Do not display total count or badge in leaderboard per new UX requirements
+    const rows = sorted
+      .slice(0, 50)
+      .map((entry, idx) => renderLeaderboardRow(entry, idx));
+    if (currentIndex >= 50) {
+      rows.push(
+        '<li class="leaderboard-current-separator">我的排名</li>',
+        renderLeaderboardRow(sorted[currentIndex], currentIndex),
+      );
+    }
+
+    elements.leaderboardList.innerHTML = rows.join("");
   }
 
   function renderLeaderboardTypes() {
@@ -2098,7 +2383,7 @@
       ? "small selected-best-net"
       : "small";
     elements.selectedBestNet.innerHTML = bestBaitRow
-      ? `<span class="selected-best-net-item">⏱️1H 理论收入 <span class="selected-best-net-value">¥${formatNumber(bestBaitRow.hourlyTheoreticalRevenue, 0)}</span></span><span class="selected-best-net-item">💰净收益 <span class="selected-best-net-value">¥${formatNumber(
+      ? `<span class="selected-best-net-item">⏱️1H 理论收入 <span class="selected-best-net-value">¥${formatNumber(bestBaitRow.hourlyTheoreticalRevenue, 0)}</span></span><span class="selected-best-net-item">💰24H净利润 <span class="selected-best-net-value">¥${formatNumber(
           bestBaitRow.netRevenue,
           0,
         )}</span></span>`
@@ -2259,7 +2544,7 @@
   function renderTable(rows, bestRow) {
     elements.bestBaitName.textContent = bestRow ? bestRow.bait.name : "-";
     elements.bestBaitNet.textContent = bestRow
-      ? `¥${formatNumber(bestRow.netRevenue, 2)}`
+      ? `¥${formatNumber(bestRow.netRevenue, 0)}`
       : "-";
 
     if (!rows.length) {
@@ -2291,7 +2576,6 @@
             <td>${row.bait.id}${isBest ? '<span class="badge">最优</span>' : ""}</td>
             <td>
               <div class="bait-name">${row.bait.name}</div>
-              <div class="muted">ID ${row.bait.id}</div>
             </td>
             <td>${formatNumber(row.bait.price, 0)}</td>
             <td>${formatPercent(row.bait.speed, 2)}</td>
@@ -2343,6 +2627,7 @@
 
   function renderPlayerInfo() {
     renderPlayerQQNickname();
+    renderLeaderboardSummaryBadge();
     if (hidePlayerInfo()) {
       return;
     }
@@ -2353,13 +2638,8 @@
       const locationMap = config.maps.find(
         (map) => String(map.id) === locationId,
       );
-      const locationLevel = locationMap
-        ? `Lv.${locationMap.difficulty}`
-        : locationId
-          ? `Lv.${locationId}`
-          : "";
       elements.playerLocationValue.innerHTML = locationId
-        ? `<span class="player-map-code">${escapeHtml(locationId)}</span><span>${escapeHtml(locationLevel)}</span>${locationName ? `<span>${escapeHtml(locationName)}</span>` : ""}`
+        ? `<span class="player-map-code">${escapeHtml(locationId)}</span>${locationName ? `<span>${escapeHtml(locationName)}</span>` : ""}`
         : "-";
       elements.playerLocationPanel.hidden = !locationId;
     }
@@ -2374,14 +2654,14 @@
         baitRemaining !== "";
       const baitParts = [
         baitName || (baitId ? `鱼饵 ${baitId}` : ""),
-        hasRemaining
-          ? `剩余 ${formatNumber(parseNumber(baitRemaining), 0)}`
-          : "",
+        hasRemaining ? `${formatNumber(parseNumber(baitRemaining), 0)}` : "",
       ].filter(Boolean);
       elements.playerBaitValue.textContent = baitParts.length
         ? baitParts.join(" / ")
         : "-";
       elements.playerBaitPanel.hidden = baitParts.length === 0;
+      updateBaitReminderToggleState();
+      maybeShowBaitReminder();
     }
   }
 
@@ -2498,6 +2778,8 @@
         ? storedRodLevel
         : defaultRodLevel,
     );
+
+    updateLevelDisplays();
     elements.systemBuff.value = systemBuffs.some(
       (item) => item.id === storedSystemBuffId,
     )
@@ -2522,8 +2804,14 @@
     };
 
     [elements.hookLevel, elements.rodLevel].forEach((element) => {
-      element.addEventListener("input", handleManualLevelChange);
-      element.addEventListener("change", handleManualLevelChange);
+      element.addEventListener("input", (e) => {
+        handleManualLevelChange(e);
+        updateLevelDisplays();
+      });
+      element.addEventListener("change", (e) => {
+        handleManualLevelChange(e);
+        updateLevelDisplays();
+      });
     });
 
     elements.systemBuff.addEventListener("input", () => {
@@ -2536,6 +2824,7 @@
     });
 
     if (elements.playerQQ) {
+      const playerQQShell = elements.playerQQ.closest(".player-qq-input-shell");
       const persistPlayerQQ = () => {
         setStoredValue(storageKeys.playerQQ, getPlayerQQValue());
       };
@@ -2550,7 +2839,74 @@
       };
       elements.playerQQ.addEventListener("input", syncPlayerQQ);
       elements.playerQQ.addEventListener("change", syncPlayerQQ);
+
+      playerQQShell?.addEventListener("click", (event) => {
+        if (event.target === elements.playerQQ) {
+          return;
+        }
+        elements.playerQQ.focus();
+      });
     }
+
+    updateBaitReminderToggleState();
+    startBaitReminderMonitor();
+    resetBaitReminderTiming();
+
+    if (elements.baitReminderToggle) {
+      elements.baitReminderToggle.addEventListener("change", () => {
+        const enabled = Boolean(elements.baitReminderToggle?.checked);
+        setBaitReminderEnabled(enabled);
+        if (enabled) {
+          resetBaitReminderTiming({ warmup: false });
+          maybeShowBaitReminder();
+        } else {
+          clearBaitReminderWarmupTimeout();
+          baitReminderWarmupUntil = 0;
+          closeBaitReminderNotice();
+        }
+      });
+    }
+
+    if (elements.baitReminderThreshold) {
+      const commitBaitReminderThreshold = ({ normalize = true } = {}) => {
+        const nextThreshold = setBaitReminderThreshold(
+          parseNumber(elements.baitReminderThreshold?.value),
+        );
+        if (normalize) {
+          elements.baitReminderThreshold.value = String(nextThreshold);
+        }
+        resetBaitReminderTiming({ warmup: false });
+        if (getBaitReminderEnabled()) {
+          maybeShowBaitReminder();
+        }
+      };
+
+      elements.baitReminderThreshold.addEventListener("input", () => {
+        const value = Number.parseInt(
+          elements.baitReminderThreshold?.value || "",
+          10,
+        );
+        if (!Number.isFinite(value) || value <= 0) {
+          return;
+        }
+        commitBaitReminderThreshold({ normalize: false });
+      });
+      elements.baitReminderThreshold.addEventListener("change", () => {
+        commitBaitReminderThreshold();
+      });
+    }
+
+    if (elements.baitReminderNoticeClose) {
+      elements.baitReminderNoticeClose.addEventListener("click", () => {
+        closeBaitReminderNotice();
+      });
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) {
+        maybeShowBaitReminder();
+      }
+    });
 
     if (elements.mapCardList) {
       elements.mapCardList.addEventListener("click", (event) => {
@@ -2668,6 +3024,7 @@
         const typeKey = btn.dataset.leaderboardType;
         if (!typeKey) return;
         leaderboardActiveType = typeKey;
+        renderLeaderboardSummaryBadge();
         renderLeaderboardTypes();
         renderLeaderboardList();
       });

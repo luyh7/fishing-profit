@@ -130,8 +130,8 @@ window.FISH_FISHING_CONFIG = {
       fishes: [
         { name: "海鲈", nPrice: 61 },
         { name: "鲻鱼", nPrice: 75 },
-        { name: "梭鱼", nPrice: 0 },
-        { name: "弹涂鱼", nPrice: 0 },
+        { name: "梭鱼", nPrice: 68 },
+        { name: "弹涂鱼", nPrice: 64 },
         { name: "小海鳗", nPrice: 72 },
       ],
     },
