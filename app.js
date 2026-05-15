@@ -1325,6 +1325,9 @@
         ? Math.floor(theoreticalCount)
         : 0;
       const grossRevenue = completedCount * averageFishPrice;
+      const hourlyTheoreticalRevenue = Number.isFinite(intervalHours)
+        ? averageFishPrice / intervalHours
+        : Number.NaN;
       const baitCost = completedCount * bait.price * baitCostMultiplier;
       const netRevenue = grossRevenue - baitCost;
 
@@ -1333,6 +1336,7 @@
         intervalHours,
         theoreticalCount,
         completedCount,
+        hourlyTheoreticalRevenue,
         grossRevenue,
         baitCost,
         netRevenue,
@@ -1922,7 +1926,7 @@
       ? "small selected-best-net"
       : "small";
     elements.selectedBestNet.innerHTML = bestBaitRow
-      ? `<span class="selected-best-net-item">⏱️24h 完成 <span class="selected-best-net-value">${formatNumber(bestBaitRow.completedCount, 0)}</span> 次</span><span class="selected-best-net-item">💰净收益 <span class="selected-best-net-value">¥${formatNumber(
+      ? `<span class="selected-best-net-item">⏱️1H 理论收入 <span class="selected-best-net-value">¥${formatNumber(bestBaitRow.hourlyTheoreticalRevenue, 0)}</span></span><span class="selected-best-net-item">💰净收益 <span class="selected-best-net-value">¥${formatNumber(
           bestBaitRow.netRevenue,
           0,
         )}</span></span>`
@@ -2104,6 +2108,11 @@
         const theoreticalCountText = Number.isFinite(row.theoreticalCount)
           ? formatNumber(row.theoreticalCount, 2)
           : "-";
+        const hourlyTheoreticalRevenueText = Number.isFinite(
+          row.hourlyTheoreticalRevenue,
+        )
+          ? `¥${formatNumber(row.hourlyTheoreticalRevenue, 0)}`
+          : "-";
 
         return `
           <tr class="${isBest ? "best-row" : ""}">
@@ -2116,7 +2125,7 @@
             <td>${formatPercent(row.bait.speed, 2)}</td>
             <td>${intervalText}</td>
             <td>${theoreticalCountText}</td>
-            <td>${formatNumber(row.completedCount, 0)}</td>
+            <td>${hourlyTheoreticalRevenueText}</td>
             <td>¥${formatNumber(row.grossRevenue, 0)}</td>
             <td>¥${formatNumber(row.baitCost, 2)}</td>
             <td class="net ${isBest ? "best-net" : ""}">¥${formatNumber(
