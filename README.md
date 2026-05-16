@@ -50,7 +50,7 @@ nestBuffSourceUrl: "https://raw.githubusercontent.com/luyh7/fishing-profit/gh-pa
 
 如果你想改同步频率，编辑 `.github/workflows/sync-nest-buff.yml` 里的 cron 表达式即可。
 
-仓库内还提供了 `.githooks/pre-commit`，本地启用后会在每次提交前自动递增 `gitCommitCount` 并重新暂存 `config.js`。
+仓库内还提供了 `.githooks/pre-commit`，首次 clone 后执行 `./setup.sh` 即可启用（或手动执行 `git config core.hooksPath .githooks`），之后每次提交前会自动递增 `gitCommitCount` 并重新暂存 `config.js`。
 
 ## 技术栈
 
