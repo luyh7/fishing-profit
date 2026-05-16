@@ -43,7 +43,7 @@
       compare: (left, right) =>
         right.rodLevel - left.rodLevel ||
         right.hookLevel - left.hookLevel ||
-        right.achievementCount - left.achievementCount ||
+        right.achievementPoints - left.achievementPoints ||
         left.userId.localeCompare(right.userId, "zh-CN", { numeric: true }),
     },
     {
@@ -55,18 +55,20 @@
       compare: (left, right) =>
         right.hookLevel - left.hookLevel ||
         right.rodLevel - left.rodLevel ||
-        right.achievementCount - left.achievementCount ||
+        right.achievementPoints - left.achievementPoints ||
         left.userId.localeCompare(right.userId, "zh-CN", { numeric: true }),
     },
     {
       key: "achievement",
       label: "成就榜",
-      subtitle: "按成就数量排序",
-      metricLabel: "成就数量",
+      subtitle: "按成就点数排序",
+      metricLabel: "成就点数",
       formatPrimaryValue: (entry) =>
-        `${formatNumber(entry.achievementCount, 0)} 项`,
+        entry.achievementPoints > 0
+          ? `成就点数 ${formatNumber(entry.achievementPoints, 0)}`
+          : "",
       compare: (left, right) =>
-        right.achievementCount - left.achievementCount ||
+        right.achievementPoints - left.achievementPoints ||
         right.rodLevel - left.rodLevel ||
         right.hookLevel - left.hookLevel ||
         left.userId.localeCompare(right.userId, "zh-CN", { numeric: true }),
@@ -1789,8 +1791,14 @@
     baitReminderIntervalId = null;
   }
 
-  function getPlayerAchievementCount(player) {
-    return Array.isArray(player?.achievements) ? player.achievements.length : 0;
+  function getPlayerAchievementPoints(player) {
+    if (!Array.isArray(player?.achievements)) return 0;
+    let sum = 0;
+    for (const key of player.achievements) {
+      const m = String(key).match(/^collect_scene_(\d+)$/);
+      if (m) sum += Number.parseInt(m[1], 10);
+    }
+    return sum;
   }
 
   function getLeaderboardTypeConfig(typeKey) {
@@ -1801,12 +1809,20 @@
   }
 
   function normalizeLeaderboardEntry(player) {
+    const collectedMapIds = [];
+    if (Array.isArray(player?.achievements)) {
+      for (const key of player.achievements) {
+        const m = String(key).match(/^collect_scene_(\d+)$/);
+        if (m) collectedMapIds.push(Number.parseInt(m[1], 10));
+      }
+    }
     return {
       userId: String(player?.user_id || "").trim(),
       nickname: String(player?.nickname || "").trim(),
       rodLevel: Math.max(0, Number.parseInt(player?.rod_level, 10) || 0),
       hookLevel: Math.max(0, Number.parseInt(player?.hook_level, 10) || 0),
-      achievementCount: getPlayerAchievementCount(player),
+      achievementPoints: getPlayerAchievementPoints(player),
+      collectedMapIds,
     };
   }
 
@@ -2057,6 +2073,24 @@
       .join("");
   }
 
+  function buildAchievementTooltipGrid(collectedMapIds) {
+    const collectedSet = new Set(collectedMapIds);
+    const mapIds = config.maps
+      .map((m) => parseNumber(m.id))
+      .filter((id) => Number.isInteger(id) && id > 0);
+    mapIds.sort((a, b) => a - b);
+
+    return mapIds
+      .map((id) => {
+        const collected = collectedSet.has(id);
+        const crown = collected
+          ? `<span class="ach-tooltip-crown"><svg class="ach-tooltip-crown-icon" viewBox="0 0 24 20" aria-hidden="true"><path d="M3 17.5h18l-1.4-11.2-5.2 4.4L12 3.2 9.6 10.7 4.4 6.3 3 17.5Z"></path></svg></span>`
+          : "";
+        return `<span class="ach-tooltip-box ${collected ? "is-collected" : ""}">${crown}${id}</span>`;
+      })
+      .join("");
+  }
+
   function renderLeaderboardList() {
     if (!elements.leaderboardList || !elements.leaderboardContentTitle) return;
 
@@ -2089,17 +2123,17 @@
       if (idx === 0) {
         medalHtml =
           `<span class="leaderboard-medal" aria-hidden="true">` +
-          `<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="14" r="8" fill="#FFD54A"/><rect x="9" y="26" width="18" height="6" rx="2" fill="#FFB300"/><text x="18" y="17" font-size="10" text-anchor="middle" fill="#1b1b1b" font-weight="700">1</text></svg>` +
+          `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="10" r="6" fill="#FFD54A"/><rect x="7" y="20" width="14" height="5" rx="2" fill="#FFB300"/><text x="14" y="13" font-size="8" text-anchor="middle" fill="#1b1b1b" font-weight="700">1</text></svg>` +
           `</span>`;
       } else if (idx === 1) {
         medalHtml =
           `<span class="leaderboard-medal" aria-hidden="true">` +
-          `<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="14" r="8" fill="#C0C8D6"/><rect x="9" y="26" width="18" height="6" rx="2" fill="#9AA3B8"/><text x="18" y="17" font-size="10" text-anchor="middle" fill="#1b1b1b" font-weight="700">2</text></svg>` +
+          `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="10" r="6" fill="#C0C8D6"/><rect x="7" y="20" width="14" height="5" rx="2" fill="#9AA3B8"/><text x="14" y="13" font-size="8" text-anchor="middle" fill="#1b1b1b" font-weight="700">2</text></svg>` +
           `</span>`;
       } else if (idx === 2) {
         medalHtml =
           `<span class="leaderboard-medal" aria-hidden="true">` +
-          `<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="14" r="8" fill="#E0B58B"/><rect x="9" y="26" width="18" height="6" rx="2" fill="#C6863A"/><text x="18" y="17" font-size="10" text-anchor="middle" fill="#1b1b1b" font-weight="700">3</text></svg>` +
+          `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="10" r="6" fill="#E0B58B"/><rect x="7" y="20" width="14" height="5" rx="2" fill="#C6863A"/><text x="14" y="13" font-size="8" text-anchor="middle" fill="#1b1b1b" font-weight="700">3</text></svg>` +
           `</span>`;
       }
 
@@ -2113,15 +2147,15 @@
             <div class="leaderboard-main">
               <div class="leaderboard-nick">${escapeHtml(entry.nickname || entry.userId)}</div>
             </div>
-            <div class="leaderboard-value">${escapeHtml(typeConfig.formatPrimaryValue(entry))}</div>
+            <div class="leaderboard-value">${typeConfig.key === "achievement" ? (entry.achievementPoints > 0 ? `<span class="has-tooltip ach-trigger" data-ach-maps="${escapeHtml(entry.collectedMapIds.join(","))}">${escapeHtml(typeConfig.formatPrimaryValue(entry))}</span>` : "") : escapeHtml(typeConfig.formatPrimaryValue(entry))}</div>
           </li>
         `;
     };
 
     const rows = sorted
-      .slice(0, 50)
+      .slice(0, 100)
       .map((entry, idx) => renderLeaderboardRow(entry, idx));
-    if (currentIndex >= 50) {
+    if (currentIndex >= 100) {
       rows.push(
         '<li class="leaderboard-current-separator">我的排名</li>',
         renderLeaderboardRow(sorted[currentIndex], currentIndex),
@@ -2161,6 +2195,7 @@
     if (!elements.leaderboardModal) return;
     elements.leaderboardModal.hidden = true;
     document.body.classList.remove("collection-modal-open");
+    hideAchTooltip();
     elements.openLeaderboardModal?.focus({ preventScroll: true });
   }
 
@@ -2732,6 +2767,7 @@
     renderPlayerInfo();
     // If leaderboard modal is open, refresh its contents so it stays up-to-date
     if (elements.leaderboardModal && !elements.leaderboardModal.hidden) {
+      hideAchTooltip();
       renderLeaderboardTypes();
       renderLeaderboardList();
     }
@@ -3067,6 +3103,45 @@
         if (!userId) return;
         // focus or highlight logic could be added here
       });
+
+      elements.leaderboardList.addEventListener("mouseover", (event) => {
+        const trigger = event.target.closest(".ach-trigger");
+        if (!trigger) {
+          hideAchTooltip();
+          return;
+        }
+        const tt = document.getElementById("achTooltip");
+        const grid = document.getElementById("achTooltipGrid");
+        if (!tt || !grid) return;
+        const mapIds = (trigger.dataset.achMaps || "").split(",").filter(Boolean).map(Number);
+        grid.innerHTML = buildAchievementTooltipGrid(mapIds);
+        const rect = trigger.getBoundingClientRect();
+        tt.hidden = false;
+        const ttWidth = tt.offsetWidth;
+        const ttHeight = tt.offsetHeight;
+        let left = rect.left - ttWidth - 8;
+        let top = rect.top + rect.height / 2 - ttHeight / 2;
+        if (left < 8) {
+          left = rect.left + rect.width / 2 - ttWidth / 2;
+          left = Math.max(8, Math.min(left, window.innerWidth - ttWidth - 8));
+          top = rect.bottom + 8;
+          if (top + ttHeight > window.innerHeight - 8) {
+            top = rect.top - ttHeight - 8;
+          }
+        } else {
+          top = Math.max(8, Math.min(top, window.innerHeight - ttHeight - 8));
+        }
+        tt.style.left = `${left}px`;
+        tt.style.top = `${top}px`;
+      });
+
+      elements.leaderboardList.addEventListener("mouseleave", hideAchTooltip);
+
+    }
+
+    function hideAchTooltip() {
+      const tt = document.getElementById("achTooltip");
+      if (tt) tt.hidden = true;
     }
 
     if (elements.collectionModal) {

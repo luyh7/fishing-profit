@@ -1954,22 +1954,24 @@
       .leaderboard-row {
         display: flex;
         align-items: center;
-        gap: 16px;
-        padding: 14px 18px;
-        border-radius: 10px;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 8px;
         background: rgba(255,255,255,0.01);
         border: 1px solid rgba(255,255,255,0.02);
-        margin-bottom: 12px;
+        margin-bottom: 4px;
+        overflow: hidden;
+        min-width: 0;
       }
 
       .leaderboard-rank {
-        width: 56px;
-        height: 56px;
+        width: 36px;
+        height: 36px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         font-weight: 700;
-        font-size: 18px;
+        font-size: 15px;
         color: var(--muted);
         background: rgba(255,255,255,0.02);
         border-radius: 8px;
@@ -1978,8 +1980,8 @@
 
       /* per-rank number decoration removed — full-row top styling used instead */
 
-      .leaderboard-nick { font-weight: 800; font-size: 18px; }
-      .leaderboard-value { margin-left: auto; font-weight: 800; font-size: 18px; }
+      .leaderboard-nick { width: 100%; font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .leaderboard-value { margin-left: auto; font-weight: 800; font-size: 15px; }
 
       /* Full-row backgrounds for top 3 */
       .leaderboard-row.top-1 {
@@ -1998,10 +2000,10 @@
         box-shadow: 0 8px 20px rgba(160, 120, 70, 0.05) inset;
       }
 
-      .leaderboard-medal { display:inline-flex; align-items:center; justify-content:center; width:48px; height:48px; margin:0; flex-shrink:0; }
+      .leaderboard-medal { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; margin:0; flex-shrink:0; }
       .leaderboard-main { display:flex; align-items:center; gap:12px; }
       .leaderboard-rank { width:64px; height:64px; display:flex; align-items:center; justify-content:center; border-radius:12px; background: rgba(255,255,255,0.01); margin-right:6px; flex-shrink:0; }
-      .leaderboard-rank-number { color: var(--muted); font-weight:800; font-size:18px; }
+      .leaderboard-rank-number { color: var(--muted); font-weight:800; font-size:14px; }
 
       .collection-legend-dot {
         width: 15px;
@@ -2080,12 +2082,14 @@
       .leaderboard-row {
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 10px 12px;
-        border-radius: 9px;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 8px;
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid rgba(255, 255, 255, 0.04);
-        margin-bottom: 8px;
+        margin-bottom: 4px;
+        overflow: hidden;
+        min-width: 0;
       }
 
       /* Only apply current-player highlight for non-top-3 rows so top-N backgrounds remain intact */
@@ -2108,7 +2112,8 @@
       }
 
       .leaderboard-rank {
-        width: 40px;
+        width: 36px;
+        height: 36px;
         font-weight: 900;
         color: var(--muted);
         text-align: center;
@@ -2121,11 +2126,14 @@
       }
 
       .leaderboard-main {
-        flex: 1 1 auto;
+        flex: 1 1 0%;
         min-width: 0;
+        overflow: hidden;
       }
 
       .leaderboard-nick {
+        width: 100%;
+        font-size: 14px;
         font-weight: 900;
         color: var(--text);
         white-space: nowrap;
@@ -2134,9 +2142,9 @@
       }
 
       .leaderboard-current-separator {
-        margin: 4px 0 8px;
+        margin: 2px 0 4px;
         color: var(--muted);
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 800;
         text-align: center;
       }
@@ -2144,8 +2152,90 @@
       .leaderboard-value {
         flex: 0 0 auto;
         font-weight: 900;
+        font-size: 14px;
         color: var(--text);
         margin-left: 12px;
+        overflow: visible;
+      }
+
+      /* Achievement tooltip */
+      .leaderboard-value .ach-trigger {
+        cursor: help;
+      }
+
+      .ach-tooltip {
+        position: fixed;
+        z-index: 200;
+        width: max-content;
+        max-width: min(360px, calc(100vw - 48px));
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: rgba(15, 18, 26, 0.96);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(12px);
+        pointer-events: none;
+      }
+
+      .ach-tooltip[hidden] {
+        display: none;
+      }
+
+      .ach-tooltip-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: center;
+      }
+
+      .ach-tooltip-box {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        width: 28px;
+        height: 28px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 900;
+        line-height: 1;
+        flex-shrink: 0;
+      }
+
+      .ach-tooltip-box.is-collected {
+        background: rgba(185, 229, 255, 0.62);
+        border-color: rgba(205, 236, 255, 0.72);
+        color: var(--text);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+      }
+
+      .ach-tooltip-crown {
+        position: absolute;
+        top: -8px;
+        left: -6px;
+        z-index: 2;
+        width: 18px;
+        height: 17px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+      }
+
+      .ach-tooltip-crown-icon {
+        width: 17px;
+        height: 14px;
+        overflow: visible;
+        fill: #facc15;
+        stroke: rgba(254, 240, 138, 0.96);
+        stroke-width: 1.35;
+        stroke-linejoin: round;
+        transform: rotate(-45deg);
+        transform-origin: 50% 58%;
+        filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.42));
       }
 
       .collection-fish-name {
@@ -2657,6 +2747,9 @@
       </section>
     </div>
 
+    <div class="ach-tooltip" id="achTooltip" hidden aria-hidden="true">
+      <span class="ach-tooltip-grid" id="achTooltipGrid"></span>
+    </div>
     <script src="config.js"></script>
     <div
       class="bait-reminder-notice"
