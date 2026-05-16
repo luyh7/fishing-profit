@@ -981,6 +981,7 @@
     elements.autoNestBuffSwitch
       .closest(".auto-nest-buff-switch")
       ?.classList.toggle("is-loading", isLoading);
+    document.body.classList.toggle("auto-mode", isAutoNestBuffEnabled);
   }
 
   function persistAutoNestBuffEnabled() {

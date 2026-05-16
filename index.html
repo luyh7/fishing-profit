@@ -1187,14 +1187,14 @@
         display: inline-flex;
         align-items: center;
         margin-left: 6px;
-        padding: 2px 6px;
+        padding: 1px 6px 2px;
         border-radius: 999px;
         background: rgba(255, 255, 255, 0.08);
         border: 1px solid rgba(255, 255, 255, 0.1);
         color: var(--muted);
         font-size: 11px;
         font-weight: 700;
-        vertical-align: middle;
+        vertical-align: 0.05em;
       }
 
       .field-label-badge.manual {
@@ -1204,9 +1204,14 @@
       }
 
       .field-label-badge.auto {
+        display: none;
         border-color: rgba(74, 222, 128, 0.24);
         background: rgba(74, 222, 128, 0.08);
         color: #4ade80;
+      }
+
+      body.auto-mode .field-label-badge.auto {
+        display: inline-flex;
       }
 
       .field-label-with-help {
@@ -2338,14 +2343,14 @@
 
             <div class="controls">
               <div class="field">
-                <label for="rodLevel">鱼竿等级</label>
+                <label for="rodLevel">鱼竿等级 <span class="field-label-badge auto">自动</span></label>
                 <div class="select-shell">
                   <select id="rodLevel"></select>
                   <span class="select-display" id="rodLevelDisplay" aria-hidden="true"></span>
                 </div>
               </div>
               <div class="field">
-                <label for="hookLevel">鱼钩等级</label>
+                <label for="hookLevel">鱼钩等级 <span class="field-label-badge auto">自动</span></label>
                 <div class="select-shell">
                   <select id="hookLevel"></select>
                   <span class="select-display" id="hookLevelDisplay" aria-hidden="true"></span>
@@ -2354,23 +2359,12 @@
               <div class="field full">
                 <label for="systemBuff"
                   >周末buff
-                  <span class="field-label-badge auto has-tooltip" aria-label="周末buff说明"><span class="tooltip">自动模式下根据数据更新时间自动选择：周末为加速30%，平日为无</span>自动</span></label
+                  <span class="field-label-badge auto">自动</span></label
                 >
                 <select id="systemBuff"></select>
               </div>
               <div class="field full">
-                <label for="playerQQ" class="field-label-with-help"
-                  >QQ 号
-                  <span
-                    class="field-label-help has-tooltip"
-                    aria-label="QQ 号说明"
-                    ><span class="field-label-help-icon" aria-hidden="true"
-                      >ⓘ</span
-                    ><span class="tooltip"
-                      >自动更新数据时，如果玩家填写了qq号，则可以自动更新鱼钩等级、鱼竿等级</span
-                    ></span
-                  ></label
-                >
+                <label for="playerQQ">QQ 号 <span class="field-label-badge auto">自动</span></label>
                 <div class="player-qq-input-shell">
                   <input
                     id="playerQQ"
