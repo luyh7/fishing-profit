@@ -1201,6 +1201,12 @@
         color: #facc15;
       }
 
+      .field-label-badge.auto {
+        border-color: rgba(74, 222, 128, 0.24);
+        background: rgba(74, 222, 128, 0.08);
+        color: #4ade80;
+      }
+
       .field-label-with-help {
         display: inline-flex;
         align-items: center;
@@ -2345,8 +2351,8 @@
               </div>
               <div class="field full">
                 <label for="systemBuff"
-                  >系统 buff
-                  <span class="field-label-badge manual">手动</span></label
+                  >周末buff
+                  <span class="field-label-badge auto has-tooltip" aria-label="周末buff说明"><span class="tooltip">自动模式下根据数据更新时间自动选择：周末为加速30%，平日为无</span>自动</span></label
                 >
                 <select id="systemBuff"></select>
               </div>
@@ -2506,7 +2512,7 @@
                     >ⓘ</span
                   >
                   <span class="tooltip"
-                    >自动数据包括打窝 buff、天气；填写 QQ
+                    >自动更新打窝 buff、天气、周末buff；填写 QQ
                     后同步鱼钩和鱼竿等级</span
                   >
                 </span>

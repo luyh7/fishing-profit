@@ -36,7 +36,7 @@ window.FISH_FISHING_CONFIG = {
   ],
   systemBuffs: [
     { id: "none", name: "无", value: 0 },
-    { id: "weekend", name: "周末加速 30%", value: 30 },
+    { id: "weekend", name: "加速30%", value: 30 },
   ],
   maps: [
     {

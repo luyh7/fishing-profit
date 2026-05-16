@@ -1034,6 +1034,7 @@
     isAutoNestBuffEnabled = true;
     activePlayerData = null;
     const snapshotResult = applyLatestNestBuffSnapshot();
+    autoSelectSystemBuff(latestNestBuffPayload);
     if (persist) {
       persistAutoNestBuffEnabled();
     }
@@ -1190,6 +1191,26 @@
     return { changed, rodChanged };
   }
 
+  function isChinaWeekend(utcString) {
+    if (!utcString) return false;
+    var date = new Date(utcString);
+    if (Number.isNaN(date.getTime())) return false;
+    var chinaTime = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+    var day = chinaTime.getUTCDay();
+    return day === 0 || day === 6;
+  }
+
+  function autoSelectSystemBuff(payload) {
+    if (!isAutoNestBuffEnabled) return;
+    if (!elements.systemBuff) return;
+    var isWeekend = isChinaWeekend(payload && payload.updated_at);
+    var targetId = isWeekend ? "weekend" : "none";
+    if (elements.systemBuff.value !== targetId) {
+      elements.systemBuff.value = targetId;
+      setStoredValue(storageKeys.systemBuff, targetId);
+    }
+  }
+
   function applyPlayerSnapshot(payload) {
     const playerQQ = getPlayerQQValue();
     if (!playerQQ || !payload) {
@@ -1284,6 +1305,7 @@
       clearWeatherOverrides();
       applyNestBuffSnapshot(payload);
       const playerSyncResult = applyPlayerSnapshot(payload);
+      autoSelectSystemBuff(payload);
       setNestBuffLastUpdateAt(payload?.updated_at);
       setNestBuffLastRefreshAt(Date.now());
       showNestBuffSuccessStatus();
@@ -2815,10 +2837,16 @@
     });
 
     elements.systemBuff.addEventListener("input", () => {
+      if (isAutoNestBuffEnabled) {
+        disableAutoNestBuffForManualEdit();
+      }
       persist();
       render();
     });
     elements.systemBuff.addEventListener("change", () => {
+      if (isAutoNestBuffEnabled) {
+        disableAutoNestBuffForManualEdit();
+      }
       persist();
       render();
     });
