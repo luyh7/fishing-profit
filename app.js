@@ -522,7 +522,83 @@
     return adjustedProfile;
   }
 
-  function getWeatherTooltipContent(weather) {
+  function getStormRemainingBaitCount(
+    endTime,
+    intervalHours,
+    baitCostMultiplier,
+    now = Date.now(),
+  ) {
+    if (
+      !Number.isFinite(endTime) ||
+      !Number.isFinite(intervalHours) ||
+      intervalHours <= 0
+    ) {
+      return Number.NaN;
+    }
+
+    const remainingMs = endTime - now;
+    if (remainingMs <= 0) {
+      return 0;
+    }
+
+    const intervalMs = intervalHours * 60 * 60 * 1000;
+    const baitMultiplier = Number.isFinite(baitCostMultiplier)
+      ? baitCostMultiplier
+      : 1;
+    return Math.ceil((remainingMs / intervalMs) * baitMultiplier);
+  }
+
+  function getStormBaitConsumptionRate(intervalHours, baitCostMultiplier) {
+    if (!Number.isFinite(intervalHours) || intervalHours <= 0) {
+      return Number.NaN;
+    }
+
+    const baitMultiplier = Number.isFinite(baitCostMultiplier)
+      ? baitCostMultiplier
+      : 1;
+    return baitMultiplier / intervalHours;
+  }
+
+  function getStormRemainingBaitLineHtml(weather, bestBaitRow) {
+    const type = normalizeWeatherType(weather?.type);
+    const endTime = parseWeatherTime(weather?.end_time);
+    const intervalHours = bestBaitRow?.intervalHours;
+    const baitCostMultiplier = getWeatherBaitCostMultiplier(weather);
+    const baitName = String(bestBaitRow?.bait?.name || "鱼饵").trim() || "鱼饵";
+    const isActiveStorm =
+      type === "storm" &&
+      !isManualWeather(weather) &&
+      isAutoNestBuffEffectivelyEnabled() &&
+      !isWeatherPending(weather) &&
+      !isExpiredWeather(weather) &&
+      !isWeatherEffectivelyInactive(weather) &&
+      Number.isFinite(endTime);
+
+    if (!isActiveStorm) {
+      return "";
+    }
+
+    const baitCount = getStormRemainingBaitCount(
+      endTime,
+      intervalHours,
+      baitCostMultiplier,
+    );
+    if (!Number.isFinite(baitCount)) {
+      return "";
+    }
+
+    const consumptionRate = getStormBaitConsumptionRate(
+      intervalHours,
+      baitCostMultiplier,
+    );
+    if (!Number.isFinite(consumptionRate)) {
+      return "";
+    }
+
+    return `<div class="weather-tooltip-bait" data-storm-bait-line><div>预计还需<span data-storm-bait-count data-weather-end-time="${endTime}" data-weather-interval-hours="${intervalHours}" data-weather-bait-cost-multiplier="${baitCostMultiplier}">${formatNumber(baitCount, 0)}</span>个${escapeHtml(baitName)}</div><div>消耗速率${formatNumber(consumptionRate, 2)}个/h</div></div>`;
+  }
+
+  function getWeatherTooltipContent(weather, row = null) {
     const type = normalizeWeatherType(weather?.type);
     const meta = getWeatherMeta(type);
 
@@ -567,6 +643,13 @@
     lines.push(
       `<div class="weather-tooltip-countdown${isExpired ? " is-expired" : ""}" data-weather-countdown-line><span data-weather-countdown-label>${isExpired ? "结束于 " : "还剩余 "}</span><span data-weather-countdown data-weather-end-time="${Number.isFinite(endTime) ? endTime : ""}">${getWeatherCountdownText(weather)}</span></div>`,
     );
+    const stormBaitLine = getStormRemainingBaitLineHtml(
+      weather,
+      row?.bestBaitRow,
+    );
+    if (stormBaitLine) {
+      lines.push(stormBaitLine);
+    }
 
     return lines.join("");
   }
@@ -668,6 +751,47 @@
         elapsedEl.classList.toggle("is-pending", isPending);
         weatherCard?.classList.toggle("is-pending", isPending);
       });
+
+    elements.mapCardList
+      .querySelectorAll("[data-storm-bait-count]")
+      .forEach((baitCountEl) => {
+        const endTime = Number.parseInt(
+          baitCountEl.dataset.weatherEndTime || "",
+          10,
+        );
+        const intervalHours = parseNumber(
+          baitCountEl.dataset.weatherIntervalHours,
+        );
+        const baitCostMultiplier = parseNumber(
+          baitCountEl.dataset.weatherBaitCostMultiplier,
+        );
+        const baitLine = baitCountEl.closest("[data-storm-bait-line]");
+        const remainingMs = endTime - now;
+        if (!Number.isFinite(endTime) || remainingMs <= 0) {
+          if (baitLine) {
+            baitLine.hidden = true;
+          }
+          return;
+        }
+
+        const baitCount = getStormRemainingBaitCount(
+          endTime,
+          intervalHours,
+          baitCostMultiplier,
+          now,
+        );
+        if (!Number.isFinite(baitCount)) {
+          if (baitLine) {
+            baitLine.hidden = true;
+          }
+          return;
+        }
+
+        if (baitLine) {
+          baitLine.hidden = false;
+        }
+        baitCountEl.textContent = formatNumber(baitCount, 0);
+      });
   }
 
   function getWeatherCycleType(currentType, stepValue) {
@@ -734,7 +858,7 @@
   function buildWeatherControlHtml(row) {
     const weather =
       row.weather || getWeatherForMap(row.map.difficulty, row.map.id);
-    const tooltip = getWeatherTooltipContent(weather);
+    const tooltip = getWeatherTooltipContent(weather, row);
     return `
       <div class="${getWeatherBadgeClass(weather)} has-tooltip" data-map-weather="${row.map.difficulty}" data-map-id="${row.map.id}">
         <button type="button" class="weather-step-btn" data-weather-step="-1" data-weather-map="${row.map.difficulty}" data-weather-map-id="${row.map.id}" aria-label="切换到前一个天气">‹</button>
@@ -2803,6 +2927,8 @@
       }
       if (elements.playerBaitPanel && elements.playerBaitValue) {
         elements.playerBaitPanel.hidden = true;
+        elements.playerBaitPanel.classList.remove("is-bait-mismatch");
+        elements.playerBaitPanel.title = "";
         elements.playerBaitValue.textContent = "-";
       }
       return true;
@@ -2826,7 +2952,42 @@
     inputShell?.classList.toggle("has-player-nickname", hasNickname);
   }
 
-  function renderPlayerInfo() {
+  function getActivePlayerMapRow(mapRows) {
+    const locationId = String(activePlayerData?.location_id || "").trim();
+    if (!locationId) {
+      return null;
+    }
+
+    return (
+      (Array.isArray(mapRows) ? mapRows : []).find(
+        (row) => String(row?.map?.id) === locationId,
+      ) || null
+    );
+  }
+
+  function getPlayerBaitMismatchInfo(mapRows) {
+    if (!isAutoNestBuffEnabled || !activePlayerData) {
+      return { isMismatch: false, bestBait: null };
+    }
+
+    const currentBaitId = String(activePlayerData.bait_id ?? "").trim();
+    if (!currentBaitId) {
+      return { isMismatch: false, bestBait: null };
+    }
+
+    const playerMapRow = getActivePlayerMapRow(mapRows);
+    const bestBait = playerMapRow?.bestBaitRow?.bait || null;
+    if (!bestBait) {
+      return { isMismatch: false, bestBait: null };
+    }
+
+    return {
+      isMismatch: String(bestBait.id) !== currentBaitId,
+      bestBait,
+    };
+  }
+
+  function renderPlayerInfo(mapRows = []) {
     renderPlayerQQNickname();
     renderLeaderboardSummaryBadge();
     if (hidePlayerInfo()) {
@@ -2861,6 +3022,14 @@
         ? baitParts.join(" / ")
         : "-";
       elements.playerBaitPanel.hidden = baitParts.length === 0;
+      const mismatchInfo = getPlayerBaitMismatchInfo(mapRows);
+      elements.playerBaitPanel.classList.toggle(
+        "is-bait-mismatch",
+        mismatchInfo.isMismatch,
+      );
+      elements.playerBaitPanel.title = mismatchInfo.isMismatch
+        ? `当前鱼饵与当前地图最优鱼饵不一致，推荐：${mismatchInfo.bestBait.name}`
+        : "";
       updateBaitReminderToggleState();
       maybeShowBaitReminder();
     }
@@ -2907,7 +3076,7 @@
     };
 
     renderSummary(selectedMapRow, bestBaitRow, inputs);
-    renderPlayerInfo();
+    renderPlayerInfo(mapRows);
     // If leaderboard modal is open, refresh its contents so it stays up-to-date
     if (elements.leaderboardModal && !elements.leaderboardModal.hidden) {
       hideAchTooltip();
