@@ -255,12 +255,41 @@
       multiplier: 1,
       baitCostMultiplier: 1,
     },
+    cat: {
+      label: "猫",
+      emoji: "🐱",
+      effectText: "哈基米把你的鱼吃掉了！",
+      detailText:
+        "哈基米是好基米，吃掉你的鱼时也会送上一份礼物，哈基米的礼物价值不可估量！",
+      multiplier: 1,
+      baitCostMultiplier: 1,
+    },
   };
 
-  const weatherCycleTypes = ["sunny", "rain", "storm", "meteor", "lost_wind"];
+  const weatherTypeAliases = {
+    猫: "cat",
+  };
+
+  const weatherCycleTypes = [
+    "sunny",
+    "rain",
+    "storm",
+    "meteor",
+    "lost_wind",
+    "cat",
+  ];
 
   function normalizeWeatherType(type) {
-    return typeof type === "string" && type ? type : "sunny";
+    if (typeof type !== "string") {
+      return "sunny";
+    }
+
+    const trimmedType = type.trim();
+    if (!trimmedType) {
+      return "sunny";
+    }
+
+    return weatherTypeAliases[trimmedType] || trimmedType;
   }
 
   function parseWeatherTime(value) {
@@ -506,6 +535,10 @@
         ? `<div class="tooltip-title" style="display:flex;justify-content:space-between;gap:8px;align-items:center;"><span>${meta.emoji} ${meta.label}</span><span>${meta.effectText}</span></div>`
         : `<div class="tooltip-title">${meta.emoji} ${meta.label}</div>`,
     ];
+
+    if (meta.detailText) {
+      lines.push(`<div class="tooltip-title">${meta.detailText}</div>`);
+    }
 
     if (isAchievementGatedLostWindWeather(weather)) {
       lines.push(
@@ -1418,6 +1451,99 @@
     }, 0);
   }
 
+  function getBestBaitRow(baitRows) {
+    return baitRows.length
+      ? [...baitRows].sort((left, right) => {
+          if (right.netRevenue !== left.netRevenue) {
+            return right.netRevenue - left.netRevenue;
+          }
+          return left.bait.id - right.bait.id;
+        })[0]
+      : null;
+  }
+
+  function getActivePlayerEquippedBaitPrice(fallbackBait) {
+    const fallbackPrice = fallbackBait ? parseNumber(fallbackBait.price) : 0;
+    if (!activePlayerData) {
+      return fallbackPrice;
+    }
+
+    const baitId = String(activePlayerData.bait_id ?? "").trim();
+    if (baitId) {
+      const baitById = config.baitList.find(
+        (bait) => String(bait.id) === baitId,
+      );
+      if (baitById) {
+        return parseNumber(baitById.price);
+      }
+    }
+
+    return fallbackPrice;
+  }
+
+  function calculateHighestSameRarityFishPrice(profile, fishes) {
+    const highestNPrice = (Array.isArray(fishes) ? fishes : []).reduce(
+      (highest, fish) => Math.max(highest, parseNumber(fish.nPrice)),
+      0,
+    );
+
+    if (highestNPrice <= 0) {
+      return 0;
+    }
+
+    return config.rarityOrder.reduce((total, rarity) => {
+      const probability = parseNumber(profile?.[rarity]) / 100;
+      const multiplier = parseNumber(config.rarityMultipliers[rarity]);
+      return total + probability * highestNPrice * multiplier;
+    }, 0);
+  }
+
+  function getCatSameRarityRewardPrice(
+    expectedFishPrice,
+    profile,
+    fishes,
+    mapId,
+  ) {
+    if (!hasPlayerAchievementForMap(mapId)) {
+      return expectedFishPrice;
+    }
+
+    return calculateHighestSameRarityFishPrice(profile, fishes);
+  }
+
+  function getWeatherAdjustedExpectedFishPrice(
+    expectedFishPrice,
+    weather,
+    fallbackBait,
+    profile,
+    fishes,
+    mapId,
+  ) {
+    if (!Number.isFinite(expectedFishPrice)) {
+      return expectedFishPrice;
+    }
+
+    if (
+      normalizeWeatherType(weather?.type) !== "cat" ||
+      isWeatherEffectivelyInactive(weather)
+    ) {
+      return expectedFishPrice;
+    }
+
+    const equippedBaitPrice = getActivePlayerEquippedBaitPrice(fallbackBait);
+    const sameRarityRewardPrice = getCatSameRarityRewardPrice(
+      expectedFishPrice,
+      profile,
+      fishes,
+      mapId,
+    );
+    return (
+      expectedFishPrice * 0.95 +
+      equippedBaitPrice * 0.02 +
+      sameRarityRewardPrice * 0.01
+    );
+  }
+
   function calculateBaitRows(inputs, averageFishPrice, baitBuff) {
     const weatherMultiplier = Number.isFinite(inputs.weatherMultiplier)
       ? inputs.weatherMultiplier
@@ -1474,12 +1600,35 @@
           weather,
         );
         const isSelectable = isMapDataSelectable(fishes, baseProfile);
-        const expectedPrice = isSelectable
-          ? calculateExpectedFishPrice(profile, averageNPrice)
-          : Number.NaN;
         const baitBuff = getBaitBuffForMap(map.id);
         const weatherMultiplier = getWeatherMultiplier(weather);
         const baitCostMultiplier = getWeatherBaitCostMultiplier(weather);
+        const baseExpectedPrice = isSelectable
+          ? calculateExpectedFishPrice(profile, averageNPrice)
+          : Number.NaN;
+        const fallbackBaitRow = isSelectable
+          ? getBestBaitRow(
+              calculateBaitRows(
+                {
+                  ...inputs,
+                  weatherMultiplier,
+                  baitCostMultiplier,
+                },
+                baseExpectedPrice,
+                baitBuff,
+              ),
+            )
+          : null;
+        const expectedPrice = isSelectable
+          ? getWeatherAdjustedExpectedFishPrice(
+              baseExpectedPrice,
+              weather,
+              fallbackBaitRow?.bait || null,
+              profile,
+              fishes,
+              map.id,
+            )
+          : Number.NaN;
         const baitRows = isSelectable
           ? calculateBaitRows(
               {
@@ -1491,14 +1640,7 @@
               baitBuff,
             )
           : [];
-        const bestBaitRow = baitRows.length
-          ? [...baitRows].sort((left, right) => {
-              if (right.netRevenue !== left.netRevenue) {
-                return right.netRevenue - left.netRevenue;
-              }
-              return left.bait.id - right.bait.id;
-            })[0]
-          : null;
+        const bestBaitRow = getBestBaitRow(baitRows);
 
         return {
           map,
@@ -1506,6 +1648,7 @@
           averageNPrice,
           delta,
           profile,
+          baseExpectedPrice,
           expectedPrice,
           baitBuff,
           weather,
