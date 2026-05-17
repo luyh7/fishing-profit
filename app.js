@@ -1663,7 +1663,7 @@
     );
     return (
       expectedFishPrice * 0.95 +
-      equippedBaitPrice * 0.02 +
+      equippedBaitPrice * 0.03 +
       sameRarityRewardPrice * 0.01
     );
   }
