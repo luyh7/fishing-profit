@@ -251,7 +251,7 @@
     lost_wind: {
       label: "迷途风",
       emoji: "🌀",
-      effectText: "有1%几率钓出UTR鱼",
+      effectText: "有概率钓出UTR",
       multiplier: 1,
       baitCostMultiplier: 1,
     },
@@ -265,6 +265,9 @@
       baitCostMultiplier: 1,
     },
   };
+
+  const lostWindUtrBaseProbability = 0.85;
+  const lostWindUtrPityCount = 150;
 
   const weatherTypeAliases = {
     猫: "cat",
@@ -484,6 +487,25 @@
     return adjustedProfile;
   }
 
+  function getLostWindEffectiveUtrProbability() {
+    const baseRate = lostWindUtrBaseProbability / 100;
+    const pityCount = Math.max(1, Math.floor(lostWindUtrPityCount));
+    if (!Number.isFinite(baseRate) || baseRate <= 0) {
+      return 0;
+    }
+
+    if (baseRate >= 1) {
+      return 100;
+    }
+
+    const cycleHitProbability = 1 - Math.pow(1 - baseRate, pityCount);
+    if (cycleHitProbability <= 0) {
+      return lostWindUtrBaseProbability;
+    }
+
+    return Math.min(100, (baseRate / cycleHitProbability) * 100);
+  }
+
   function getWeatherAdjustedProbabilityProfile(profile, weather) {
     const type = normalizeWeatherType(weather?.type);
     if (isWeatherEffectivelyInactive(weather)) {
@@ -507,17 +529,19 @@
 
     if (baseTotal <= 0) {
       return config.rarityOrder.reduce((adjustedProfile, rarity) => {
-        adjustedProfile[rarity] = rarity === "UTR" ? 1 : 0;
+        adjustedProfile[rarity] =
+          rarity === "UTR" ? getLostWindEffectiveUtrProbability() : 0;
         return adjustedProfile;
       }, {});
     }
 
-    const scale = 99 / baseTotal;
+    const utrProbability = getLostWindEffectiveUtrProbability();
+    const scale = (100 - utrProbability) / baseTotal;
     const adjustedProfile = {};
     baseRarityOrder.forEach((rarity) => {
       adjustedProfile[rarity] = baseProfile[rarity] * scale;
     });
-    adjustedProfile.UTR = 1;
+    adjustedProfile.UTR = utrProbability;
 
     return adjustedProfile;
   }
