@@ -266,7 +266,7 @@
     },
   };
 
-  const lostWindUtrBaseProbability = 0.85;
+  const lostWindUtrBaseProbability = 0.7;
   const lostWindUtrPityCount = 150;
 
   const weatherTypeAliases = {
