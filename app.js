@@ -1686,9 +1686,9 @@
       mapId,
     );
     return (
-      expectedFishPrice * 0.95 +
-      equippedBaitPrice * 0.03 +
-      sameRarityRewardPrice * 0.01
+      expectedFishPrice * (1 - 0.15 + 0.15 * 0.3 * 0.5) +
+      equippedBaitPrice * (0.15 * 0.15 * 3) +
+      sameRarityRewardPrice * (0.15 * 0.1)
     );
   }
 
