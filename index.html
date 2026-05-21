@@ -1611,6 +1611,36 @@
       background: #3b82f6;
     }
 
+    .leaderboard-open-icon {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 4px;
+      width: 27px;
+      height: 27px;
+      flex: 0 0 auto;
+    }
+
+    .leaderboard-open-icon span {
+      width: 6px;
+      border-radius: 3px 3px 2px 2px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
+    }
+
+    .leaderboard-open-icon span:nth-child(1) {
+      height: 12px;
+      background: #3b82f6;
+    }
+
+    .leaderboard-open-icon span:nth-child(2) {
+      height: 23px;
+      background: #ff2d95;
+    }
+
+    .leaderboard-open-icon span:nth-child(3) {
+      height: 18px;
+      background: #7ee081;
+    }
+
     .collection-open-text {
       min-width: 0;
       flex: 1 1 auto;
@@ -2554,8 +2584,7 @@
             <div class="field full">
               <!-- <label for="openLeaderboardModal">排行榜</label> -->
               <button type="button" class="collection-open-btn" id="openLeaderboardModal">
-                <span class="collection-open-icon" aria-hidden="true">
-                  <span></span>
+                <span class="leaderboard-open-icon" aria-hidden="true">
                   <span></span>
                   <span></span>
                   <span></span>
