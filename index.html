@@ -1189,6 +1189,10 @@
         margin-top: 2px;
       }
 
+      .collection-setting.is-visible {
+        display: block;
+      }
+
       .field-label-badge {
         display: inline-flex;
         align-items: center;
@@ -2274,6 +2278,7 @@
 
       .collection-rarity-dot {
         appearance: none;
+        display: inline-block;
         width: 13px;
         height: 13px;
         border: 2px solid rgba(237, 242, 255, 0.34);
@@ -2281,7 +2286,8 @@
         background: transparent;
         padding: 0;
         flex: 0 0 auto;
-        cursor: pointer;
+        cursor: default;
+        pointer-events: none;
         touch-action: none;
         transition:
           transform 0.12s ease,
@@ -2530,7 +2536,7 @@
                   </div>
                 </div>
               </div>
-              <div class="field full collection-setting" hidden>
+              <div class="field full collection-setting" id="collectionSetting" hidden>
                 <label for="openCollectionModal">图鉴设置</label>
                 <button
                   type="button"
@@ -2709,7 +2715,7 @@
         </header>
         <div class="collection-legend" id="collectionLegend"></div>
         <p class="collection-note">
-          图鉴收集完整度会触发某些特殊效果，请保证图鉴准确才能计算出真实利润哦😉
+          图鉴数据来自同步的玩家信息，仅供查看，不能在页面内修改。
         </p>
         <div class="collection-body">
           <div class="collection-map-list" id="collectionMapList"></div>

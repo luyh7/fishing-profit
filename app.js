@@ -14,7 +14,7 @@
   const baseRarityOrder = config.rarityOrder.filter(
     (rarity) => rarity !== "UTR",
   );
-  const collectionRarities = baseRarityOrder;
+  const collectionRarities = [...baseRarityOrder].reverse().concat("UTR");
   const nestBuffSourceUrl = config.nestBuffSourceUrl || "./nest-buff.json";
   const nestBuffAutoRefreshIntervalMs = 1 * 60 * 1000;
   const collectionLongPressMs = 280;
@@ -26,7 +26,6 @@
     baitBuffByMap: "fish_calculator_bait_buff_by_map",
     weatherOverrideByMap: "fish_calculator_weather_override_by_map",
     autoNestBuff: "fish_calculator_auto_nest_buff",
-    fishCollection: "fish_calculator_fish_collection",
     playerQQ: "fish_calculator_player_qq",
     baitReminderEnabled: "fish_calculator_bait_reminder_enabled",
     baitReminderThreshold: "fish_calculator_bait_reminder_threshold",
@@ -88,6 +87,7 @@
     playerLocationValue: document.getElementById("playerLocationValue"),
     playerBaitPanel: document.getElementById("playerBaitPanel"),
     playerBaitValue: document.getElementById("playerBaitValue"),
+    collectionSetting: document.getElementById("collectionSetting"),
     baitReminderToggle: document.getElementById("baitReminderToggle"),
     baitReminderThreshold: document.getElementById("baitReminderThreshold"),
     baitReminderNotice: document.getElementById("baitReminderNotice"),
@@ -962,54 +962,60 @@
     }
   }
 
-  function normalizeFishCollection(parsed) {
-    const source =
-      parsed?.items && typeof parsed.items === "object" ? parsed.items : parsed;
-    if (!source || typeof source !== "object" || Array.isArray(source)) {
-      return {};
+  function isCollectionBitCollected(collectionValue, bitIndex) {
+    if (!Number.isFinite(collectionValue) || bitIndex < 0) {
+      return false;
     }
 
-    return Object.entries(source).reduce((normalized, [fishKey, value]) => {
-      const rarities = Array.isArray(value)
-        ? value
-        : value && typeof value === "object"
-          ? Object.keys(value).filter((rarity) => value[rarity])
-          : [];
-      const rarityMap = rarities.reduce((map, rarity) => {
-        if (collectionRarities.includes(rarity)) {
-          map[rarity] = true;
-        }
-        return map;
-      }, {});
-      if (Object.keys(rarityMap).length > 0) {
-        normalized[fishKey] = rarityMap;
+    return Math.floor(collectionValue / 2 ** bitIndex) % 2 === 1;
+  }
+
+  function buildFishCollectionFromPlayer(player) {
+    const collectionValues = Array.isArray(player?.collections)
+      ? player.collections
+      : [];
+
+    return config.maps.reduce((normalized, map, mapIndex) => {
+      const mapCollectionValue = Number.parseInt(collectionValues[mapIndex], 10);
+      if (!Number.isFinite(mapCollectionValue) || mapCollectionValue <= 0) {
+        return normalized;
       }
+
+      getMapFishes(map).forEach((fish, fishIndex) => {
+        const fishKey = getFishCollectionKey(map, fish);
+        const rarityMap = collectionRarities.reduce((mapState, rarity, rarityIndex) => {
+          const bitIndex = fishIndex * collectionRarities.length + rarityIndex;
+          if (isCollectionBitCollected(mapCollectionValue, bitIndex)) {
+            mapState[rarity] = true;
+          }
+          return mapState;
+        }, {});
+
+        if (Object.keys(rarityMap).length > 0) {
+          normalized[fishKey] = rarityMap;
+        }
+      });
+
       return normalized;
     }, {});
   }
 
-  function loadFishCollection() {
-    const raw = getStoredValue(storageKeys.fishCollection);
-    if (!raw) return {};
-    try {
-      return normalizeFishCollection(JSON.parse(raw));
-    } catch (_error) {
-      return {};
-    }
+  function syncFishCollectionFromPlayer(player) {
+    fishCollection = buildFishCollectionFromPlayer(player);
   }
 
-  function persistFishCollection() {
-    setStoredValue(
-      storageKeys.fishCollection,
-      JSON.stringify({
-        version: 1,
-        items: fishCollection,
-      }),
-    );
+  function updateCollectionSettingVisibility() {
+    if (!elements.collectionSetting) {
+      return;
+    }
+
+    const shouldShow = Boolean(isAutoNestBuffEnabled && activePlayerData);
+    elements.collectionSetting.hidden = !shouldShow;
+    elements.collectionSetting.classList.toggle("is-visible", shouldShow);
   }
 
   let baitBuffByMap = loadBaitBuffMap();
-  let fishCollection = loadFishCollection();
+  let fishCollection = {};
   let latestNestBuffPayload = null;
   let sourceWeatherByMap = {};
   let activePlayerData = null;
@@ -1198,6 +1204,7 @@
     freezeAllCurrentWeatherAsManualOverrides();
     isAutoNestBuffEnabled = false;
     activePlayerData = null;
+    fishCollection = {};
     setPlayerQQError("");
     if (autoNestBuffIntervalId !== null) {
       window.clearInterval(autoNestBuffIntervalId);
@@ -1217,6 +1224,7 @@
   function startAutoNestBuff({ persist = true, fetchImmediately = true } = {}) {
     isAutoNestBuffEnabled = true;
     activePlayerData = null;
+    fishCollection = {};
     const snapshotResult = applyLatestNestBuffSnapshot();
     autoSelectSystemBuff(latestNestBuffPayload);
     if (persist) {
@@ -1399,16 +1407,19 @@
     const playerQQ = getPlayerQQValue();
     if (!playerQQ || !payload) {
       activePlayerData = null;
+      fishCollection = {};
       setPlayerQQError("");
       return { changed: false, rodChanged: false };
     }
 
     activePlayerData = findPlayerData(payload);
     if (activePlayerData) {
+      syncFishCollectionFromPlayer(activePlayerData);
       setPlayerQQError("");
       return applyPlayerLevels(activePlayerData);
     }
 
+    fishCollection = {};
     setPlayerQQError(`未在数据中找到 QQ 号 ${playerQQ}`);
     return { changed: false, rodChanged: false };
   }
@@ -2208,30 +2219,14 @@
   }
 
   function setFishRarityCollected(fishKey, rarity, isCollected) {
-    if (!collectionRarities.includes(rarity)) {
-      return;
-    }
-
-    if (isCollected) {
-      fishCollection[fishKey] = {
-        ...(fishCollection[fishKey] || {}),
-        [rarity]: true,
-      };
-    } else if (fishCollection[fishKey]) {
-      delete fishCollection[fishKey][rarity];
-      if (Object.keys(fishCollection[fishKey]).length === 0) {
-        delete fishCollection[fishKey];
-      }
-    }
-
-    persistFishCollection();
-    renderCollectionProgress();
-    if (rarity === "UR" && hasLatestAutoNestBuffData()) {
-      render({ skipMapCardRebuild: true });
-    }
+    return;
   }
 
   function getCollectionStats() {
+    if (!activePlayerData) {
+      return { collected: 0, total: 0 };
+    }
+
     let collected = 0;
     let total = 0;
 
@@ -2255,6 +2250,11 @@
       return;
     }
 
+    if (!activePlayerData) {
+      elements.collectionProgress.textContent = "-";
+      return;
+    }
+
     const { collected, total } = getCollectionStats();
     elements.collectionProgress.textContent = `已收集 ${collected}/${total}`;
   }
@@ -2274,22 +2274,7 @@
   }
 
   function applyCollectionDotState(dot, shouldCollect) {
-    if (!dot) {
-      return;
-    }
-
-    const fishKey = dot.dataset.fishKey;
-    const rarity = dot.dataset.rarity;
-    if (!fishKey || !rarity) {
-      return;
-    }
-
-    if (isCollectionDotCollected(dot) === shouldCollect) {
-      return;
-    }
-
-    setFishRarityCollected(fishKey, rarity, shouldCollect);
-    setCollectionDotVisualState(dot, shouldCollect);
+    return;
   }
 
   function toggleCollectionDot(dot) {
@@ -2318,6 +2303,11 @@
       return;
     }
 
+    if (!activePlayerData) {
+      elements.collectionMapList.innerHTML = "";
+      return;
+    }
+
     renderCollectionLegend();
 
     elements.collectionMapList.innerHTML = config.maps
@@ -2329,8 +2319,7 @@
               .map((rarity) => {
                 const isCollected = isFishRarityCollected(fishKey, rarity);
                 return `
-                  <button
-                    type="button"
+                  <span
                     class="collection-rarity-dot ${isCollected ? "is-collected" : ""}"
                     style="--rarity-color: ${rarityColor(rarity)};"
                     data-fish-key="${escapeHtml(fishKey)}"
@@ -2338,9 +2327,9 @@
                     data-map-name="${escapeHtml(map.name)}"
                     data-fish-name="${escapeHtml(fish.name)}"
                     data-collected="${isCollected ? "true" : "false"}"
-                    aria-pressed="${isCollected ? "true" : "false"}"
+                    role="img"
                     aria-label="${escapeHtml(`${map.name} ${fish.name} ${rarity} ${isCollected ? "已收集" : "未收集"}`)}"
-                  ></button>
+                  ></span>
                 `;
               })
               .join("");
@@ -2491,7 +2480,7 @@
   }
 
   function openCollectionModal() {
-    if (!elements.collectionModal) {
+    if (!elements.collectionModal || !activePlayerData) {
       return;
     }
 
@@ -2944,6 +2933,9 @@
   }
 
   function hidePlayerInfo() {
+    updateCollectionSettingVisibility();
+    renderCollectionProgress();
+
     if (!isAutoNestBuffEnabled || !activePlayerData) {
       if (elements.playerLocationPanel && elements.playerLocationValue) {
         elements.playerLocationPanel.hidden = true;
