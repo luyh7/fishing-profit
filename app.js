@@ -2093,14 +2093,137 @@
     baitReminderIntervalId = null;
   }
 
-  function getPlayerAchievementPoints(player) {
-    if (!Array.isArray(player?.achievements)) return 0;
-    let sum = 0;
-    for (const key of player.achievements) {
-      const m = String(key).match(/^collect_scene_(\d+)$/);
-      if (m) sum += Number.parseInt(m[1], 10);
+  function getCollectionAchievementPointWeight(rarity) {
+    switch (rarity) {
+      case "N":
+        return 1;
+      case "R":
+        return 2;
+      case "SR":
+        return 3;
+      case "SSR":
+        return 4;
+      case "UR":
+        return 5;
+      case "UTR":
+        return 10;
+      default:
+        return 0;
     }
-    return sum;
+  }
+
+  function getPlayerAchievementSummary(player) {
+    if (Array.isArray(player?.collections)) {
+      let achievementPoints = 0;
+      const collectedMapIds = [];
+      const achievementMapStates = [];
+
+      config.maps.forEach((map, mapIndex) => {
+        const mapId = Number.parseInt(map.id, 10);
+        const mapCollectionValue = Number.parseInt(player.collections[mapIndex], 10);
+        if (!Number.isFinite(mapCollectionValue) || mapCollectionValue <= 0) {
+          achievementMapStates.push({
+            mapId: Number.isFinite(mapId) && mapId > 0 ? mapId : mapIndex + 1,
+            stage: 0,
+            fillRarity: "",
+            isFullCollected: false,
+          });
+          return;
+        }
+
+        const fishes = getMapFishes(map);
+        if (!Array.isArray(fishes) || fishes.length === 0) {
+          achievementMapStates.push({
+            mapId: Number.isFinite(mapId) && mapId > 0 ? mapId : mapIndex + 1,
+            stage: 0,
+            fillRarity: "",
+            isFullCollected: false,
+          });
+          return;
+        }
+
+        let mapPoints = 0;
+        let stage = 0;
+        let fillRarity = "";
+        collectionRarities.forEach((rarity, rarityIndex) => {
+          const rarityPoints = getCollectionAchievementPointWeight(rarity);
+          if (rarityPoints <= 0) {
+            return;
+          }
+
+          const isFullyCollected = fishes.every((_, fishIndex) => {
+            const bitIndex = fishIndex * collectionRarities.length + rarityIndex;
+            return isCollectionBitCollected(mapCollectionValue, bitIndex);
+          });
+
+          if (isFullyCollected) {
+            mapPoints += rarityPoints;
+            if (rarity !== "UTR") {
+              stage += 1;
+              fillRarity = rarity;
+            }
+          }
+        });
+
+        achievementMapStates.push({
+          mapId: Number.isFinite(mapId) && mapId > 0 ? mapId : mapIndex + 1,
+          stage,
+          fillRarity,
+          isFullCollected: stage === collectionRarities.length - 1,
+        });
+
+        if (mapPoints > 0) {
+          achievementPoints += mapPoints * (mapIndex + 1);
+          collectedMapIds.push(Number.isFinite(mapId) && mapId > 0 ? mapId : mapIndex + 1);
+        }
+      });
+
+      return {
+        achievementPoints,
+        collectedMapIds,
+        achievementMapStates,
+      };
+    }
+
+    let achievementPoints = 0;
+    const collectedMapIds = [];
+    const achievementMapStates = config.maps.map((map, mapIndex) => {
+      const mapId = Number.parseInt(map.id, 10);
+      return {
+        mapId: Number.isFinite(mapId) && mapId > 0 ? mapId : mapIndex + 1,
+        stage: 0,
+        fillRarity: "",
+        isFullCollected: false,
+      };
+    });
+    if (Array.isArray(player?.achievements)) {
+      for (const key of player.achievements) {
+        const m = String(key).match(/^collect_scene_(\d+)$/);
+        if (m) {
+          const mapId = Number.parseInt(m[1], 10);
+          if (Number.isFinite(mapId)) {
+            collectedMapIds.push(mapId);
+            achievementPoints += mapId;
+            const state = achievementMapStates.find((item) => item.mapId === mapId);
+            if (state) {
+              state.stage = 5;
+              state.fillRarity = "UR";
+              state.isFullCollected = true;
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      achievementPoints,
+      collectedMapIds,
+      achievementMapStates,
+    };
+  }
+
+  function getPlayerAchievementPoints(player) {
+    return getPlayerAchievementSummary(player).achievementPoints;
   }
 
   function getLeaderboardTypeConfig(typeKey) {
@@ -2111,20 +2234,15 @@
   }
 
   function normalizeLeaderboardEntry(player) {
-    const collectedMapIds = [];
-    if (Array.isArray(player?.achievements)) {
-      for (const key of player.achievements) {
-        const m = String(key).match(/^collect_scene_(\d+)$/);
-        if (m) collectedMapIds.push(Number.parseInt(m[1], 10));
-      }
-    }
+    const achievementSummary = getPlayerAchievementSummary(player);
     return {
       userId: String(player?.user_id || "").trim(),
       nickname: String(player?.nickname || "").trim(),
       rodLevel: Math.max(0, Number.parseInt(player?.rod_level, 10) || 0),
       hookLevel: Math.max(0, Number.parseInt(player?.hook_level, 10) || 0),
-      achievementPoints: getPlayerAchievementPoints(player),
-      collectedMapIds,
+      achievementPoints: achievementSummary.achievementPoints,
+      collectedMapIds: achievementSummary.collectedMapIds,
+      achievementMapStates: achievementSummary.achievementMapStates,
     };
   }
 
@@ -2354,7 +2472,36 @@
   }
 
   function buildAchievementTooltipGrid(collectedMapIds) {
-    const collectedSet = new Set(collectedMapIds);
+    const stageRarities = collectionRarities.slice(0, -1);
+    const stateByMapId = new Map();
+
+    if (Array.isArray(collectedMapIds)) {
+      collectedMapIds.forEach((item) => {
+        if (item && typeof item === "object") {
+          const mapId = Number.parseInt(item.mapId ?? item.id, 10);
+          if (!Number.isFinite(mapId) || mapId <= 0) {
+            return;
+          }
+
+          stateByMapId.set(mapId, {
+            stage: Math.max(0, Math.min(stageRarities.length, Number.parseInt(item.stage, 10) || 0)),
+            fillRarity: String(item.fillRarity || ""),
+            isFullCollected: Boolean(item.isFullCollected || item.full),
+          });
+          return;
+        }
+
+        const mapId = Number.parseInt(item, 10);
+        if (Number.isFinite(mapId) && mapId > 0) {
+          stateByMapId.set(mapId, {
+            stage: stageRarities.length,
+            fillRarity: "UR",
+            isFullCollected: true,
+          });
+        }
+      });
+    }
+
     const mapIds = config.maps
       .map((m) => parseNumber(m.id))
       .filter((id) => Number.isInteger(id) && id > 0);
@@ -2362,11 +2509,15 @@
 
     return mapIds
       .map((id) => {
-        const collected = collectedSet.has(id);
-        const crown = collected
+        const state = stateByMapId.get(id) || { stage: 0, fillRarity: "", isFullCollected: false };
+        const stage = Math.max(0, Math.min(stageRarities.length, Number.parseInt(state.stage, 10) || 0));
+        const fillRarity = stage > 0 && state.fillRarity ? state.fillRarity : stageRarities[stage - 1] || "";
+        const fillColor = stage > 0 ? rarityColor(fillRarity) : "rgba(255, 255, 255, 0.06)";
+        const isFilled = stage > 0;
+        const crown = state.isFullCollected
           ? `<span class="ach-tooltip-crown"><svg class="ach-tooltip-crown-icon" viewBox="0 0 24 20" aria-hidden="true"><path d="M3 17.5h18l-1.4-11.2-5.2 4.4L12 3.2 9.6 10.7 4.4 6.3 3 17.5Z"></path></svg></span>`
           : "";
-        return `<span class="ach-tooltip-box ${collected ? "is-collected" : ""}">${crown}${id}</span>`;
+        return `<span class="ach-tooltip-box ${isFilled ? "is-collected" : ""}${state.isFullCollected ? " is-full" : ""}" style="--achievement-fill-color: ${fillColor}; --achievement-fill-height: ${stage * 20}%;">${crown}${id}</span>`;
       })
       .join("");
   }
@@ -2427,7 +2578,7 @@
             <div class="leaderboard-main">
               <div class="leaderboard-nick">${escapeHtml(entry.nickname || entry.userId)}</div>
             </div>
-            <div class="leaderboard-value">${typeConfig.key === "achievement" ? (entry.achievementPoints > 0 ? `<span class="has-tooltip ach-trigger" data-ach-maps="${escapeHtml(entry.collectedMapIds.join(","))}">${escapeHtml(typeConfig.formatPrimaryValue(entry))}</span>` : "") : escapeHtml(typeConfig.formatPrimaryValue(entry))}</div>
+            <div class="leaderboard-value">${typeConfig.key === "achievement" ? (entry.achievementPoints > 0 ? `<span class="has-tooltip ach-trigger" data-achievement-state='${escapeHtml(JSON.stringify(entry.achievementMapStates || []))}' data-ach-maps="${escapeHtml(entry.collectedMapIds.join(","))}">${escapeHtml(typeConfig.formatPrimaryValue(entry))}</span>` : "") : escapeHtml(typeConfig.formatPrimaryValue(entry))}</div>
           </li>
         `;
     };
@@ -3441,8 +3592,27 @@
         const tt = document.getElementById("achTooltip");
         const grid = document.getElementById("achTooltipGrid");
         if (!tt || !grid) return;
-        const mapIds = (trigger.dataset.achMaps || "").split(",").filter(Boolean).map(Number);
-        grid.innerHTML = buildAchievementTooltipGrid(mapIds);
+        let achievementState = [];
+        const achievementStateRaw = trigger.dataset.achievementState || "";
+        if (achievementStateRaw) {
+          try {
+            achievementState = JSON.parse(achievementStateRaw);
+          } catch (_error) {
+            achievementState = [];
+          }
+        }
+        if (!Array.isArray(achievementState) || achievementState.length === 0) {
+          const mapIds = (trigger.dataset.achMaps || "").split(",").filter(Boolean).map(Number);
+          achievementState = mapIds
+            .filter((mapId) => Number.isFinite(mapId) && mapId > 0)
+            .map((mapId) => ({
+              mapId,
+              stage: 5,
+              fillRarity: "UR",
+              isFullCollected: true,
+            }));
+        }
+        grid.innerHTML = buildAchievementTooltipGrid(achievementState);
         const rect = trigger.getBoundingClientRect();
         tt.hidden = false;
         const ttWidth = tt.offsetWidth;
