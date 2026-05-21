@@ -1898,7 +1898,7 @@
   function rarityColor(rarity) {
     switch (rarity) {
       case "UTR":
-        return "#ff3b30";
+        return "#ff2d95";
       case "UR":
         return "#ff4d1a";
       case "SSR":
