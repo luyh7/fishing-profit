@@ -976,20 +976,27 @@
       : [];
 
     return config.maps.reduce((normalized, map, mapIndex) => {
-      const mapCollectionValue = Number.parseInt(collectionValues[mapIndex], 10);
+      const mapCollectionValue = Number.parseInt(
+        collectionValues[mapIndex],
+        10,
+      );
       if (!Number.isFinite(mapCollectionValue) || mapCollectionValue <= 0) {
         return normalized;
       }
 
       getMapFishes(map).forEach((fish, fishIndex) => {
         const fishKey = getFishCollectionKey(map, fish);
-        const rarityMap = collectionRarities.reduce((mapState, rarity, rarityIndex) => {
-          const bitIndex = fishIndex * collectionRarities.length + rarityIndex;
-          if (isCollectionBitCollected(mapCollectionValue, bitIndex)) {
-            mapState[rarity] = true;
-          }
-          return mapState;
-        }, {});
+        const rarityMap = collectionRarities.reduce(
+          (mapState, rarity, rarityIndex) => {
+            const bitIndex =
+              fishIndex * collectionRarities.length + rarityIndex;
+            if (isCollectionBitCollected(mapCollectionValue, bitIndex)) {
+              mapState[rarity] = true;
+            }
+            return mapState;
+          },
+          {},
+        );
 
         if (Object.keys(rarityMap).length > 0) {
           normalized[fishKey] = rarityMap;
@@ -1913,6 +1920,28 @@
     }
   }
 
+  function hexToRgba(hexColor, alpha) {
+    const normalized = String(hexColor || "")
+      .trim()
+      .replace(/^#/, "");
+    if (normalized.length !== 6) {
+      return String(hexColor || "");
+    }
+
+    const red = Number.parseInt(normalized.slice(0, 2), 16);
+    const green = Number.parseInt(normalized.slice(2, 4), 16);
+    const blue = Number.parseInt(normalized.slice(4, 6), 16);
+    const opacity = Number.isFinite(Number(alpha))
+      ? Math.max(0, Math.min(1, Number(alpha)))
+      : 1;
+
+    return `rgba(${red}, ${green}, ${blue}, ${opacity})`;
+  }
+
+  function rarityColorWithAlpha(rarity, alpha) {
+    return hexToRgba(rarityColor(rarity), alpha);
+  }
+
   function getFishCollectionKey(map, fish) {
     return `${map.id}:${fish.name}`;
   }
@@ -2120,7 +2149,10 @@
 
       config.maps.forEach((map, mapIndex) => {
         const mapId = Number.parseInt(map.id, 10);
-        const mapCollectionValue = Number.parseInt(player.collections[mapIndex], 10);
+        const mapCollectionValue = Number.parseInt(
+          player.collections[mapIndex],
+          10,
+        );
         if (!Number.isFinite(mapCollectionValue) || mapCollectionValue <= 0) {
           achievementMapStates.push({
             mapId: Number.isFinite(mapId) && mapId > 0 ? mapId : mapIndex + 1,
@@ -2152,7 +2184,8 @@
           }
 
           const isFullyCollected = fishes.every((_, fishIndex) => {
-            const bitIndex = fishIndex * collectionRarities.length + rarityIndex;
+            const bitIndex =
+              fishIndex * collectionRarities.length + rarityIndex;
             return isCollectionBitCollected(mapCollectionValue, bitIndex);
           });
 
@@ -2174,7 +2207,9 @@
 
         if (mapPoints > 0) {
           achievementPoints += mapPoints * (mapIndex + 1);
-          collectedMapIds.push(Number.isFinite(mapId) && mapId > 0 ? mapId : mapIndex + 1);
+          collectedMapIds.push(
+            Number.isFinite(mapId) && mapId > 0 ? mapId : mapIndex + 1,
+          );
         }
       });
 
@@ -2204,7 +2239,9 @@
           if (Number.isFinite(mapId)) {
             collectedMapIds.push(mapId);
             achievementPoints += mapId;
-            const state = achievementMapStates.find((item) => item.mapId === mapId);
+            const state = achievementMapStates.find(
+              (item) => item.mapId === mapId,
+            );
             if (state) {
               state.stage = 5;
               state.fillRarity = "UR";
@@ -2336,6 +2373,35 @@
     return Boolean(fishCollection[fishKey]?.[rarity]);
   }
 
+  function getCollectionFishCardVisualState(map, fish) {
+    const fishKey = getFishCollectionKey(map, fish);
+    const firstMissingIndex = collectionRarities.findIndex(
+      (rarity) => !isFishRarityCollected(fishKey, rarity),
+    );
+    const isFullCollected = firstMissingIndex < 0;
+    const fillRarity = isFullCollected
+      ? collectionRarities[collectionRarities.length - 1] || ""
+      : collectionRarities[firstMissingIndex - 1] || "";
+    const fillColor = fillRarity
+      ? rarityColorWithAlpha(fillRarity, 0.18)
+      : "rgba(255, 255, 255, 0.055)";
+    const borderColor = fillRarity
+      ? rarityColorWithAlpha(fillRarity, 0.34)
+      : "rgba(255, 255, 255, 0.045)";
+
+    return {
+      fishKey,
+      fillRarity,
+      fillColor,
+      borderColor,
+      isFullCollected,
+    };
+  }
+
+  function buildCollectionFishCrownHtml() {
+    return `<span class="collection-fish-crown has-tooltip" aria-label="全收集"><svg class="collection-fish-crown-icon" viewBox="0 0 24 20" aria-hidden="true" focusable="false"><path d="M3 17.5h18l-1.4-11.2-5.2 4.4L12 3.2 9.6 10.7 4.4 6.3 3 17.5Z"></path></svg><span class="tooltip">全收集</span></span>`;
+  }
+
   function setFishRarityCollected(fishKey, rarity, isCollected) {
     return;
   }
@@ -2432,15 +2498,18 @@
       .map((map) => {
         const fishCards = getMapFishes(map)
           .map((fish) => {
-            const fishKey = getFishCollectionKey(map, fish);
+            const fishState = getCollectionFishCardVisualState(map, fish);
             const dots = collectionRarities
               .map((rarity) => {
-                const isCollected = isFishRarityCollected(fishKey, rarity);
+                const isCollected = isFishRarityCollected(
+                  fishState.fishKey,
+                  rarity,
+                );
                 return `
                   <span
                     class="collection-rarity-dot ${isCollected ? "is-collected" : ""}"
                     style="--rarity-color: ${rarityColor(rarity)};"
-                    data-fish-key="${escapeHtml(fishKey)}"
+                    data-fish-key="${escapeHtml(fishState.fishKey)}"
                     data-rarity="${escapeHtml(rarity)}"
                     data-map-name="${escapeHtml(map.name)}"
                     data-fish-name="${escapeHtml(fish.name)}"
@@ -2453,7 +2522,8 @@
               .join("");
 
             return `
-              <article class="collection-fish-card">
+              <article class="collection-fish-card${fishState.isFullCollected ? " is-full-collected" : ""}" style="--collection-card-fill: ${fishState.fillColor}; --collection-card-border: ${fishState.borderColor};">
+                ${fishState.isFullCollected ? buildCollectionFishCrownHtml() : ""}
                 <div class="collection-fish-name" title="${escapeHtml(fish.name)}">${escapeHtml(fish.name)}</div>
                 <div class="collection-rarity-dots">${dots}</div>
               </article>
@@ -2484,7 +2554,13 @@
           }
 
           stateByMapId.set(mapId, {
-            stage: Math.max(0, Math.min(stageRarities.length, Number.parseInt(item.stage, 10) || 0)),
+            stage: Math.max(
+              0,
+              Math.min(
+                stageRarities.length,
+                Number.parseInt(item.stage, 10) || 0,
+              ),
+            ),
             fillRarity: String(item.fillRarity || ""),
             isFullCollected: Boolean(item.isFullCollected || item.full),
           });
@@ -2509,10 +2585,21 @@
 
     return mapIds
       .map((id) => {
-        const state = stateByMapId.get(id) || { stage: 0, fillRarity: "", isFullCollected: false };
-        const stage = Math.max(0, Math.min(stageRarities.length, Number.parseInt(state.stage, 10) || 0));
-        const fillRarity = stage > 0 && state.fillRarity ? state.fillRarity : stageRarities[stage - 1] || "";
-        const fillColor = stage > 0 ? rarityColor(fillRarity) : "rgba(255, 255, 255, 0.06)";
+        const state = stateByMapId.get(id) || {
+          stage: 0,
+          fillRarity: "",
+          isFullCollected: false,
+        };
+        const stage = Math.max(
+          0,
+          Math.min(stageRarities.length, Number.parseInt(state.stage, 10) || 0),
+        );
+        const fillRarity =
+          stage > 0 && state.fillRarity
+            ? state.fillRarity
+            : stageRarities[stage - 1] || "";
+        const fillColor =
+          stage > 0 ? rarityColor(fillRarity) : "rgba(255, 255, 255, 0.06)";
         const isFilled = stage > 0;
         const crown = state.isFullCollected
           ? `<span class="ach-tooltip-crown"><svg class="ach-tooltip-crown-icon" viewBox="0 0 24 20" aria-hidden="true"><path d="M3 17.5h18l-1.4-11.2-5.2 4.4L12 3.2 9.6 10.7 4.4 6.3 3 17.5Z"></path></svg></span>`
@@ -3602,7 +3689,10 @@
           }
         }
         if (!Array.isArray(achievementState) || achievementState.length === 0) {
-          const mapIds = (trigger.dataset.achMaps || "").split(",").filter(Boolean).map(Number);
+          const mapIds = (trigger.dataset.achMaps || "")
+            .split(",")
+            .filter(Boolean)
+            .map(Number);
           achievementState = mapIds
             .filter((mapId) => Number.isFinite(mapId) && mapId > 0)
             .map((mapId) => ({
@@ -3634,7 +3724,6 @@
       });
 
       elements.leaderboardList.addEventListener("mouseleave", hideAchTooltip);
-
     }
 
     function hideAchTooltip() {
