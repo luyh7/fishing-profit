@@ -2327,9 +2327,25 @@
         cursor: help;
       }
 
+      .leaderboard-value .ach-trigger.is-tooltip-pinned {
+        color: var(--accent);
+      }
+
+      #leaderboardModal .collection-body {
+        overflow-anchor: none;
+      }
+
+      .leaderboard-row.has-ach-tooltip {
+        contain: layout;
+        overflow-anchor: none;
+        overflow: visible;
+        position: relative;
+        z-index: 2;
+      }
+
       .ach-tooltip {
-        position: fixed;
-        z-index: 200;
+        position: absolute;
+        z-index: 10;
         width: max-content;
         max-width: min(360px, calc(100vw - 48px));
         padding: 10px 12px;
@@ -2338,7 +2354,15 @@
         border: 1px solid rgba(255, 255, 255, 0.1);
         box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
         backdrop-filter: blur(12px);
+        overflow-anchor: none;
         pointer-events: none;
+      }
+
+      .ach-tooltip.is-pinned {
+        border-color: rgba(125, 211, 252, 0.38);
+        box-shadow:
+          0 0 0 1px rgba(125, 211, 252, 0.1),
+          0 12px 32px rgba(0, 0, 0, 0.4);
       }
 
       .ach-tooltip[hidden] {
@@ -2966,9 +2990,6 @@
       </section>
     </div>
 
-    <div class="ach-tooltip" id="achTooltip" hidden aria-hidden="true">
-      <span class="ach-tooltip-grid" id="achTooltipGrid"></span>
-    </div>
     <script src="config.js"></script>
     <div
       class="bait-reminder-notice"

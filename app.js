@@ -1042,6 +1042,11 @@
   let nestBuffStatusTimeoutId = null;
   let nestBuffLastRefreshAt = 0;
   let nestBuffLastUpdateAt = "";
+  const achievementTooltipState = {
+    entries: new Map(),
+    hoverTrigger: null,
+    repositionFrameId: 0,
+  };
   const baitReminderIntervalMs = 10 * 60 * 1000;
   const baitReminderCheckIntervalMs = 60 * 1000;
   const baitReminderWarmupDelayMs = 5000;
@@ -2609,6 +2614,201 @@
       .join("");
   }
 
+  function getAchievementTooltipState(trigger) {
+    let achievementState = [];
+    const achievementStateRaw = trigger.dataset.achievementState || "";
+    if (achievementStateRaw) {
+      try {
+        achievementState = JSON.parse(achievementStateRaw);
+      } catch (_error) {
+        achievementState = [];
+      }
+    }
+
+    if (!Array.isArray(achievementState) || achievementState.length === 0) {
+      const mapIds = (trigger.dataset.achMaps || "")
+        .split(",")
+        .filter(Boolean)
+        .map(Number);
+      achievementState = mapIds
+        .filter((mapId) => Number.isFinite(mapId) && mapId > 0)
+        .map((mapId) => ({
+          mapId,
+          stage: 5,
+          fillRarity: "UR",
+          isFullCollected: true,
+        }));
+    }
+
+    return achievementState;
+  }
+
+  function getLeaderboardScrollContainer() {
+    return elements.leaderboardList?.closest(".collection-body") || null;
+  }
+
+  function createAchTooltipEntry(trigger, row) {
+    const tooltip = document.createElement("div");
+    tooltip.className = "ach-tooltip";
+    tooltip.setAttribute("aria-hidden", "false");
+
+    const grid = document.createElement("span");
+    grid.className = "ach-tooltip-grid";
+    tooltip.appendChild(grid);
+    row.appendChild(tooltip);
+    row.classList.add("has-ach-tooltip");
+
+    return {
+      trigger,
+      row,
+      tooltip,
+      grid,
+      pinned: false,
+    };
+  }
+
+  function removeAchTooltipEntry(trigger) {
+    const entry = achievementTooltipState.entries.get(trigger);
+    if (!entry) {
+      return;
+    }
+
+    trigger.classList.remove("is-tooltip-pinned");
+    entry.tooltip.remove();
+    entry.row?.classList.remove("has-ach-tooltip");
+    achievementTooltipState.entries.delete(trigger);
+    if (achievementTooltipState.hoverTrigger === trigger) {
+      achievementTooltipState.hoverTrigger = null;
+    }
+  }
+
+  function hideAchTooltip(trigger) {
+    if (trigger instanceof Element) {
+      removeAchTooltipEntry(trigger);
+      return;
+    }
+
+    achievementTooltipState.entries.forEach((entry) => {
+      entry.trigger.classList.remove("is-tooltip-pinned");
+      entry.row?.classList.remove("has-ach-tooltip");
+      entry.tooltip.remove();
+    });
+    achievementTooltipState.entries.clear();
+    achievementTooltipState.hoverTrigger = null;
+  }
+
+  function hideHoverAchTooltip() {
+    const hoverTrigger = achievementTooltipState.hoverTrigger;
+    if (!hoverTrigger) {
+      return;
+    }
+
+    const entry = achievementTooltipState.entries.get(hoverTrigger);
+    if (entry && !entry.pinned) {
+      removeAchTooltipEntry(hoverTrigger);
+    }
+    achievementTooltipState.hoverTrigger = null;
+  }
+
+  function positionAchTooltipEntry(entry) {
+    const { tooltip, trigger, row } = entry;
+    if (!tooltip || !trigger || !row) {
+      return;
+    }
+
+    if (!document.body.contains(trigger) || !document.body.contains(row)) {
+      removeAchTooltipEntry(trigger);
+      return;
+    }
+
+    const scrollContainer = getLeaderboardScrollContainer();
+    if (!scrollContainer) {
+      removeAchTooltipEntry(trigger);
+      return;
+    }
+
+    if (tooltip.parentElement !== row) {
+      row.appendChild(tooltip);
+    }
+
+    const triggerRect = trigger.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    const containerRect = scrollContainer.getBoundingClientRect();
+    const ttWidth = tooltip.offsetWidth;
+    const ttHeight = tooltip.offsetHeight;
+    const margin = 8;
+    const gap = 8;
+
+    let left = triggerRect.left - ttWidth - gap;
+    let top = rowRect.top + rowRect.height / 2 - ttHeight / 2;
+
+    if (left < containerRect.left + margin) {
+      left = rowRect.left + rowRect.width / 2 - ttWidth / 2;
+      top = rowRect.bottom + gap;
+    }
+
+    left = Math.max(
+      containerRect.left + margin,
+      Math.min(left, containerRect.right - ttWidth - margin),
+    );
+    tooltip.style.left = `${left - rowRect.left}px`;
+    tooltip.style.top = `${top - rowRect.top}px`;
+  }
+
+  function positionAchTooltips() {
+    achievementTooltipState.repositionFrameId = 0;
+    [...achievementTooltipState.entries.values()].forEach(
+      positionAchTooltipEntry,
+    );
+  }
+
+  function requestAchTooltipPosition() {
+    if (achievementTooltipState.repositionFrameId) {
+      return;
+    }
+    achievementTooltipState.repositionFrameId =
+      window.requestAnimationFrame(positionAchTooltips);
+  }
+
+  function showAchTooltip(trigger, options = {}) {
+    const row = trigger.closest(".leaderboard-row");
+    if (!row) {
+      return;
+    }
+
+    const pinned = Boolean(options.pinned);
+    let entry = achievementTooltipState.entries.get(trigger);
+    if (!entry) {
+      entry = createAchTooltipEntry(trigger, row);
+      achievementTooltipState.entries.set(trigger, entry);
+    } else {
+      entry.row?.classList.remove("has-ach-tooltip");
+      entry.row = row;
+      row.classList.add("has-ach-tooltip");
+    }
+
+    if (!pinned) {
+      const previousHoverTrigger = achievementTooltipState.hoverTrigger;
+      if (previousHoverTrigger && previousHoverTrigger !== trigger) {
+        const previousEntry =
+          achievementTooltipState.entries.get(previousHoverTrigger);
+        if (previousEntry && !previousEntry.pinned) {
+          removeAchTooltipEntry(previousHoverTrigger);
+        }
+      }
+      achievementTooltipState.hoverTrigger = trigger;
+    }
+
+    entry.grid.innerHTML = buildAchievementTooltipGrid(
+      getAchievementTooltipState(trigger),
+    );
+    entry.row = row;
+    entry.pinned = pinned || entry.pinned;
+    trigger.classList.toggle("is-tooltip-pinned", entry.pinned);
+    entry.tooltip.classList.toggle("is-pinned", entry.pinned);
+    positionAchTooltipEntry(entry);
+  }
+
   function renderLeaderboardList() {
     if (!elements.leaderboardList || !elements.leaderboardContentTitle) return;
 
@@ -3654,6 +3854,7 @@
         if (!btn) return;
         const typeKey = btn.dataset.leaderboardType;
         if (!typeKey) return;
+        hideAchTooltip();
         leaderboardActiveType = typeKey;
         renderLeaderboardSummaryBadge();
         renderLeaderboardTypes();
@@ -3663,6 +3864,24 @@
 
     if (elements.leaderboardList) {
       elements.leaderboardList.addEventListener("click", (event) => {
+        const trigger =
+          event.target instanceof Element
+            ? event.target.closest(".ach-trigger")
+            : null;
+        if (trigger && elements.leaderboardList.contains(trigger)) {
+          event.preventDefault();
+          event.stopPropagation();
+
+          const entry = achievementTooltipState.entries.get(trigger);
+          if (entry?.pinned) {
+            hideAchTooltip(trigger);
+            return;
+          }
+
+          showAchTooltip(trigger, { pinned: true });
+          return;
+        }
+
         const row = event.target.closest(".leaderboard-row");
         if (!row) return;
         const userId = row.dataset.userId;
@@ -3671,64 +3890,56 @@
       });
 
       elements.leaderboardList.addEventListener("mouseover", (event) => {
-        const trigger = event.target.closest(".ach-trigger");
-        if (!trigger) {
-          hideAchTooltip();
+        const trigger =
+          event.target instanceof Element
+            ? event.target.closest(".ach-trigger")
+            : null;
+        if (!trigger || !elements.leaderboardList.contains(trigger)) {
           return;
         }
-        const tt = document.getElementById("achTooltip");
-        const grid = document.getElementById("achTooltipGrid");
-        if (!tt || !grid) return;
-        let achievementState = [];
-        const achievementStateRaw = trigger.dataset.achievementState || "";
-        if (achievementStateRaw) {
-          try {
-            achievementState = JSON.parse(achievementStateRaw);
-          } catch (_error) {
-            achievementState = [];
-          }
+
+        if (
+          event.relatedTarget instanceof Node &&
+          trigger.contains(event.relatedTarget)
+        ) {
+          return;
         }
-        if (!Array.isArray(achievementState) || achievementState.length === 0) {
-          const mapIds = (trigger.dataset.achMaps || "")
-            .split(",")
-            .filter(Boolean)
-            .map(Number);
-          achievementState = mapIds
-            .filter((mapId) => Number.isFinite(mapId) && mapId > 0)
-            .map((mapId) => ({
-              mapId,
-              stage: 5,
-              fillRarity: "UR",
-              isFullCollected: true,
-            }));
+
+        if (achievementTooltipState.entries.get(trigger)?.pinned) {
+          return;
         }
-        grid.innerHTML = buildAchievementTooltipGrid(achievementState);
-        const rect = trigger.getBoundingClientRect();
-        tt.hidden = false;
-        const ttWidth = tt.offsetWidth;
-        const ttHeight = tt.offsetHeight;
-        let left = rect.left - ttWidth - 8;
-        let top = rect.top + rect.height / 2 - ttHeight / 2;
-        if (left < 8) {
-          left = rect.left + rect.width / 2 - ttWidth / 2;
-          left = Math.max(8, Math.min(left, window.innerWidth - ttWidth - 8));
-          top = rect.bottom + 8;
-          if (top + ttHeight > window.innerHeight - 8) {
-            top = rect.top - ttHeight - 8;
-          }
-        } else {
-          top = Math.max(8, Math.min(top, window.innerHeight - ttHeight - 8));
-        }
-        tt.style.left = `${left}px`;
-        tt.style.top = `${top}px`;
+
+        showAchTooltip(trigger);
       });
 
-      elements.leaderboardList.addEventListener("mouseleave", hideAchTooltip);
-    }
+      elements.leaderboardList.addEventListener("mouseout", (event) => {
+        const trigger =
+          event.target instanceof Element
+            ? event.target.closest(".ach-trigger")
+            : null;
+        if (!trigger || achievementTooltipState.hoverTrigger !== trigger) {
+          return;
+        }
 
-    function hideAchTooltip() {
-      const tt = document.getElementById("achTooltip");
-      if (tt) tt.hidden = true;
+        if (achievementTooltipState.entries.get(trigger)?.pinned) {
+          return;
+        }
+
+        if (
+          event.relatedTarget instanceof Node &&
+          trigger.contains(event.relatedTarget)
+        ) {
+          return;
+        }
+
+        hideHoverAchTooltip();
+      });
+
+      elements.leaderboardList.addEventListener("mouseleave", () => {
+        hideAchTooltip();
+      });
+
+      window.addEventListener("resize", requestAchTooltipPosition);
     }
 
     if (elements.collectionModal) {
