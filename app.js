@@ -904,6 +904,85 @@
     return `<span class="map-card-code">${formatNumber(getMapCode(map), 0)}${collectionCrown}</span>`;
   }
 
+  function getHighestCatchableRarity(profile) {
+    return (
+      config.rarityOrder.find((rarity) => parseNumber(profile?.[rarity]) > 0) ||
+      ""
+    );
+  }
+
+  function isMapRarityFullyCollected(map, rarity) {
+    const fishes = getMapFishes(map);
+    if (!rarity || !fishes.length) {
+      return false;
+    }
+
+    return fishes.every((fish) =>
+      isFishRarityCollected(getFishCollectionKey(map, fish), rarity),
+    );
+  }
+
+  function getMapCardCollectionTargetRarity(row) {
+    if (
+      !activePlayerData ||
+      !Array.isArray(activePlayerData.collections) ||
+      !row?.isSelectable
+    ) {
+      return "";
+    }
+
+    const highestRarity = getHighestCatchableRarity(row.profile);
+    if (!highestRarity) {
+      return "";
+    }
+
+    return isMapRarityFullyCollected(row.map, highestRarity)
+      ? ""
+      : highestRarity;
+  }
+
+  function getMapCardCollectionAttributes(row) {
+    const targetRarity = getMapCardCollectionTargetRarity(row);
+    if (!targetRarity) {
+      return {
+        className: "",
+        attributes: "",
+      };
+    }
+
+    return {
+      className: " has-collection-target",
+      attributes:
+        ` data-map-collection-rarity="${escapeHtml(targetRarity)}"` +
+        ` style="--map-card-collection-border: ${rarityColorWithAlpha(targetRarity, 0.32)};"` +
+        ` title="${escapeHtml(`${targetRarity} 未集齐`)}"`,
+    };
+  }
+
+  function applyMapCardCollectionVisual(cardEl, row) {
+    if (!cardEl) {
+      return;
+    }
+
+    const targetRarity = getMapCardCollectionTargetRarity(row);
+    cardEl.classList.toggle("has-collection-target", Boolean(targetRarity));
+    if (!targetRarity) {
+      delete cardEl.dataset.mapCollectionRarity;
+      cardEl.style.removeProperty("--map-card-collection-fill");
+      cardEl.style.removeProperty("--map-card-collection-border");
+      cardEl.removeAttribute("title");
+      return;
+    }
+
+    cardEl.dataset.mapCollectionRarity = targetRarity;
+    cardEl.style.removeProperty("--map-card-collection-fill");
+    cardEl.style.setProperty(
+      "--map-card-collection-border",
+      rarityColorWithAlpha(targetRarity, 0.32),
+    );
+    cardEl.title = `${targetRarity} 未集齐`;
+  }
+
   function buildOption(selectElement, items, getValue, getLabel) {
     selectElement.innerHTML = items
       .map(
@@ -3235,6 +3314,16 @@
         const isSelected = row.map.difficulty === selectedMapLevel;
         const isBest = row.isSelectable && row.map.difficulty === bestMapLevel;
         const isUnavailable = !row.isSelectable;
+        const collectionState = getMapCardCollectionAttributes(row);
+        const cardClasses = [
+          "map-card",
+          isSelected ? "selected" : "",
+          isBest ? "best" : "",
+          isUnavailable ? "unavailable" : "",
+          collectionState.className.trim(),
+        ]
+          .filter(Boolean)
+          .join(" ");
         const cardContent = isUnavailable
           ? `<div class="map-card-note map-card-unavailable" data-map-unavailable="${row.map.difficulty}">${row.unavailableReason}</div>`
           : `
@@ -3249,7 +3338,7 @@
                 </div>
               </label>`;
         return `
-          <div class="map-card ${isSelected ? "selected" : ""} ${isBest ? "best" : ""} ${isUnavailable ? "unavailable" : ""}" data-map-level="${row.map.difficulty}" data-map-disabled="${isUnavailable}" role="button" tabindex="${isUnavailable ? "-1" : "0"}" aria-disabled="${isUnavailable ? "true" : "false"}">
+          <div class="${cardClasses}" data-map-level="${row.map.difficulty}" data-map-disabled="${isUnavailable}" role="button" tabindex="${isUnavailable ? "-1" : "0"}" aria-disabled="${isUnavailable ? "true" : "false"}"${collectionState.attributes}>
             <div class="map-card-compact">
               <div class="map-card-header">
                 <div class="map-card-title">
@@ -3282,6 +3371,7 @@
         cardEl.classList.toggle("unavailable", isUnavailable);
         cardEl.setAttribute("aria-disabled", isUnavailable ? "true" : "false");
         cardEl.setAttribute("tabindex", isUnavailable ? "-1" : "0");
+        applyMapCardCollectionVisual(cardEl, row);
       }
 
       const unavailableEl = elements.mapCardList.querySelector(

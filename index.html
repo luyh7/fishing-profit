@@ -393,6 +393,13 @@
         border-color: rgba(125, 211, 252, 0.4);
       }
 
+      .map-card.has-collection-target:not(.selected) {
+        border-color: var(
+          --map-card-collection-border,
+          rgba(255, 255, 255, 0.06)
+        );
+      }
+
       .map-card.unavailable {
         cursor: not-allowed;
         opacity: 0.62;
