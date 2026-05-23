@@ -2146,6 +2146,13 @@
     }
   }
 
+  function getLegacyAchievementVisualStage() {
+    const urIndex = collectionRarities.indexOf("UR");
+    return urIndex >= 0
+      ? urIndex + 1
+      : Math.max(0, collectionRarities.length - 1);
+  }
+
   function getPlayerAchievementSummary(player) {
     if (Array.isArray(player?.collections)) {
       let achievementPoints = 0;
@@ -2196,9 +2203,9 @@
 
           if (isFullyCollected) {
             mapPoints += rarityPoints;
+            fillRarity = rarity;
             if (rarity !== "UTR") {
               stage += 1;
-              fillRarity = rarity;
             }
           }
         });
@@ -2237,6 +2244,8 @@
       };
     });
     if (Array.isArray(player?.achievements)) {
+      const legacyStage = getLegacyAchievementVisualStage();
+      const legacyFillRarity = collectionRarities[legacyStage - 1] || "UR";
       for (const key of player.achievements) {
         const m = String(key).match(/^collect_scene_(\d+)$/);
         if (m) {
@@ -2248,8 +2257,8 @@
               (item) => item.mapId === mapId,
             );
             if (state) {
-              state.stage = 5;
-              state.fillRarity = "UR";
+              state.stage = legacyStage;
+              state.fillRarity = legacyFillRarity;
               state.isFullCollected = true;
             }
           }
@@ -2566,7 +2575,9 @@
   }
 
   function buildAchievementTooltipGrid(collectedMapIds) {
-    const stageRarities = collectionRarities.slice(0, -1);
+    const stageRarities = collectionRarities.filter(
+      (rarity) => rarity !== "UTR",
+    );
     const stateByMapId = new Map();
 
     if (Array.isArray(collectedMapIds)) {
@@ -2593,9 +2604,10 @@
 
         const mapId = Number.parseInt(item, 10);
         if (Number.isFinite(mapId) && mapId > 0) {
+          const legacyStage = getLegacyAchievementVisualStage();
           stateByMapId.set(mapId, {
-            stage: stageRarities.length,
-            fillRarity: "UR",
+            stage: legacyStage,
+            fillRarity: collectionRarities[legacyStage - 1] || "UR",
             isFullCollected: true,
           });
         }
@@ -2624,11 +2636,13 @@
             : stageRarities[stage - 1] || "";
         const fillColor =
           stage > 0 ? rarityColor(fillRarity) : "rgba(255, 255, 255, 0.06)";
+        const fillHeight =
+          stageRarities.length > 0 ? (stage / stageRarities.length) * 100 : 0;
         const isFilled = stage > 0;
         const crown = state.isFullCollected
           ? `<span class="ach-tooltip-crown"><svg class="ach-tooltip-crown-icon" viewBox="0 0 24 20" aria-hidden="true"><path d="M3 17.5h18l-1.4-11.2-5.2 4.4L12 3.2 9.6 10.7 4.4 6.3 3 17.5Z"></path></svg></span>`
           : "";
-        return `<span class="ach-tooltip-box ${isFilled ? "is-collected" : ""}${state.isFullCollected ? " is-full" : ""}" style="--achievement-fill-color: ${fillColor}; --achievement-fill-height: ${stage * 20}%;">${crown}${id}</span>`;
+        return `<span class="ach-tooltip-box ${isFilled ? "is-collected" : ""}${state.isFullCollected ? " is-full" : ""}" style="--achievement-fill-color: ${fillColor}; --achievement-fill-height: ${fillHeight}%;">${crown}${id}</span>`;
       })
       .join("");
   }
@@ -2649,12 +2663,14 @@
         .split(",")
         .filter(Boolean)
         .map(Number);
+      const legacyStage = getLegacyAchievementVisualStage();
+      const legacyFillRarity = collectionRarities[legacyStage - 1] || "UR";
       achievementState = mapIds
         .filter((mapId) => Number.isFinite(mapId) && mapId > 0)
         .map((mapId) => ({
           mapId,
-          stage: 5,
-          fillRarity: "UR",
+          stage: legacyStage,
+          fillRarity: legacyFillRarity,
           isFullCollected: true,
         }));
     }
