@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.1",
-  gitCommitCount: 63,
+  gitCommitCount: 64,
   nestBuffSourceUrl:
     "https://fishing-profit-nest-buff.470103427.workers.dev/nest-buff.json",
   baseIntervalHours: 1,
@@ -140,11 +140,11 @@ window.FISH_FISHING_CONFIG = {
       difficulty: 8,
       name: "高山冷湖",
       fishes: [
-        { name: "虹鳟鱼", nPrice: 0 },
-        { name: "金鳟鱼", nPrice: 0 },
-        { name: "柳根鱼", nPrice: 0 },
-        { name: "高原鳅", nPrice: 0 },
-        { name: "细鳞鲑", nPrice: 0 },
+        { name: "虹鳟鱼", nPrice: 80},
+        { name: "金鳟鱼", nPrice: 98 },
+        { name: "柳根鱼", nPrice: 89 },
+        { name: "高原鳅", nPrice: 84 },
+        { name: "细鳞鲑", nPrice: 94 },
       ],
     },
     {
@@ -152,11 +152,11 @@ window.FISH_FISHING_CONFIG = {
       difficulty: 9,
       name: "原生古河",
       fishes: [
-        { name: "胭脂鱼", nPrice: 0 },
-        { name: "斑鳜", nPrice: 0 },
-        { name: "大眼鳜", nPrice: 0 },
-        { name: "长吻鮠", nPrice: 0 },
-        { name: "乌苏里拟鲿", nPrice: 0 },
+        { name: "胭脂鱼", nPrice: 106 },
+        { name: "斑鳜", nPrice: 130 },
+        { name: "大眼鳜", nPrice: 118 },
+        { name: "长吻鮠", nPrice: 112 },
+        { name: "乌苏里拟鲿", nPrice: 124 },
       ],
     },
   ],
