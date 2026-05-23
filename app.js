@@ -2322,13 +2322,32 @@
     };
   }
 
+  function getCurrentBestLeaderboardInfo() {
+    return leaderboardTypes.reduce((bestInfo, typeConfig) => {
+      const currentInfo = getCurrentLeaderboardInfo(typeConfig);
+      if (!currentInfo) {
+        return bestInfo;
+      }
+
+      const leaderboardInfo = {
+        ...currentInfo,
+        typeConfig,
+      };
+
+      if (!bestInfo || leaderboardInfo.rank < bestInfo.rank) {
+        return leaderboardInfo;
+      }
+
+      return bestInfo;
+    }, null);
+  }
+
   function renderLeaderboardSummaryBadge() {
     if (!elements.leaderboardSummaryBadge) {
       return;
     }
 
-    const typeConfig = getLeaderboardTypeConfig(leaderboardActiveType);
-    const currentInfo = getCurrentLeaderboardInfo(typeConfig);
+    const currentInfo = getCurrentBestLeaderboardInfo();
     if (!currentInfo) {
       elements.leaderboardSummaryBadge.hidden = true;
       elements.leaderboardSummaryBadge.textContent = "";
@@ -2336,10 +2355,10 @@
       return;
     }
 
-    const text = `第 ${formatNumber(currentInfo.rank, 0)}`;
+    const text = `最佳排名：第 ${formatNumber(currentInfo.rank, 0)}`;
     elements.leaderboardSummaryBadge.hidden = false;
     elements.leaderboardSummaryBadge.textContent = text;
-    elements.leaderboardSummaryBadge.title = `我的排名：${text}`;
+    elements.leaderboardSummaryBadge.title = `${text}（${currentInfo.typeConfig.label}）`;
   }
 
   function hasLatestAutoNestBuffData() {
