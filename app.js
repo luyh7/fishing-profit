@@ -904,6 +904,10 @@
     return `<span class="map-card-code">${formatNumber(getMapCode(map), 0)}${collectionCrown}</span>`;
   }
 
+  function buildCollectionMapCodeHtml(map) {
+    return `<span class="map-card-code collection-map-code">${formatNumber(getMapCode(map), 0)}</span>`;
+  }
+
   function getHighestCatchableRarity(profile) {
     return (
       config.rarityOrder.find((rarity) => parseNumber(profile?.[rarity]) > 0) ||
@@ -2645,7 +2649,7 @@
 
         return `
           <section class="collection-map-row">
-            <div class="collection-map-name">${escapeHtml(map.name)}</div>
+            <div class="collection-map-name">${buildCollectionMapCodeHtml(map)}<span class="collection-map-title-text">${escapeHtml(map.name)}</span></div>
             <div class="collection-fish-grid">${fishCards}</div>
           </section>
         `;
