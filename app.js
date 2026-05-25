@@ -707,6 +707,7 @@
     }
 
     const now = Date.now();
+    let shouldRenderWeatherTransition = false;
     elements.mapCardList
       .querySelectorAll("[data-weather-countdown]")
       .forEach((countdownEl) => {
@@ -736,9 +737,14 @@
         }
         countdownLine?.classList.toggle("is-expired", isExpired);
 
-        countdownEl
-          .closest(".map-card-weather")
-          ?.classList.toggle("is-expired", isExpired);
+        const weatherCard = countdownEl.closest(".map-card-weather");
+        if (
+          weatherCard &&
+          weatherCard.classList.contains("is-expired") !== isExpired
+        ) {
+          shouldRenderWeatherTransition = true;
+        }
+        weatherCard?.classList.toggle("is-expired", isExpired);
       });
 
     elements.mapCardList
@@ -772,6 +778,12 @@
           startTime,
           effectiveNow,
         );
+        if (
+          weatherCard &&
+          weatherCard.classList.contains("is-pending") !== isPending
+        ) {
+          shouldRenderWeatherTransition = true;
+        }
         elapsedEl.classList.toggle("is-pending", isPending);
         weatherCard?.classList.toggle("is-pending", isPending);
       });
@@ -816,6 +828,10 @@
         }
         baitCountEl.textContent = formatNumber(baitCount, 0);
       });
+
+    if (shouldRenderWeatherTransition) {
+      render({ skipMapCardRebuild: true });
+    }
   }
 
   function getWeatherCycleType(currentType, stepValue) {
