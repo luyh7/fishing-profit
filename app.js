@@ -1003,6 +1003,10 @@
     cardEl.title = `${targetRarity} 未集齐`;
   }
 
+  function buildSelectedMapTitleHtml(map) {
+    return `<span class="map-card-code selected-map-code">${formatNumber(getMapCode(map), 0)}</span><span class="selected-map-name-text">${escapeHtml(map.name)}</span>`;
+  }
+
   function buildOption(selectElement, items, getValue, getLabel) {
     selectElement.innerHTML = items
       .map(
@@ -3251,8 +3255,11 @@
   }
 
   function renderSummary(selectedMapRow, bestBaitRow, inputs) {
-    elements.selectedMapName.textContent = selectedMapRow
-      ? ` Lv.${selectedMapRow.map.difficulty} ${selectedMapRow.map.name}`
+    elements.selectedMapName.className = selectedMapRow
+      ? "value selected-map-name"
+      : "value";
+    elements.selectedMapName.innerHTML = selectedMapRow
+      ? buildSelectedMapTitleHtml(selectedMapRow.map)
       : "-";
     elements.selectedMapDelta.className = selectedMapRow
       ? "small selected-map-delta"
