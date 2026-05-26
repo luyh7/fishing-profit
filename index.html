@@ -373,6 +373,23 @@
         background: rgba(125, 211, 252, 0.08);
       }
 
+      .tooltip-price {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 20px;
+        padding: 1px 6px;
+        border: 1px solid transparent;
+        border-radius: 999px;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+
+      .tooltip-price.is-missing {
+        border-color: var(--rarity-color, rgba(255, 255, 255, 0.56));
+        box-shadow: 0 0 0 1px var(--rarity-color, rgba(255, 255, 255, 0.56));
+      }
+
       .tooltip-rarity {
         display: inline-flex;
         align-items: center;

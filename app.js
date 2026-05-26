@@ -1974,14 +1974,30 @@
           `<th><span class="tooltip-rarity" data-rarity="${rarity}" style="--rarity-color: ${rarityColor(rarity)};">${rarity}</span></th>`,
       )
       .join("");
+    const shouldMarkMissingPrices = Boolean(
+      activePlayerData && Array.isArray(activePlayerData.collections),
+    );
 
     const rows = fishes
       .map((fish) => {
+        const fishKey = getFishCollectionKey(selectedMapRow.map, fish);
         const cells = visibleRarities
           .map((rarity) => {
             const multiplier = parseNumber(config.rarityMultipliers[rarity]);
             const price = parseNumber(fish.nPrice) * multiplier;
-            return `<td>¥${formatNumber(price, 0)}</td>`;
+            const isMissing =
+              shouldMarkMissingPrices &&
+              !isFishRarityCollected(fishKey, rarity);
+            const priceClass = `tooltip-price${isMissing ? " is-missing" : ""}`;
+            const priceLabel = `${fish.name} ${rarity} ${
+              isMissing ? "未收集" : "已收集"
+            }`;
+            const priceStyle = `--rarity-color: ${rarityColor(rarity)};`;
+            const priceText = `¥${formatNumber(price, 0)}`;
+            return (
+              `<td><span class="${priceClass}" style="${priceStyle}" ` +
+              `aria-label="${escapeHtml(priceLabel)}">${priceText}</span></td>`
+            );
           })
           .join("");
         return `<tr><td>${fish.name}</td>${cells}</tr>`;
