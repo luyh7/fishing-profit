@@ -2290,6 +2290,8 @@
             stage: 0,
             fillRarity: "",
             isFullCollected: false,
+            hasUrFullCollected: false,
+            hasUtrFullCollected: false,
           });
           return;
         }
@@ -2301,6 +2303,8 @@
             stage: 0,
             fillRarity: "",
             isFullCollected: false,
+            hasUrFullCollected: false,
+            hasUtrFullCollected: false,
           });
           return;
         }
@@ -2308,6 +2312,8 @@
         let mapPoints = 0;
         let stage = 0;
         let fillRarity = "";
+        let hasUrFullCollected = false;
+        let hasUtrFullCollected = false;
         collectionRarities.forEach((rarity, rarityIndex) => {
           const rarityPoints = getCollectionAchievementPointWeight(rarity);
           if (rarityPoints <= 0) {
@@ -2323,6 +2329,11 @@
           if (isFullyCollected) {
             mapPoints += rarityPoints;
             fillRarity = rarity;
+            if (rarity === "UR") {
+              hasUrFullCollected = true;
+            } else if (rarity === "UTR") {
+              hasUtrFullCollected = true;
+            }
             if (rarity !== "UTR") {
               stage += 1;
             }
@@ -2334,6 +2345,8 @@
           stage,
           fillRarity,
           isFullCollected: stage === collectionRarities.length - 1,
+          hasUrFullCollected,
+          hasUtrFullCollected,
         });
 
         if (mapPoints > 0) {
@@ -2360,6 +2373,8 @@
         stage: 0,
         fillRarity: "",
         isFullCollected: false,
+        hasUrFullCollected: false,
+        hasUtrFullCollected: false,
       };
     });
     if (Array.isArray(player?.achievements)) {
@@ -2379,6 +2394,8 @@
               state.stage = legacyStage;
               state.fillRarity = legacyFillRarity;
               state.isFullCollected = true;
+              state.hasUrFullCollected = true;
+              state.hasUtrFullCollected = false;
             }
           }
         }
@@ -2693,10 +2710,39 @@
       .join("");
   }
 
-  function buildAchievementTooltipGrid(collectedMapIds) {
-    const stageRarities = collectionRarities.filter(
-      (rarity) => rarity !== "UTR",
+  function getAchievementStageRarities() {
+    return collectionRarities.filter((rarity) => rarity !== "UTR");
+  }
+
+  function buildAchievementMapBoxHtml(mapId, state, options = {}) {
+    const stageRarities = getAchievementStageRarities();
+    const stage = Math.max(
+      0,
+      Math.min(stageRarities.length, Number.parseInt(state?.stage, 10) || 0),
     );
+    const fillRarity =
+      stage > 0 && state?.fillRarity
+        ? state.fillRarity
+        : stageRarities[stage - 1] || "";
+    const fillColor =
+      stage > 0 ? rarityColor(fillRarity) : "rgba(255, 255, 255, 0.06)";
+    const fillHeight =
+      stageRarities.length > 0 ? (stage / stageRarities.length) * 100 : 0;
+    const isFilled = stage > 0;
+    const isFull = Boolean(state?.isFullCollected || options.showCrown);
+    const crown = isFull
+      ? `<span class="ach-tooltip-crown"><svg class="ach-tooltip-crown-icon" viewBox="0 0 24 20" aria-hidden="true" focusable="false"><path d="M3 17.5h18l-1.4-11.2-5.2 4.4L12 3.2 9.6 10.7 4.4 6.3 3 17.5Z"></path></svg></span>`
+      : "";
+    const extraClass = options.className ? ` ${options.className}` : "";
+    const ariaLabel = options.ariaLabel
+      ? ` aria-label="${escapeHtml(options.ariaLabel)}"`
+      : "";
+
+    return `<span class="ach-tooltip-box ${isFilled ? "is-collected" : ""}${isFull ? " is-full" : ""}${extraClass}"${ariaLabel} style="--achievement-fill-color: ${fillColor}; --achievement-fill-height: ${fillHeight}%;">${crown}${escapeHtml(String(mapId))}</span>`;
+  }
+
+  function buildAchievementTooltipGrid(collectedMapIds) {
+    const stageRarities = getAchievementStageRarities();
     const stateByMapId = new Map();
 
     if (Array.isArray(collectedMapIds)) {
@@ -2717,6 +2763,8 @@
             ),
             fillRarity: String(item.fillRarity || ""),
             isFullCollected: Boolean(item.isFullCollected || item.full),
+            hasUrFullCollected: Boolean(item.hasUrFullCollected),
+            hasUtrFullCollected: Boolean(item.hasUtrFullCollected),
           });
           return;
         }
@@ -2728,6 +2776,8 @@
             stage: legacyStage,
             fillRarity: collectionRarities[legacyStage - 1] || "UR",
             isFullCollected: true,
+            hasUrFullCollected: true,
+            hasUtrFullCollected: false,
           });
         }
       });
@@ -2744,26 +2794,76 @@
           stage: 0,
           fillRarity: "",
           isFullCollected: false,
+          hasUrFullCollected: false,
+          hasUtrFullCollected: false,
         };
-        const stage = Math.max(
-          0,
-          Math.min(stageRarities.length, Number.parseInt(state.stage, 10) || 0),
-        );
-        const fillRarity =
-          stage > 0 && state.fillRarity
-            ? state.fillRarity
-            : stageRarities[stage - 1] || "";
-        const fillColor =
-          stage > 0 ? rarityColor(fillRarity) : "rgba(255, 255, 255, 0.06)";
-        const fillHeight =
-          stageRarities.length > 0 ? (stage / stageRarities.length) * 100 : 0;
-        const isFilled = stage > 0;
-        const crown = state.isFullCollected
-          ? `<span class="ach-tooltip-crown"><svg class="ach-tooltip-crown-icon" viewBox="0 0 24 20" aria-hidden="true"><path d="M3 17.5h18l-1.4-11.2-5.2 4.4L12 3.2 9.6 10.7 4.4 6.3 3 17.5Z"></path></svg></span>`
-          : "";
-        return `<span class="ach-tooltip-box ${isFilled ? "is-collected" : ""}${state.isFullCollected ? " is-full" : ""}" style="--achievement-fill-color: ${fillColor}; --achievement-fill-height: ${fillHeight}%;">${crown}${id}</span>`;
+        return buildAchievementMapBoxHtml(id, state);
       })
       .join("");
+  }
+
+  function hasUrOrUtrFullCollectedForMap(state) {
+    const fillRarity = String(state?.fillRarity || "");
+    return Boolean(
+      state?.hasUrFullCollected ||
+        state?.hasUtrFullCollected ||
+        state?.isFullCollected ||
+        fillRarity === "UR" ||
+        fillRarity === "UTR",
+    );
+  }
+
+  function buildLeaderboardMapAchievementsHtml(entry) {
+    const states = Array.isArray(entry?.achievementMapStates)
+      ? entry.achievementMapStates
+      : [];
+    const badges = states
+      .filter((state) => hasUrOrUtrFullCollectedForMap(state))
+      .map((state) => {
+        const mapId = Number.parseInt(state?.mapId, 10);
+        return {
+          state,
+          mapId,
+        };
+      })
+      .filter((item) => Number.isFinite(item.mapId) && item.mapId > 0)
+      .sort((left, right) => left.mapId - right.mapId)
+      .map(({ state, mapId }) => {
+        const completedRarity =
+          state?.hasUtrFullCollected || state?.fillRarity === "UTR"
+            ? "UTR"
+            : "UR";
+        const badgeState = {
+          ...(state || {}),
+          isFullCollected: true,
+        };
+
+        return buildAchievementMapBoxHtml(mapId, badgeState, {
+          className: "leaderboard-map-achievement-box",
+          showCrown: true,
+          ariaLabel: `地图 ${mapId} 已集齐 ${completedRarity}`,
+        });
+      });
+
+    return badges.length
+      ? `<span class="leaderboard-map-achievements">${badges.join("")}</span>`
+      : "";
+  }
+
+  function buildLeaderboardAchievementValueHtml(entry, typeConfig) {
+    if (entry.achievementPoints <= 0) {
+      return "";
+    }
+
+    const achievementMapStates = Array.isArray(entry.achievementMapStates)
+      ? entry.achievementMapStates
+      : [];
+    const collectedMapIds = Array.isArray(entry.collectedMapIds)
+      ? entry.collectedMapIds
+      : [];
+    const mapAchievements = buildLeaderboardMapAchievementsHtml(entry);
+
+    return `<span class="has-tooltip ach-trigger leaderboard-achievement-summary" data-achievement-state='${escapeHtml(JSON.stringify(achievementMapStates))}' data-ach-maps="${escapeHtml(collectedMapIds.join(","))}">${mapAchievements}<span class="leaderboard-achievement-points">${escapeHtml(typeConfig.formatPrimaryValue(entry))}</span></span>`;
   }
 
   function getAchievementTooltipState(trigger) {
@@ -2791,6 +2891,8 @@
           stage: legacyStage,
           fillRarity: legacyFillRarity,
           isFullCollected: true,
+          hasUrFullCollected: true,
+          hasUtrFullCollected: false,
         }));
     }
 
@@ -2892,8 +2994,28 @@
     const ttHeight = tooltip.offsetHeight;
     const margin = 8;
     const gap = 8;
+    const mapAchievements = trigger.querySelector(
+      ".leaderboard-map-achievements",
+    );
+    const mapAchievementsRect = mapAchievements?.getBoundingClientRect();
+    const shouldOverlayMapAchievements = Boolean(
+      mapAchievementsRect &&
+        mapAchievementsRect.width > 0 &&
+        mapAchievementsRect.height > 0,
+    );
+    const achievementPoints = trigger.querySelector(
+      ".leaderboard-achievement-points",
+    );
+    const achievementPointsRect = achievementPoints?.getBoundingClientRect();
+    const canAvoidAchievementPoints = Boolean(
+      shouldOverlayMapAchievements &&
+        achievementPointsRect &&
+        achievementPointsRect.width > 0,
+    );
 
-    let left = triggerRect.left - ttWidth - gap;
+    let left = canAvoidAchievementPoints
+      ? achievementPointsRect.left - ttWidth - gap
+      : triggerRect.left - ttWidth - gap;
     let top = rowRect.top + rowRect.height / 2 - ttHeight / 2;
 
     if (left < containerRect.left + margin) {
@@ -3013,13 +3135,17 @@
         idx < 3
           ? medalHtml
           : `<span class="leaderboard-rank-number">${rank}</span>`;
+      const valueHtml =
+        typeConfig.key === "achievement"
+          ? buildLeaderboardAchievementValueHtml(entry, typeConfig)
+          : escapeHtml(typeConfig.formatPrimaryValue(entry));
       return `
           <li class="leaderboard-row ${isCurrent ? "is-current" : ""}${topClass}" data-user-id="${escapeHtml(entry.userId)}" tabindex="0">
             <div class="leaderboard-rank">${rankContent}</div>
             <div class="leaderboard-main">
               <div class="leaderboard-nick">${escapeHtml(entry.nickname || entry.userId)}</div>
             </div>
-            <div class="leaderboard-value">${typeConfig.key === "achievement" ? (entry.achievementPoints > 0 ? `<span class="has-tooltip ach-trigger" data-achievement-state='${escapeHtml(JSON.stringify(entry.achievementMapStates || []))}' data-ach-maps="${escapeHtml(entry.collectedMapIds.join(","))}">${escapeHtml(typeConfig.formatPrimaryValue(entry))}</span>` : "") : escapeHtml(typeConfig.formatPrimaryValue(entry))}</div>
+            <div class="leaderboard-value">${valueHtml}</div>
           </li>
         `;
     };

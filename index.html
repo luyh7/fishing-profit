@@ -2379,11 +2379,38 @@
 
       /* Achievement tooltip */
       .leaderboard-value .ach-trigger {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
         cursor: help;
       }
 
       .leaderboard-value .ach-trigger.is-tooltip-pinned {
         color: var(--accent);
+      }
+
+      .leaderboard-achievement-points {
+        white-space: nowrap;
+      }
+
+      .leaderboard-map-achievements {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 6px;
+        flex-shrink: 0;
+        max-width: 280px;
+      }
+
+      .leaderboard-map-achievement-box {
+        cursor: help;
+        z-index: auto;
+      }
+
+      .leaderboard-map-achievement-box .ach-tooltip-crown {
+        z-index: 0;
       }
 
       #leaderboardModal .collection-body {
@@ -2554,6 +2581,10 @@
       }
 
       @media (max-width: 820px) {
+        .leaderboard-map-achievements {
+          display: none;
+        }
+
         .hero,
         .hero-metrics,
         .controls {
