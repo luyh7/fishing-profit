@@ -10,7 +10,7 @@
 - 页面直接读取鱼钩等级、鱼竿等级、鱼饵列表、周末buff、地图列表、稀有度倍数和概率表。
 - 每张地图内配置自己的 `id`、`difficulty`、鱼种列表及每种鱼的 N 级基础价格。
 - 用户输入与选择会通过 `localStorage` 持久化，包括鱼钩等级、鱼竿等级、周末buff、当前地图、每张地图的打窝 buff 和自动更新打窝 buff 开关状态。
-- 地图打窝 buff 支持通过配置中的静态 JSON 地址刷新，地址由 `config.js` 中的 `nestBuffSourceUrl` 提供，推荐指向 Cloudflare Worker 的 `/nest-buff.json`，返回的 `locations[].buffs.nest` 会按 `nest * 5` 转换为最终打窝 buff。
+- 地图打窝 buff 支持通过配置中的静态 JSON 地址刷新，地址由 `config.js` 中的 `nestBuffSourceUrl` 提供，推荐指向 Cloudflare Worker 的 `/nest-buff.json`，返回的 `locations[].buffs.nest` 和 `locations[].buffs.frame` 会按 `(nest + frame) * 5` 转换为最终打窝 buff。
 - 静态 JSON 的 `players` 数据用于 QQ 号匹配；匹配成功后可同步玩家昵称、鱼竿等级、鱼钩等级、当前位置和当前鱼饵及数量。
 - 静态 JSON 的 `players[].collections` 用于图鉴读取；数组中每个数对应一个地图的鱼收集位图，按鱼种顺序分组、每组 6 位，位序从低到高依次为 N、R、SR、SSR、UR、UTR，`bit0` 表示 N，`bit5` 表示 UTR。
 

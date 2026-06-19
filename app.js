@@ -1569,7 +1569,7 @@
         return;
       }
 
-      const nestValue = parseNumber(location?.buffs?.nest) * 5;
+      const nestValue = (parseNumber(location?.buffs?.nest) + parseNumber(location?.buffs?.frame)) * 5;
       if (nestValue > 0) {
         nextBaitBuffByMap[String(mapId)] = String(nestValue);
       }
