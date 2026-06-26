@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.1",
-  gitCommitCount: 76,
+  gitCommitCount: 77,
   nestBuffSourceUrl:
     "https://fishing-profit-nest-buff.470103427.workers.dev/nest-buff.json",
   baseIntervalHours: 1,
@@ -38,6 +38,113 @@ window.FISH_FISHING_CONFIG = {
     { id: "none", name: "无", value: 0 },
     { id: "weekend", name: "加速30%", value: 30 },
   ],
+  catParadise: {
+    mapId: "S1",
+    maxOpenLevel: 1,
+    buildings: [
+      {
+        id: "catCabin",
+        order: 1,
+        name: "猫猫小木屋",
+        levels: [
+          {
+            level: 1,
+            effects: { baitSavingPercent: 3 },
+          },
+        ],
+      },
+      {
+        id: "catFishPond",
+        order: 2,
+        name: "喵喵鱼塘",
+        levels: [
+          {
+            level: 1,
+            effects: { fishingSpeedPercent: 3 },
+          },
+        ],
+      },
+      {
+        id: "catClimbingPlaza",
+        order: 3,
+        name: "猫爬架广场",
+        baseEffects: { materialDropRatePercent: 30 },
+        levels: [
+          {
+            level: 1,
+            effects: { materialDropRatePercent: 5 },
+          },
+        ],
+      },
+      {
+        id: "catCafe",
+        order: 4,
+        name: "喵咖咖啡馆",
+        levels: [
+          {
+            level: 1,
+            effects: { fishPricePercent: 3 },
+          },
+        ],
+      },
+      {
+        id: "catCoaster",
+        order: 5,
+        name: "猫猫过山车",
+        levels: [
+          {
+            level: 1,
+            effects: { weatherBoostPercent: 3 },
+          },
+        ],
+      },
+      {
+        id: "spinningCatTeaser",
+        order: 6,
+        name: "旋转逗猫棒",
+        levels: [
+          {
+            level: 1,
+            effects: { doubleCatchPercent: 1 },
+          },
+        ],
+      },
+      {
+        id: "crystalCatCastle",
+        order: 7,
+        name: "水晶猫城堡",
+        levels: [
+          {
+            level: 1,
+            effects: { rodLevelBonusChancePercent: 5 },
+          },
+        ],
+      },
+      {
+        id: "catFerrisWheel",
+        order: 8,
+        name: "猫咪摩天轮",
+        levels: [
+          {
+            level: 1,
+            effects: { dailySignDraws: 1 },
+          },
+        ],
+      },
+      {
+        id: "legendaryCatStatue",
+        order: 9,
+        name: "传奇猫雕像",
+        prerequisiteText: "需要其他8栋建筑全部达到 Lv1",
+        levels: [
+          {
+            level: 1,
+            effects: { unlockLevel: 2 },
+          },
+        ],
+      },
+    ],
+  },
   maps: [
     {
       id: 1,
@@ -157,6 +264,23 @@ window.FISH_FISHING_CONFIG = {
         { name: "大眼鳜", nPrice: 118 },
         { name: "长吻鮠", nPrice: 112 },
         { name: "乌苏里拟鲿", nPrice: 124 },
+      ],
+    },
+    {
+      id: "S1",
+      difficulty: 6,
+      name: "猫猫乐园",
+      fishes: [
+        { name: "橘座鲫鱼", nPrice: 47 },
+        { name: "暹罗鳊鱼", nPrice: 57 },
+        { name: "布偶白条", nPrice: 52 },
+        { name: "奶牛麦穗", nPrice: 49 },
+        { name: "三花泥鳅", nPrice: 55 },
+        { name: "金渐层锦鲤", nPrice: 61 },
+        { name: "英短青鱼", nPrice: 75 },
+        { name: "无毛鲶鱼", nPrice: 68 },
+        { name: "折耳翘嘴", nPrice: 64 },
+        { name: "卷耳黄颡", nPrice: 72 },
       ],
     },
   ],

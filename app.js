@@ -18,13 +18,25 @@
   const nestBuffSourceUrl = config.nestBuffSourceUrl || "./nest-buff.json";
   const nestBuffAutoRefreshIntervalMs = 1 * 60 * 1000;
   const collectionLongPressMs = 280;
+  const catParadiseConfig = config.catParadise || {};
+  const catParadiseMapId = normalizeMapId(catParadiseConfig.mapId || "S1");
+  const catParadiseBuildings = Array.isArray(catParadiseConfig.buildings)
+    ? catParadiseConfig.buildings
+    : [];
+  const catParadiseMaxOpenLevel = Number.isFinite(
+    Number(catParadiseConfig.maxOpenLevel),
+  )
+    ? Number(catParadiseConfig.maxOpenLevel)
+    : 1;
   const storageKeys = {
     hookLevel: "fish_calculator_hook_level",
     rodLevel: "fish_calculator_rod_level",
     systemBuff: "fish_calculator_system_buff",
     mapLevel: "fish_calculator_map_level",
+    mapId: "fish_calculator_map_id",
     baitBuffByMap: "fish_calculator_bait_buff_by_map",
-    weatherOverrideByMap: "fish_calculator_weather_override_by_map",
+    weatherOverrideByMap: "fish_calculator_weather_override_by_map_v2",
+    catBuildingLevels: "fish_calculator_cat_building_levels",
     autoNestBuff: "fish_calculator_auto_nest_buff",
     playerQQ: "fish_calculator_player_qq",
     baitReminderEnabled: "fish_calculator_bait_reminder_enabled",
@@ -110,6 +122,9 @@
     leaderboardContentSubtitle: document.getElementById(
       "leaderboardContentSubtitle",
     ),
+    catBuildingsModal: document.getElementById("catBuildingsModal"),
+    catBuildingsSummary: document.getElementById("catBuildingsSummary"),
+    catBuildingsList: document.getElementById("catBuildingsList"),
     versionBadge: document.getElementById("versionBadge"),
     mapCardList: document.getElementById("mapCardList"),
     selectedMapName: document.getElementById("selectedMapName"),
@@ -183,6 +198,151 @@
           return char;
       }
     });
+  }
+
+  function normalizeMapId(value) {
+    if (value === null || value === undefined) {
+      return "";
+    }
+
+    return String(value).trim();
+  }
+
+  function getMapId(map) {
+    return normalizeMapId(map?.id);
+  }
+
+  function getMapDisplayCode(map) {
+    return getMapId(map) || "-";
+  }
+
+  function compareMapIdsForDisplay(left, right) {
+    const leftId = normalizeMapId(
+      left && typeof left === "object" ? left.id : left,
+    );
+    const rightId = normalizeMapId(
+      right && typeof right === "object" ? right.id : right,
+    );
+    const leftIsNumeric = /^\d+$/.test(leftId);
+    const rightIsNumeric = /^\d+$/.test(rightId);
+
+    if (leftIsNumeric && rightIsNumeric) {
+      return Number.parseInt(leftId, 10) - Number.parseInt(rightId, 10);
+    }
+    if (leftIsNumeric !== rightIsNumeric) {
+      return leftIsNumeric ? -1 : 1;
+    }
+
+    return leftId.localeCompare(rightId, "zh-CN", { numeric: true });
+  }
+
+  function getMapIndexById(mapId) {
+    const normalizedMapId = normalizeMapId(mapId);
+    if (!normalizedMapId) {
+      return -1;
+    }
+
+    return config.maps.findIndex((map) => getMapId(map) === normalizedMapId);
+  }
+
+  function getMapAchievementId(map, mapIndex) {
+    return getMapId(map) || String(mapIndex + 1);
+  }
+
+  function getMapCardElement(mapId) {
+    if (!elements.mapCardList) {
+      return null;
+    }
+
+    const normalizedMapId = normalizeMapId(mapId);
+    return (
+      Array.from(
+        elements.mapCardList.querySelectorAll(".map-card[data-map-id]"),
+      ).find((card) => card.dataset.mapId === normalizedMapId) || null
+    );
+  }
+
+  function parseCollectionValue(value) {
+    if (typeof value === "bigint") {
+      return value >= 0n ? value : 0n;
+    }
+
+    if (typeof value === "number") {
+      if (!Number.isFinite(value) || value <= 0) {
+        return 0n;
+      }
+
+      return BigInt(Math.trunc(value));
+    }
+
+    const text = String(value ?? "").trim();
+    if (!/^\d+$/.test(text)) {
+      return 0n;
+    }
+
+    try {
+      return BigInt(text);
+    } catch (_error) {
+      return 0n;
+    }
+  }
+
+  function parseNestBuffPayload(text) {
+    // Preserve collection bitmaps before JSON.parse can round large integers.
+    const quoteIntegerTokens = (value) => {
+      let result = "";
+      let index = 0;
+      let inString = false;
+      let escaped = false;
+
+      while (index < value.length) {
+        const char = value[index];
+        if (inString) {
+          result += char;
+          if (escaped) {
+            escaped = false;
+          } else if (char === "\\") {
+            escaped = true;
+          } else if (char === '"') {
+            inString = false;
+          }
+          index += 1;
+          continue;
+        }
+
+        if (char === '"') {
+          inString = true;
+          result += char;
+          index += 1;
+          continue;
+        }
+
+        if (char === "-" || (char >= "0" && char <= "9")) {
+          const start = index;
+          index += 1;
+          while (/[0-9.eE+-]/.test(value[index] || "")) {
+            index += 1;
+          }
+          const token = value.slice(start, index);
+          result += /^-?(?:0|[1-9]\d*)$/.test(token)
+            ? `"${token}"`
+            : token;
+          continue;
+        }
+
+        result += char;
+        index += 1;
+      }
+
+      return result;
+    };
+
+    const normalizedText = String(text).replace(
+      /("collections"\s*:\s*)\[([^\]]*)\]/g,
+      (_match, prefix, body) => `${prefix}[${quoteIntegerTokens(body)}]`,
+    );
+
+    return JSON.parse(normalizedText);
   }
 
   function formatDurationCountdown(value) {
@@ -412,7 +572,7 @@
   }
 
   function getWeatherForMap(mapLevel, mapId) {
-    const key = String(mapLevel);
+    const key = normalizeMapId(mapId) || String(mapLevel);
     const overrideType = weatherOverrideByMap[key];
     if (overrideType) {
       return buildManualWeather(overrideType);
@@ -434,29 +594,45 @@
     return weather;
   }
 
-  function getWeatherMultiplier(weather) {
+  function getBoostedWeatherEffectFactor(weatherBoostPercent) {
+    return 1 + Math.max(0, parseNumber(weatherBoostPercent)) / 100;
+  }
+
+  function getWeatherMultiplier(weather, weatherBoostPercent = 0) {
     const type = normalizeWeatherType(weather?.type);
     const meta = getWeatherMeta(type);
     if (type === "rain" && !isWeatherEffectivelyInactive(weather)) {
-      return meta.multiplier;
+      const baseMultiplier = Number.isFinite(meta.multiplier)
+        ? meta.multiplier
+        : 1;
+      return 1 + (baseMultiplier - 1) * getBoostedWeatherEffectFactor(weatherBoostPercent);
     }
 
     return 1;
   }
 
-  function getWeatherBaitCostMultiplier(weather) {
+  function getWeatherBaitCostMultiplier(weather, weatherBoostPercent = 0) {
     const type = normalizeWeatherType(weather?.type);
     const meta = getWeatherMeta(type);
     if (isWeatherEffectivelyInactive(weather)) {
       return 1;
     }
 
-    return Number.isFinite(meta.baitCostMultiplier)
+    const baseMultiplier = Number.isFinite(meta.baitCostMultiplier)
       ? meta.baitCostMultiplier
       : 1;
+    if (type !== "storm") {
+      return baseMultiplier;
+    }
+
+    const savingRate = Math.max(0, 1 - baseMultiplier);
+    return Math.max(
+      0,
+      1 - savingRate * getBoostedWeatherEffectFactor(weatherBoostPercent),
+    );
   }
 
-  function adjustMeteorProbabilityProfile(profile) {
+  function adjustMeteorProbabilityProfile(profile, weatherBoostPercent = 0) {
     const activeRarities = baseRarityOrder.filter(
       (rarity) => parseNumber(profile?.[rarity]) > 0,
     );
@@ -468,7 +644,10 @@
     const highestRarity = activeRarities[0];
     const secondHighestRarity = activeRarities[1];
     const secondProbability = parseNumber(profile?.[secondHighestRarity]);
-    const shift = Math.min(2, secondProbability);
+    const shift = Math.min(
+      2 * getBoostedWeatherEffectFactor(weatherBoostPercent),
+      secondProbability,
+    );
 
     if (shift <= 0) {
       return profile;
@@ -487,7 +666,7 @@
     return adjustedProfile;
   }
 
-  function getLostWindEffectiveUtrProbability() {
+  function getLostWindEffectiveUtrProbability(weatherBoostPercent = 0) {
     const baseRate = lostWindUtrBaseProbability / 100;
     const pityCount = Math.max(1, Math.floor(lostWindUtrPityCount));
     if (!Number.isFinite(baseRate) || baseRate <= 0) {
@@ -500,20 +679,33 @@
 
     const cycleHitProbability = 1 - Math.pow(1 - baseRate, pityCount);
     if (cycleHitProbability <= 0) {
-      return lostWindUtrBaseProbability;
+      return Math.min(
+        100,
+        lostWindUtrBaseProbability *
+          getBoostedWeatherEffectFactor(weatherBoostPercent),
+      );
     }
 
-    return Math.min(100, (baseRate / cycleHitProbability) * 100);
+    return Math.min(
+      100,
+      (baseRate / cycleHitProbability) *
+        100 *
+        getBoostedWeatherEffectFactor(weatherBoostPercent),
+    );
   }
 
-  function getWeatherAdjustedProbabilityProfile(profile, weather) {
+  function getWeatherAdjustedProbabilityProfile(
+    profile,
+    weather,
+    weatherBoostPercent = 0,
+  ) {
     const type = normalizeWeatherType(weather?.type);
     if (isWeatherEffectivelyInactive(weather)) {
       return profile;
     }
 
     if (type === "meteor") {
-      return adjustMeteorProbabilityProfile(profile);
+      return adjustMeteorProbabilityProfile(profile, weatherBoostPercent);
     }
 
     if (type !== "lost_wind") {
@@ -530,12 +722,14 @@
     if (baseTotal <= 0) {
       return config.rarityOrder.reduce((adjustedProfile, rarity) => {
         adjustedProfile[rarity] =
-          rarity === "UTR" ? getLostWindEffectiveUtrProbability() : 0;
+          rarity === "UTR"
+            ? getLostWindEffectiveUtrProbability(weatherBoostPercent)
+            : 0;
         return adjustedProfile;
       }, {});
     }
 
-    const utrProbability = getLostWindEffectiveUtrProbability();
+    const utrProbability = getLostWindEffectiveUtrProbability(weatherBoostPercent);
     const scale = (100 - utrProbability) / baseTotal;
     const adjustedProfile = {};
     baseRarityOrder.forEach((rarity) => {
@@ -587,7 +781,9 @@
     const type = normalizeWeatherType(weather?.type);
     const endTime = parseWeatherTime(weather?.end_time);
     const intervalHours = bestBaitRow?.intervalHours;
-    const baitCostMultiplier = getWeatherBaitCostMultiplier(weather);
+    const baitCostMultiplier = Number.isFinite(bestBaitRow?.baitCostMultiplier)
+      ? bestBaitRow.baitCostMultiplier
+      : getWeatherBaitCostMultiplier(weather);
     const baitName = String(bestBaitRow?.bait?.name || "鱼饵").trim() || "鱼饵";
     const isActiveStorm =
       type === "storm" &&
@@ -855,9 +1051,9 @@
     const nextWeatherOverrides = {};
 
     config.maps.forEach((map) => {
-      const mapLevel = String(map.difficulty);
+      const mapKey = getMapId(map);
       const currentWeather = getWeatherForMap(map.difficulty, map.id);
-      nextWeatherOverrides[mapLevel] = normalizeWeatherType(
+      nextWeatherOverrides[mapKey] = normalizeWeatherType(
         currentWeather?.type,
       );
     });
@@ -866,8 +1062,12 @@
     persistWeatherOverrides();
   }
 
-  function setWeatherOverrideForMap(mapLevel, weatherType) {
-    const key = String(mapLevel);
+  function setWeatherOverrideForMap(mapId, weatherType) {
+    const key = normalizeMapId(mapId);
+    if (!key) {
+      return;
+    }
+
     if (!weatherType) {
       delete weatherOverrideByMap[key];
     } else {
@@ -899,12 +1099,13 @@
     const weather =
       row.weather || getWeatherForMap(row.map.difficulty, row.map.id);
     const tooltip = getWeatherTooltipContent(weather, row);
+    const mapId = escapeHtml(getMapId(row.map));
     return `
-      <div class="${getWeatherBadgeClass(weather)} has-tooltip" data-map-weather="${row.map.difficulty}" data-map-id="${row.map.id}">
-        <button type="button" class="weather-step-btn" data-weather-step="-1" data-weather-map="${row.map.difficulty}" data-weather-map-id="${row.map.id}" aria-label="切换到前一个天气">‹</button>
+      <div class="${getWeatherBadgeClass(weather)} has-tooltip" data-map-weather="${row.map.difficulty}" data-map-id="${mapId}">
+        <button type="button" class="weather-step-btn" data-weather-step="-1" data-weather-map="${row.map.difficulty}" data-weather-map-id="${mapId}" aria-label="切换到前一个天气">‹</button>
         <span class="weather-emoji" aria-hidden="true">${getWeatherMeta(weather.type).emoji}</span>
-        <button type="button" class="weather-step-btn" data-weather-step="1" data-weather-map="${row.map.difficulty}" data-weather-map-id="${row.map.id}" aria-label="切换到下一个天气">›</button>
-        <div class="tooltip" data-map-weather-tooltip="${row.map.difficulty}">${tooltip}</div>
+        <button type="button" class="weather-step-btn" data-weather-step="1" data-weather-map="${row.map.difficulty}" data-weather-map-id="${mapId}" aria-label="切换到下一个天气">›</button>
+        <div class="tooltip" data-map-weather-tooltip="${mapId}">${tooltip}</div>
       </div>
     `;
   }
@@ -913,15 +1114,21 @@
     return buildWeatherControlHtml(row);
   }
 
+  function buildCatBuildingsButtonHtml(row) {
+    return isCatParadiseMap(row.map)
+      ? `<button type="button" class="cat-buildings-btn" data-cat-buildings-open aria-label="猫猫乐园建筑" title=""><span class="cat-buildings-open-icon" aria-hidden="true">🏠</span></button>`
+      : "";
+  }
+
   function buildMapCardCodeHtml(map) {
     const collectionCrown = hasPlayerAchievementForMap(map.id)
       ? `<span class="map-card-crown has-tooltip" aria-label="全收集"><svg class="map-card-crown-icon" viewBox="0 0 24 20" aria-hidden="true" focusable="false"><path d="M3 17.5h18l-1.4-11.2-5.2 4.4L12 3.2 9.6 10.7 4.4 6.3 3 17.5Z"></path></svg><span class="tooltip">全收集</span></span>`
       : "";
-    return `<span class="map-card-code">${formatNumber(getMapCode(map), 0)}${collectionCrown}</span>`;
+    return `<span class="map-card-code">${escapeHtml(getMapDisplayCode(map))}${collectionCrown}</span>`;
   }
 
   function buildCollectionMapCodeHtml(map) {
-    return `<span class="map-card-code collection-map-code">${formatNumber(getMapCode(map), 0)}</span>`;
+    return `<span class="map-card-code collection-map-code">${escapeHtml(getMapDisplayCode(map))}</span>`;
   }
 
   function getHighestCatchableRarity(profile) {
@@ -1004,7 +1211,7 @@
   }
 
   function buildSelectedMapTitleHtml(map) {
-    return `<span class="map-card-code selected-map-code">${formatNumber(getMapCode(map), 0)}</span><span class="selected-map-name-text">${escapeHtml(map.name)}</span>`;
+    return `<span class="map-card-code selected-map-code">${escapeHtml(getMapDisplayCode(map))}</span><span class="selected-map-name-text">${escapeHtml(map.name)}</span>`;
   }
 
   function buildOption(selectElement, items, getValue, getLabel) {
@@ -1065,12 +1272,112 @@
     }
   }
 
+  function getCatBuildingConfiguredMaxLevel(building) {
+    const levels = Array.isArray(building?.levels) ? building.levels : [];
+    return levels.reduce(
+      (maxLevel, item) => Math.max(maxLevel, Number.parseInt(item.level, 10) || 0),
+      0,
+    );
+  }
+
+  function getCatBuildingMaxLevel(building) {
+    return Math.min(
+      catParadiseMaxOpenLevel,
+      getCatBuildingConfiguredMaxLevel(building),
+    );
+  }
+
+  function normalizeCatBuildingLevel(building, rawValue) {
+    const level = Number.parseInt(rawValue, 10);
+    return Math.max(
+      0,
+      Math.min(getCatBuildingMaxLevel(building), Number.isFinite(level) ? level : 0),
+    );
+  }
+
+  function loadCatBuildingLevels() {
+    const raw = getStoredValue(storageKeys.catBuildingLevels);
+    let parsed = {};
+    if (raw) {
+      try {
+        parsed = JSON.parse(raw);
+      } catch (_error) {
+        parsed = {};
+      }
+    }
+
+    return catParadiseBuildings.reduce((normalized, building) => {
+      normalized[building.id] = normalizeCatBuildingLevel(
+        building,
+        parsed?.[building.id],
+      );
+      return normalized;
+    }, {});
+  }
+
+  function persistCatBuildingLevels() {
+    setStoredValue(
+      storageKeys.catBuildingLevels,
+      JSON.stringify(catBuildingLevels),
+    );
+  }
+
+  function getCatBuildingLevel(buildingId) {
+    return Number.parseInt(catBuildingLevels?.[buildingId], 10) || 0;
+  }
+
+  function isCatParadiseMap(mapOrId) {
+    const mapId =
+      mapOrId && typeof mapOrId === "object" ? getMapId(mapOrId) : mapOrId;
+    return normalizeMapId(mapId) === catParadiseMapId;
+  }
+
+  function addCatEffectValues(target, effects) {
+    if (!effects || typeof effects !== "object") {
+      return target;
+    }
+
+    Object.entries(effects).forEach(([key, value]) => {
+      const numericValue = parseNumber(value);
+      if (numericValue === 0) {
+        return;
+      }
+
+      target[key] = parseNumber(target[key]) + numericValue;
+    });
+    return target;
+  }
+
+  function getCatParadiseBuildingEffects() {
+    return catParadiseBuildings.reduce((effects, building) => {
+      addCatEffectValues(effects, building.baseEffects);
+      const level = getCatBuildingLevel(building.id);
+      const levelConfigs = Array.isArray(building.levels)
+        ? building.levels
+        : [];
+      levelConfigs
+        .filter((item) => Number.parseInt(item.level, 10) <= level)
+        .sort(
+          (left, right) =>
+            (Number.parseInt(left.level, 10) || 0) -
+            (Number.parseInt(right.level, 10) || 0),
+        )
+        .forEach((item) => addCatEffectValues(effects, item.effects));
+      return effects;
+    }, {});
+  }
+
+  function getCatParadiseEffectsForMap(map) {
+    return isCatParadiseMap(map) ? getCatParadiseBuildingEffects() : {};
+  }
+
   function isCollectionBitCollected(collectionValue, bitIndex) {
-    if (!Number.isFinite(collectionValue) || bitIndex < 0) {
+    const normalizedValue = parseCollectionValue(collectionValue);
+    if (normalizedValue <= 0n || bitIndex < 0) {
       return false;
     }
 
-    return Math.floor(collectionValue / 2 ** bitIndex) % 2 === 1;
+    return ((normalizedValue >> BigInt(bitIndex)) & 1n) === 1n;
   }
 
   function buildFishCollectionFromPlayer(player) {
@@ -1079,11 +1386,10 @@
       : [];
 
     return config.maps.reduce((normalized, map, mapIndex) => {
-      const mapCollectionValue = Number.parseInt(
+      const mapCollectionValue = parseCollectionValue(
         collectionValues[mapIndex],
-        10,
       );
-      if (!Number.isFinite(mapCollectionValue) || mapCollectionValue <= 0) {
+      if (mapCollectionValue <= 0n) {
         return normalized;
       }
 
@@ -1125,6 +1431,7 @@
   }
 
   let baitBuffByMap = loadBaitBuffMap();
+  let catBuildingLevels = loadCatBuildingLevels();
   let fishCollection = {};
   let latestNestBuffPayload = null;
   let sourceWeatherByMap = {};
@@ -1564,19 +1871,19 @@
       : [];
 
     locations.forEach((location) => {
-      const mapId = Number.parseInt(location?.id, 10);
-      if (!Number.isInteger(mapId) || mapId <= 0) {
+      const mapId = normalizeMapId(location?.id);
+      if (!mapId) {
         return;
       }
 
       const nestValue = (parseNumber(location?.buffs?.nest) + parseNumber(location?.buffs?.frame)) * 5;
       if (nestValue > 0) {
-        nextBaitBuffByMap[String(mapId)] = String(nestValue);
+        nextBaitBuffByMap[mapId] = String(nestValue);
       }
 
       const weather = location?.weather;
       if (weather && typeof weather === "object") {
-        nextWeatherByMap[String(mapId)] = {
+        nextWeatherByMap[mapId] = {
           type: normalizeWeatherType(weather.type),
           is_active: Boolean(weather.is_active),
           start_time: weather.start_time ?? null,
@@ -1607,7 +1914,7 @@
         throw new Error(`HTTP ${response.status}`);
       }
 
-      const payload = await response.json();
+      const payload = parseNestBuffPayload(await response.text());
       if (!isAutoNestBuffEnabled) {
         return;
       }
@@ -1654,10 +1961,6 @@
     return Array.isArray(map.fishes) ? map.fishes : [];
   }
 
-  function getMapCode(map) {
-    return parseNumber(map.id);
-  }
-
   function calculateAverageNPrice(fishes) {
     if (!fishes.length) {
       return Number.NaN;
@@ -1677,6 +1980,7 @@
     baitBuff,
     systemBuff,
     weatherMultiplier,
+    independentSpeedPercent = 0,
   ) {
     const hookFactor = 1 + hookSpeed;
     const baitFactor = 1 + baitSpeed + baitBuff / 100;
@@ -1684,12 +1988,15 @@
     const weatherFactor = Number.isFinite(weatherMultiplier)
       ? weatherMultiplier
       : 1;
+    const independentSpeedFactor =
+      1 + Math.max(0, parseNumber(independentSpeedPercent)) / 100;
 
     if (
       hookFactor <= 0 ||
       baitFactor <= 0 ||
       systemFactor <= 0 ||
-      weatherFactor <= 0
+      weatherFactor <= 0 ||
+      independentSpeedFactor <= 0
     ) {
       return Number.NaN;
     }
@@ -1699,12 +2006,70 @@
       hookFactor /
       baitFactor /
       systemFactor /
-      weatherFactor
+      weatherFactor /
+      independentSpeedFactor
     );
   }
 
   function getProbabilityProfile(delta) {
     return config.probabilityByDelta[delta] || config.probabilityByDelta[1];
+  }
+
+  function blendProbabilityProfiles(baseProfile, bonusProfile, chancePercent) {
+    const chance = Math.max(0, Math.min(100, parseNumber(chancePercent))) / 100;
+    if (chance <= 0) {
+      return baseProfile;
+    }
+
+    return config.rarityOrder.reduce((profile, rarity) => {
+      profile[rarity] =
+        parseNumber(baseProfile?.[rarity]) * (1 - chance) +
+        parseNumber(bonusProfile?.[rarity]) * chance;
+      return profile;
+    }, {});
+  }
+
+  function getCatAdjustedBaseProfile(delta, effects) {
+    return blendProbabilityProfiles(
+      getProbabilityProfile(delta),
+      config.probabilityByDelta[delta + 1] || getProbabilityProfile(delta),
+      effects.rodLevelBonusChancePercent,
+    );
+  }
+
+  function getCatAdjustedFishes(fishes, effects) {
+    const fishPricePercent = parseNumber(effects.fishPricePercent);
+    if (fishPricePercent === 0) {
+      return fishes;
+    }
+
+    const priceFactor = 1 + fishPricePercent / 100;
+    return fishes.map((fish) => ({
+      ...fish,
+      nPrice: Math.round(parseNumber(fish.nPrice) * priceFactor),
+    }));
+  }
+
+  function getCatMaterialDropRate(effects) {
+    return Math.max(
+      0,
+      Math.min(100, parseNumber(effects?.materialDropRatePercent)),
+    );
+  }
+
+  function getMaterialAdjustedProbabilityProfile(profile, materialDropRate) {
+    const fishRate = Math.max(0, 1 - getCatMaterialDropRate({
+      materialDropRatePercent: materialDropRate,
+    }) / 100);
+
+    if (fishRate >= 1) {
+      return profile;
+    }
+
+    return config.rarityOrder.reduce((adjustedProfile, rarity) => {
+      adjustedProfile[rarity] = parseNumber(profile?.[rarity]) * fishRate;
+      return adjustedProfile;
+    }, {});
   }
 
   function isMapDataSelectable(fishes, profile) {
@@ -1723,6 +2088,14 @@
       const multiplier = parseNumber(config.rarityMultipliers[rarity]);
       return total + probability * averageNPrice * multiplier;
     }, 0);
+  }
+
+  function getFishCatchProbabilityFactor(profile) {
+    const totalProbability = config.rarityOrder.reduce(
+      (total, rarity) => total + parseNumber(profile?.[rarity]),
+      0,
+    );
+    return Math.max(0, Math.min(1, totalProbability / 100));
   }
 
   function getBestBaitRow(baitRows) {
@@ -1792,6 +2165,7 @@
     profile,
     fishes,
     mapId,
+    weatherBoostPercent = 0,
   ) {
     if (!Number.isFinite(expectedFishPrice)) {
       return expectedFishPrice;
@@ -1804,6 +2178,8 @@
       return expectedFishPrice;
     }
 
+    const weatherEffectFactor = getBoostedWeatherEffectFactor(weatherBoostPercent);
+    const fishCatchProbabilityFactor = getFishCatchProbabilityFactor(profile);
     const equippedBaitPrice = getActivePlayerEquippedBaitPrice(fallbackBait);
     const sameRarityRewardPrice = getCatSameRarityRewardPrice(
       expectedFishPrice,
@@ -1811,11 +2187,12 @@
       fishes,
       mapId,
     );
-    return (
+    const catDelta =
       expectedFishPrice * (1 - 0.15 + 0.15 * 0.3 * 0.5) +
-      equippedBaitPrice * (0.15 * 0.15 * 3) +
-      sameRarityRewardPrice * (0.15 * 0.1)
-    );
+      equippedBaitPrice * (fishCatchProbabilityFactor * 0.15 * 0.15 * 3) +
+      sameRarityRewardPrice * (0.15 * 0.1) -
+      expectedFishPrice;
+    return expectedFishPrice + catDelta * weatherEffectFactor;
   }
 
   function calculateBaitRows(inputs, averageFishPrice, baitBuff) {
@@ -1825,6 +2202,8 @@
     const baitCostMultiplier = Number.isFinite(inputs.baitCostMultiplier)
       ? inputs.baitCostMultiplier
       : 1;
+    const independentSpeedPercent = parseNumber(inputs.independentSpeedPercent);
+    const baitSavingPercent = Math.max(0, parseNumber(inputs.baitSavingPercent));
 
     return config.baitList.map((bait) => {
       const intervalHours = calculateIntervalHours(
@@ -1833,6 +2212,7 @@
         baitBuff,
         inputs.systemBuff,
         weatherMultiplier,
+        independentSpeedPercent,
       );
       const theoreticalCount = Number.isFinite(intervalHours)
         ? statisticsHours / intervalHours
@@ -1844,7 +2224,11 @@
       const hourlyTheoreticalRevenue = Number.isFinite(intervalHours)
         ? averageFishPrice / intervalHours
         : Number.NaN;
-      const baitCost = completedCount * bait.price * baitCostMultiplier;
+      const baitCost =
+        completedCount *
+        bait.price *
+        baitCostMultiplier *
+        Math.max(0, 1 - baitSavingPercent / 100);
       const netRevenue = grossRevenue - baitCost;
 
       return {
@@ -1855,6 +2239,7 @@
         hourlyTheoreticalRevenue,
         grossRevenue,
         baitCost,
+        baitCostMultiplier,
         netRevenue,
       };
     });
@@ -1864,19 +2249,33 @@
     return config.maps
       .filter((map) => map.difficulty <= rodLevel)
       .map((map) => {
-        const fishes = getMapFishes(map);
+        const catEffects = getCatParadiseEffectsForMap(map);
+        const sourceFishes = getMapFishes(map);
+        const fishes = getCatAdjustedFishes(sourceFishes, catEffects);
         const averageNPrice = calculateAverageNPrice(fishes);
         const delta = rodLevel - map.difficulty;
-        const baseProfile = getProbabilityProfile(delta);
+        const baseProfile = getCatAdjustedBaseProfile(delta, catEffects);
         const weather = getWeatherForMap(map.difficulty, map.id);
-        const profile = getWeatherAdjustedProbabilityProfile(
+        const weatherProfile = getWeatherAdjustedProbabilityProfile(
           baseProfile,
           weather,
+          catEffects.weatherBoostPercent,
+        );
+        const materialDropRate = getCatMaterialDropRate(catEffects);
+        const profile = getMaterialAdjustedProbabilityProfile(
+          weatherProfile,
+          materialDropRate,
         );
         const isSelectable = isMapDataSelectable(fishes, baseProfile);
         const baitBuff = getBaitBuffForMap(map.id);
-        const weatherMultiplier = getWeatherMultiplier(weather);
-        const baitCostMultiplier = getWeatherBaitCostMultiplier(weather);
+        const weatherMultiplier = getWeatherMultiplier(
+          weather,
+          catEffects.weatherBoostPercent,
+        );
+        const baitCostMultiplier = getWeatherBaitCostMultiplier(
+          weather,
+          catEffects.weatherBoostPercent,
+        );
         const baseExpectedPrice = isSelectable
           ? calculateExpectedFishPrice(profile, averageNPrice)
           : Number.NaN;
@@ -1887,6 +2286,8 @@
                   ...inputs,
                   weatherMultiplier,
                   baitCostMultiplier,
+                  independentSpeedPercent: catEffects.fishingSpeedPercent,
+                  baitSavingPercent: catEffects.baitSavingPercent,
                 },
                 baseExpectedPrice,
                 baitBuff,
@@ -1901,16 +2302,23 @@
               profile,
               fishes,
               map.id,
+              catEffects.weatherBoostPercent,
             )
           : Number.NaN;
+        const profitExpectedPrice = Number.isFinite(expectedPrice)
+          ? expectedPrice *
+            (1 + Math.max(0, parseNumber(catEffects.doubleCatchPercent)) / 100)
+          : expectedPrice;
         const baitRows = isSelectable
           ? calculateBaitRows(
               {
                 ...inputs,
                 weatherMultiplier,
                 baitCostMultiplier,
+                independentSpeedPercent: catEffects.fishingSpeedPercent,
+                baitSavingPercent: catEffects.baitSavingPercent,
               },
-              expectedPrice,
+              profitExpectedPrice,
               baitBuff,
             )
           : [];
@@ -1924,9 +2332,13 @@
           profile,
           baseExpectedPrice,
           expectedPrice,
+          profitExpectedPrice,
+          materialDropRate,
+          catEffects,
           baitBuff,
           weather,
           weatherMultiplier,
+          baitCostMultiplier,
           baitRows,
           bestBaitRow,
           isSelectable,
@@ -1934,7 +2346,7 @@
           expectedDailyRevenue: bestBaitRow ? bestBaitRow.grossRevenue : 0,
         };
       })
-      .sort((left, right) => left.map.difficulty - right.map.difficulty);
+      .sort((left, right) => compareMapIdsForDisplay(left.map, right.map));
   }
 
   function getInputs() {
@@ -2018,7 +2430,7 @@
 
     tooltip.hidden = false;
     tooltip.innerHTML = `
-      <div class="tooltip-title">各稀有度单鱼价格</div>
+      <div class="tooltip-title">${isCatParadiseMap(selectedMapRow.map) ? "各稀有度单鱼价格（已含建筑鱼价）" : "各稀有度单鱼价格"}</div>
       <table class="tooltip-table">
         <thead><tr><th>鱼种</th>${headerCells}</tr></thead>
         <tbody>${rows}${achievementRow}</tbody>
@@ -2272,6 +2684,16 @@
       : Math.max(0, collectionRarities.length - 1);
   }
 
+  function getMapAchievementPointMultiplier(mapId) {
+    const normalizedMapId = normalizeMapId(mapId);
+    if (isCatParadiseMap(normalizedMapId)) {
+      return 20;
+    }
+
+    const numericMapId = Number.parseInt(normalizedMapId, 10);
+    return /^\d+$/.test(normalizedMapId) && numericMapId > 0 ? numericMapId : 0;
+  }
+
   function getPlayerAchievementSummary(player) {
     if (Array.isArray(player?.collections)) {
       let achievementPoints = 0;
@@ -2279,14 +2701,13 @@
       const achievementMapStates = [];
 
       config.maps.forEach((map, mapIndex) => {
-        const mapId = Number.parseInt(map.id, 10);
-        const mapCollectionValue = Number.parseInt(
+        const mapId = getMapAchievementId(map, mapIndex);
+        const mapCollectionValue = parseCollectionValue(
           player.collections[mapIndex],
-          10,
         );
-        if (!Number.isFinite(mapCollectionValue) || mapCollectionValue <= 0) {
+        if (mapCollectionValue <= 0n) {
           achievementMapStates.push({
-            mapId: Number.isFinite(mapId) && mapId > 0 ? mapId : mapIndex + 1,
+            mapId,
             stage: 0,
             fillRarity: "",
             isFullCollected: false,
@@ -2299,7 +2720,7 @@
         const fishes = getMapFishes(map);
         if (!Array.isArray(fishes) || fishes.length === 0) {
           achievementMapStates.push({
-            mapId: Number.isFinite(mapId) && mapId > 0 ? mapId : mapIndex + 1,
+            mapId,
             stage: 0,
             fillRarity: "",
             isFullCollected: false,
@@ -2341,7 +2762,7 @@
         });
 
         achievementMapStates.push({
-          mapId: Number.isFinite(mapId) && mapId > 0 ? mapId : mapIndex + 1,
+          mapId,
           stage,
           fillRarity,
           isFullCollected: stage === collectionRarities.length - 1,
@@ -2350,10 +2771,8 @@
         });
 
         if (mapPoints > 0) {
-          achievementPoints += mapPoints * (mapIndex + 1);
-          collectedMapIds.push(
-            Number.isFinite(mapId) && mapId > 0 ? mapId : mapIndex + 1,
-          );
+          achievementPoints += mapPoints * getMapAchievementPointMultiplier(mapId);
+          collectedMapIds.push(mapId);
         }
       });
 
@@ -2367,9 +2786,8 @@
     let achievementPoints = 0;
     const collectedMapIds = [];
     const achievementMapStates = config.maps.map((map, mapIndex) => {
-      const mapId = Number.parseInt(map.id, 10);
       return {
-        mapId: Number.isFinite(mapId) && mapId > 0 ? mapId : mapIndex + 1,
+        mapId: getMapAchievementId(map, mapIndex),
         stage: 0,
         fillRarity: "",
         isFullCollected: false,
@@ -2381,22 +2799,25 @@
       const legacyStage = getLegacyAchievementVisualStage();
       const legacyFillRarity = collectionRarities[legacyStage - 1] || "UR";
       for (const key of player.achievements) {
-        const m = String(key).match(/^collect_scene_(\d+)$/);
+        const m = String(key).match(/^collect_scene_(.+)$/);
         if (m) {
-          const mapId = Number.parseInt(m[1], 10);
-          if (Number.isFinite(mapId)) {
-            collectedMapIds.push(mapId);
-            achievementPoints += mapId;
-            const state = achievementMapStates.find(
-              (item) => item.mapId === mapId,
-            );
-            if (state) {
-              state.stage = legacyStage;
-              state.fillRarity = legacyFillRarity;
-              state.isFullCollected = true;
-              state.hasUrFullCollected = true;
-              state.hasUtrFullCollected = false;
-            }
+          const mapId = normalizeMapId(m[1]);
+          const pointMultiplier = getMapAchievementPointMultiplier(mapId);
+          if (!mapId || pointMultiplier <= 0) {
+            continue;
+          }
+
+          collectedMapIds.push(mapId);
+          achievementPoints += pointMultiplier;
+          const state = achievementMapStates.find(
+            (item) => normalizeMapId(item.mapId) === mapId,
+          );
+          if (state) {
+            state.stage = legacyStage;
+            state.fillRarity = legacyFillRarity;
+            state.isFullCollected = true;
+            state.hasUrFullCollected = true;
+            state.hasUtrFullCollected = false;
           }
         }
       }
@@ -2519,7 +2940,7 @@
       return "";
     }
 
-    return `collect_scene_${String(mapId)}`;
+    return `collect_scene_${normalizeMapId(mapId)}`;
   }
 
   function hasPlayerAchievementForMap(mapId) {
@@ -2702,7 +3123,7 @@
 
         return `
           <section class="collection-map-row">
-            <div class="collection-map-name">${buildCollectionMapCodeHtml(map)}<span class="collection-map-title-text">${escapeHtml(map.name)}</span></div>
+            <div class="collection-map-name">${buildCollectionMapCodeHtml(map)}<span class="collection-map-title-text" title="${escapeHtml(map.name)}">${escapeHtml(map.name)}</span></div>
             <div class="collection-fish-grid">${fishCards}</div>
           </section>
         `;
@@ -2748,8 +3169,8 @@
     if (Array.isArray(collectedMapIds)) {
       collectedMapIds.forEach((item) => {
         if (item && typeof item === "object") {
-          const mapId = Number.parseInt(item.mapId ?? item.id, 10);
-          if (!Number.isFinite(mapId) || mapId <= 0) {
+          const mapId = normalizeMapId(item.mapId ?? item.id);
+          if (!mapId) {
             return;
           }
 
@@ -2769,8 +3190,8 @@
           return;
         }
 
-        const mapId = Number.parseInt(item, 10);
-        if (Number.isFinite(mapId) && mapId > 0) {
+        const mapId = normalizeMapId(item);
+        if (mapId) {
           const legacyStage = getLegacyAchievementVisualStage();
           stateByMapId.set(mapId, {
             stage: legacyStage,
@@ -2783,21 +3204,17 @@
       });
     }
 
-    const mapIds = config.maps
-      .map((m) => parseNumber(m.id))
-      .filter((id) => Number.isInteger(id) && id > 0);
-    mapIds.sort((a, b) => a - b);
-
-    return mapIds
-      .map((id) => {
-        const state = stateByMapId.get(id) || {
+    return config.maps
+      .map((map, mapIndex) => getMapAchievementId(map, mapIndex))
+      .map((mapId) => {
+        const state = stateByMapId.get(mapId) || {
           stage: 0,
           fillRarity: "",
           isFullCollected: false,
           hasUrFullCollected: false,
           hasUtrFullCollected: false,
         };
-        return buildAchievementMapBoxHtml(id, state);
+        return buildAchievementMapBoxHtml(mapId, state);
       })
       .join("");
   }
@@ -2820,14 +3237,18 @@
     const badges = states
       .filter((state) => hasUrOrUtrFullCollectedForMap(state))
       .map((state) => {
-        const mapId = Number.parseInt(state?.mapId, 10);
+        const mapId = normalizeMapId(state?.mapId);
         return {
           state,
           mapId,
         };
       })
-      .filter((item) => Number.isFinite(item.mapId) && item.mapId > 0)
-      .sort((left, right) => left.mapId - right.mapId)
+      .filter((item) => Boolean(item.mapId))
+      .sort(
+        (left, right) =>
+          getMapAchievementPointMultiplier(left.mapId) -
+          getMapAchievementPointMultiplier(right.mapId),
+      )
       .map(({ state, mapId }) => {
         const completedRarity =
           state?.hasUtrFullCollected || state?.fillRarity === "UTR"
@@ -2841,7 +3262,7 @@
         return buildAchievementMapBoxHtml(mapId, badgeState, {
           className: "leaderboard-map-achievement-box",
           showCrown: true,
-          ariaLabel: `地图 ${mapId} 已集齐 ${completedRarity}`,
+          ariaLabel: `地图 ${getMapDisplayCode({ id: mapId })} 已集齐 ${completedRarity}`,
         });
       });
 
@@ -2881,11 +3302,11 @@
       const mapIds = (trigger.dataset.achMaps || "")
         .split(",")
         .filter(Boolean)
-        .map(Number);
+        .map(normalizeMapId);
       const legacyStage = getLegacyAchievementVisualStage();
       const legacyFillRarity = collectionRarities[legacyStage - 1] || "UR";
       achievementState = mapIds
-        .filter((mapId) => Number.isFinite(mapId) && mapId > 0)
+        .filter(Boolean)
         .map((mapId) => ({
           mapId,
           stage: legacyStage,
@@ -3178,6 +3599,108 @@
       .join("");
   }
 
+  function renderCatBuildingsModal() {
+    if (!elements.catBuildingsList || !elements.catBuildingsSummary) {
+      return;
+    }
+
+    const effects = getCatParadiseBuildingEffects();
+    const summaryItems = [
+      ["fishPricePercent", "鱼价"],
+      ["fishingSpeedPercent", "钓鱼速度"],
+      ["baitSavingPercent", "鱼饵节省"],
+      ["weatherBoostPercent", "天气增幅"],
+      ["doubleCatchPercent", "双倍鱼获"],
+      ["rodLevelBonusChancePercent", "钓鱼等级+1"],
+      ["materialDropRatePercent", "材料率"],
+      ["dailySignDraws", "每日签到"],
+      ["unlockLevel", "解锁"],
+    ];
+
+    const summaryText = summaryItems
+      .filter(([key]) => parseNumber(effects[key]) > 0)
+      .map(([key, label]) => {
+        const value =
+          key === "dailySignDraws"
+            ? `${formatNumber(parseNumber(effects[key]), 0)}抽`
+            : key === "unlockLevel"
+              ? `Lv${formatNumber(parseNumber(effects[key]), 0)}`
+              : `${formatNumber(parseNumber(effects[key]), 2)}%`;
+        return `${label} ${value}`;
+      })
+      .join("、");
+    elements.catBuildingsSummary.innerHTML = summaryText
+      ? `<span class="cat-buildings-chip cat-buildings-summary-trigger"><span>累计效果</span><span class="cat-buildings-summary-tooltip">${escapeHtml(summaryText)}</span></span>`
+      : `<span class="cat-buildings-chip"><span>累计效果</span><span class="cat-buildings-chip-value">无</span></span>`;
+
+    elements.catBuildingsList.innerHTML = catParadiseBuildings
+      .slice()
+      .sort(
+        (left, right) =>
+          (Number.parseInt(left.order, 10) || 0) -
+          (Number.parseInt(right.order, 10) || 0),
+      )
+      .map((building) => {
+        const level = getCatBuildingLevel(building.id);
+        const maxLevel = getCatBuildingMaxLevel(building);
+        const accumulatedEffectText = formatCatEffects(
+          getCatBuildingAccumulatedEffects(building, level),
+        );
+        const nextLevelConfig = getCatBuildingNextLevelConfig(building);
+        const nextEffectText = nextLevelConfig
+          ? formatCatEffects(nextLevelConfig.effects)
+          : "";
+        const upgradeAllowed = canUpgradeCatBuilding(building);
+        const prerequisite = building.prerequisiteText
+          ? `<div class="cat-building-meta">${escapeHtml(building.prerequisiteText)}</div>`
+          : "";
+        const effectHtml = `
+          ${accumulatedEffectText ? `<div>当前效果：<span class="cat-building-current-effect">${escapeHtml(accumulatedEffectText)}</span></div>` : '<div class="cat-building-meta">当前无加成</div>'}
+          ${nextEffectText ? `<div>下级效果：<span class="cat-building-next-effect">${escapeHtml(nextEffectText)}</span></div>` : '<div class="cat-building-meta">暂无下级效果</div>'}
+          ${prerequisite}
+        `;
+
+        return `
+          <article class="cat-building-row">
+            <div class="cat-building-order">${formatNumber(parseNumber(building.order), 0)}</div>
+            <div class="cat-building-name">${escapeHtml(building.name)}</div>
+            <div class="cat-building-stepper" data-cat-building="${escapeHtml(building.id)}">
+              <button type="button" data-cat-building-step="-1" data-cat-building-id="${escapeHtml(building.id)}" ${level <= 0 ? "disabled" : ""} aria-label="降低${escapeHtml(building.name)}等级">−</button>
+              <span class="cat-building-level">Lv${formatNumber(level, 0)}</span>
+              <button type="button" data-cat-building-step="1" data-cat-building-id="${escapeHtml(building.id)}" ${!upgradeAllowed || level >= maxLevel ? "disabled" : ""} aria-label="提升${escapeHtml(building.name)}等级">+</button>
+            </div>
+            <div class="cat-building-effect">${effectHtml}</div>
+          </article>
+        `;
+      })
+      .join("");
+  }
+
+  function openCatBuildingsModal() {
+    if (!elements.catBuildingsModal) {
+      return;
+    }
+
+    renderCatBuildingsModal();
+    elements.catBuildingsModal.hidden = false;
+    document.body.classList.add("collection-modal-open");
+    elements.catBuildingsModal
+      .querySelector(".collection-modal-panel")
+      ?.focus({ preventScroll: true });
+  }
+
+  function closeCatBuildingsModal() {
+    if (!elements.catBuildingsModal) {
+      return;
+    }
+
+    elements.catBuildingsModal.hidden = true;
+    document.body.classList.remove("collection-modal-open");
+    elements.mapCardList
+      ?.querySelector("[data-cat-buildings-open]")
+      ?.focus({ preventScroll: true });
+  }
+
   function openLeaderboardModal() {
     if (!elements.leaderboardModal) return;
     renderLeaderboardTypes();
@@ -3396,6 +3919,109 @@
     );
   }
 
+  function buildCatParadiseSummaryChips(row) {
+    if (!row || !isCatParadiseMap(row.map)) {
+      return "";
+    }
+
+    const effects = row.catEffects || {};
+    const materialRate = getCatMaterialDropRate(effects);
+    const chips = [];
+    if (materialRate > 0) {
+      chips.push(
+        `<span class="rarity-chip" style="--rarity-color: var(--good);"><span style="color: var(--good); font-weight: 700;" role="img" aria-label="材料率">🧶</span> <span style="color: var(--text); font-weight: 700; font-size: 1.05em;">${formatNumber(materialRate, 2)}%</span></span>`,
+      );
+    }
+
+    if (parseNumber(effects.fishPricePercent) > 0) {
+      chips.push(
+        `<span class="rarity-chip" style="--rarity-color: var(--good);"><span style="color: var(--good); font-weight: 700;">鱼价</span> <span style="color: var(--text); font-weight: 700; font-size: 1.05em;">+${formatNumber(parseNumber(effects.fishPricePercent), 2)}%</span></span>`,
+      );
+    }
+
+    return chips.join("");
+  }
+
+  function formatSignedPercent(value) {
+    const numericValue = parseNumber(value);
+    return `${numericValue > 0 ? "+" : ""}${formatNumber(numericValue, 2)}%`;
+  }
+
+  function formatCatEffectItem(key, value) {
+    const numericValue = parseNumber(value);
+    switch (key) {
+      case "baitSavingPercent":
+        return `鱼饵节省 ${formatNumber(numericValue, 2)}%`;
+      case "fishingSpeedPercent":
+        return `钓鱼速度 ${formatSignedPercent(numericValue)}`;
+      case "materialDropRatePercent":
+        return `材料率 ${formatNumber(numericValue, 2)}%`;
+      case "fishPricePercent":
+        return `鱼价 ${formatSignedPercent(numericValue)}`;
+      case "weatherBoostPercent":
+        return `天气增幅 ${formatNumber(numericValue, 2)}%`;
+      case "doubleCatchPercent":
+        return `双倍鱼获 ${formatNumber(numericValue, 2)}%`;
+      case "rodLevelBonusChancePercent":
+        return `钓鱼等级+1概率 ${formatNumber(numericValue, 2)}%`;
+      case "dailySignDraws":
+        return `每日签到 ${formatNumber(numericValue, 0)}抽`;
+      case "unlockLevel":
+        return `解锁 Lv${formatNumber(numericValue, 0)}`;
+      default:
+        return `${key} ${formatNumber(numericValue, 2)}`;
+    }
+  }
+
+  function formatCatEffects(effects) {
+    if (!effects || typeof effects !== "object") {
+      return "";
+    }
+
+    return Object.entries(effects)
+      .filter(([, value]) => parseNumber(value) !== 0)
+      .map(([key, value]) => formatCatEffectItem(key, value))
+      .join("、");
+  }
+
+  function getCatBuildingAccumulatedEffects(building, level) {
+    const effects = {};
+    addCatEffectValues(effects, building?.baseEffects);
+    const normalizedLevel = normalizeCatBuildingLevel(building, level);
+    (Array.isArray(building?.levels) ? building.levels : [])
+      .filter((item) => Number.parseInt(item.level, 10) <= normalizedLevel)
+      .sort(
+        (left, right) =>
+          (Number.parseInt(left.level, 10) || 0) -
+          (Number.parseInt(right.level, 10) || 0),
+      )
+      .forEach((item) => addCatEffectValues(effects, item.effects));
+    return effects;
+  }
+
+  function getCatBuildingNextLevelConfig(building) {
+    const currentLevel = getCatBuildingLevel(building.id);
+    const nextLevel = currentLevel + 1;
+    return (Array.isArray(building.levels) ? building.levels : []).find(
+      (item) => Number.parseInt(item.level, 10) === nextLevel,
+    );
+  }
+
+  function canUpgradeCatBuilding(building) {
+    const currentLevel = getCatBuildingLevel(building.id);
+    if (currentLevel >= getCatBuildingMaxLevel(building)) {
+      return false;
+    }
+
+    if (building.id !== "legendaryCatStatue") {
+      return true;
+    }
+
+    return catParadiseBuildings
+      .filter((item) => item.id !== building.id)
+      .every((item) => getCatBuildingLevel(item.id) >= 1);
+  }
+
   function renderSummary(selectedMapRow, bestBaitRow, inputs) {
     elements.selectedMapName.className = selectedMapRow
       ? "value selected-map-name"
@@ -3425,6 +4051,7 @@
               rarity,
             )}; font-weight: 700;">${rarity}</span> <span style="color: var(--text); font-weight: 700; font-size: 1.05em;">${formatNumber(parseNumber(selectedMapRow.profile[rarity]), 2)}%</span></span>`,
         )
+        .concat(buildCatParadiseSummaryChips(selectedMapRow))
         .join("");
       elements.selectedMapProbability.className = "small rarity-chips";
       elements.selectedMapProbability.innerHTML = chips;
@@ -3449,8 +4076,8 @@
       : "-";
   }
 
-  function findBestMapLevel(mapRows) {
-    let bestLevel = null;
+  function findBestMapId(mapRows) {
+    let bestMapId = "";
     let bestNet = -Infinity;
     mapRows.forEach((row) => {
       if (!row.isSelectable) {
@@ -3459,13 +4086,13 @@
       const net = row.bestBaitRow ? row.bestBaitRow.netRevenue : -Infinity;
       if (net > bestNet) {
         bestNet = net;
-        bestLevel = row.map.difficulty;
+        bestMapId = getMapId(row.map);
       }
     });
-    return bestLevel;
+    return bestMapId;
   }
 
-  function renderMapCards(mapRows, selectedMapLevel) {
+  function renderMapCards(mapRows, selectedMapId) {
     if (!elements.mapCardList) {
       return;
     }
@@ -3476,13 +4103,16 @@
       return;
     }
 
-    const bestMapLevel = findBestMapLevel(mapRows);
+    const bestMapId = findBestMapId(mapRows);
 
     elements.mapCardList.innerHTML = mapRows
       .map((row) => {
-        const isSelected = row.map.difficulty === selectedMapLevel;
-        const isBest = row.isSelectable && row.map.difficulty === bestMapLevel;
+        const rowMapId = getMapId(row.map);
+        const escapedMapId = escapeHtml(rowMapId);
+        const isSelected = rowMapId === selectedMapId;
+        const isBest = row.isSelectable && rowMapId === bestMapId;
         const isUnavailable = !row.isSelectable;
+        const catBuildingsButton = buildCatBuildingsButtonHtml(row);
         const collectionState = getMapCardCollectionAttributes(row);
         const cardClasses = [
           "map-card",
@@ -3494,27 +4124,30 @@
           .filter(Boolean)
           .join(" ");
         const cardContent = isUnavailable
-          ? `<div class="map-card-note map-card-unavailable" data-map-unavailable="${row.map.difficulty}">${row.unavailableReason}</div>`
+          ? `<div class="map-card-note map-card-unavailable" data-map-unavailable="${escapedMapId}">${row.unavailableReason}</div>`
           : `
-              <div class="map-card-price" data-map-price="${row.map.difficulty}"> ¥${formatNumber(row.bestBaitRow?.netRevenue ?? 0, 0)}</div>
-              <div class="map-card-note map-card-best-bait" data-map-best-bait="${row.map.difficulty}">最优鱼饵：${row.bestBaitRow ? row.bestBaitRow.bait.name : "-"}</div>
+              <div class="map-card-main-row">
+                <div class="map-card-price" data-map-price="${escapedMapId}"> ¥${formatNumber(row.bestBaitRow?.netRevenue ?? 0, 0)}</div>
+              </div>
+              <div class="map-card-note map-card-best-bait" data-map-best-bait="${escapedMapId}">最优鱼饵：${row.bestBaitRow ? row.bestBaitRow.bait.name : "-"}</div>
               <label class="map-card-buff">
                 <span>打窝 buff（%）</span>
-                <div class="map-card-buff-stepper" data-bait-buff-stepper="${row.map.id}">
-                  <button type="button" class="stepper-btn" data-bait-buff-step="-5" data-bait-buff-map-id="${row.map.id}" aria-label="减少">−</button>
-                  <span class="stepper-value" data-bait-buff-value="${row.map.id}">${formatNumber(row.baitBuff, 0)}</span>
-                  <button type="button" class="stepper-btn" data-bait-buff-step="5" data-bait-buff-map-id="${row.map.id}" aria-label="增加">+</button>
+                <div class="map-card-buff-stepper" data-bait-buff-stepper="${escapedMapId}">
+                  <button type="button" class="stepper-btn" data-bait-buff-step="-5" data-bait-buff-map-id="${escapedMapId}" aria-label="减少">−</button>
+                  <span class="stepper-value" data-bait-buff-value="${escapedMapId}">${formatNumber(row.baitBuff, 0)}</span>
+                  <button type="button" class="stepper-btn" data-bait-buff-step="5" data-bait-buff-map-id="${escapedMapId}" aria-label="增加">+</button>
                 </div>
               </label>`;
         return `
-          <div class="${cardClasses}" data-map-level="${row.map.difficulty}" data-map-disabled="${isUnavailable}" role="button" tabindex="${isUnavailable ? "-1" : "0"}" aria-disabled="${isUnavailable ? "true" : "false"}"${collectionState.attributes}>
+          <div class="${cardClasses}" data-map-id="${escapedMapId}" data-map-level="${row.map.difficulty}" data-map-disabled="${isUnavailable}" role="button" tabindex="${isUnavailable ? "-1" : "0"}" aria-disabled="${isUnavailable ? "true" : "false"}"${collectionState.attributes}>
+            ${catBuildingsButton}
             <div class="map-card-compact">
               <div class="map-card-header">
                 <div class="map-card-title">
                   ${buildMapCardCodeHtml(row.map)}
                   <span>${row.map.name}</span>
                 </div>
-                <div class="map-card-badges" data-map-badges="${row.map.difficulty}">
+                <div class="map-card-badges" data-map-badges="${escapedMapId}">
                   ${buildMapCardBadgesHtml(row, isBest)}
                 </div>
               </div>
@@ -3530,11 +4163,9 @@
     if (!elements.mapCardList) {
       return;
     }
-    const bestMapLevel = findBestMapLevel(mapRows);
+    const bestMapId = findBestMapId(mapRows);
     mapRows.forEach((row) => {
-      const cardEl = elements.mapCardList.querySelector(
-        `.map-card[data-map-level="${row.map.difficulty}"]`,
-      );
+      const cardEl = getMapCardElement(row.map.id);
       const isUnavailable = !row.isSelectable;
       if (cardEl) {
         cardEl.classList.toggle("unavailable", isUnavailable);
@@ -3543,28 +4174,31 @@
         applyMapCardCollectionVisual(cardEl, row);
       }
 
-      const unavailableEl = elements.mapCardList.querySelector(
-        `[data-map-unavailable="${row.map.difficulty}"]`,
-      );
+      const unavailableEl = cardEl?.querySelector("[data-map-unavailable]");
       if (unavailableEl) {
         unavailableEl.textContent = row.unavailableReason;
       }
 
-      const priceEl = elements.mapCardList.querySelector(
-        `[data-map-price="${row.map.difficulty}"]`,
-      );
+      const priceEl = cardEl?.querySelector("[data-map-price]");
       if (priceEl && row.isSelectable) {
         priceEl.textContent = ` ¥${formatNumber(row.bestBaitRow?.netRevenue ?? 0, 0)}`;
       }
-      const bestBaitEl = elements.mapCardList.querySelector(
-        `[data-map-best-bait="${row.map.difficulty}"]`,
+      const existingCatBuildingsButton = cardEl?.querySelector(
+        "[data-cat-buildings-open]",
       );
+      const nextCatBuildingsButtonHtml = row.isSelectable
+        ? buildCatBuildingsButtonHtml(row)
+        : "";
+      if (cardEl && nextCatBuildingsButtonHtml && !existingCatBuildingsButton) {
+        cardEl.insertAdjacentHTML("afterbegin", nextCatBuildingsButtonHtml);
+      } else if (!nextCatBuildingsButtonHtml && existingCatBuildingsButton) {
+        existingCatBuildingsButton.remove();
+      }
+      const bestBaitEl = cardEl?.querySelector("[data-map-best-bait]");
       if (bestBaitEl && row.isSelectable) {
         bestBaitEl.textContent = `最优鱼饵：${row.bestBaitRow ? row.bestBaitRow.bait.name : "-"}`;
       }
-      const buffValueEl = elements.mapCardList.querySelector(
-        `[data-bait-buff-value="${row.map.id}"]`,
-      );
+      const buffValueEl = cardEl?.querySelector("[data-bait-buff-value]");
       if (buffValueEl && row.isSelectable) {
         buffValueEl.textContent = formatNumber(row.baitBuff, 0);
       }
@@ -3573,10 +4207,8 @@
         codeEl.outerHTML = buildMapCardCodeHtml(row.map);
       }
 
-      const badgesEl = elements.mapCardList.querySelector(
-        `[data-map-badges="${row.map.difficulty}"]`,
-      );
-      const isBest = row.map.difficulty === bestMapLevel;
+      const badgesEl = cardEl?.querySelector("[data-map-badges]");
+      const isBest = getMapId(row.map) === bestMapId;
       if (cardEl) {
         cardEl.classList.toggle("best", isBest);
       }
@@ -3586,26 +4218,26 @@
     });
   }
 
-  function canUpdateMapCardsInPlace(mapRows, selectedMapLevel) {
+  function canUpdateMapCardsInPlace(mapRows, selectedMapId) {
     if (!elements.mapCardList) {
       return false;
     }
 
     const cards = Array.from(
-      elements.mapCardList.querySelectorAll(".map-card[data-map-level]"),
+      elements.mapCardList.querySelectorAll(".map-card[data-map-id]"),
     );
     if (cards.length !== mapRows.length) {
       return false;
     }
 
-    const selectedLevel = String(selectedMapLevel);
+    const normalizedSelectedMapId = normalizeMapId(selectedMapId);
     return cards.every((card, index) => {
-      const expectedLevel = String(mapRows[index]?.map?.difficulty ?? "");
-      const cardLevel = card.dataset.mapLevel || "";
+      const expectedMapId = getMapId(mapRows[index]?.map);
+      const cardMapId = card.dataset.mapId || "";
       const shouldBeSelected =
-        selectedLevel !== "" && cardLevel === selectedLevel;
+        normalizedSelectedMapId !== "" && cardMapId === normalizedSelectedMapId;
       return (
-        cardLevel === expectedLevel &&
+        cardMapId === expectedMapId &&
         card.classList.contains("selected") === shouldBeSelected
       );
     });
@@ -3788,17 +4420,25 @@
     const selectedRodLevel = Number.parseInt(elements.rodLevel.value, 10);
     const mapRows = calculateMapRows(inputs, selectedRodLevel);
     const selectableMapRows = mapRows.filter((row) => row.isSelectable);
+    const storedMapId = normalizeMapId(getStoredValue(storageKeys.mapId));
     const storedMapLevel = Number.parseInt(
       getStoredValue(storageKeys.mapLevel) || "",
       10,
     );
     const selectedMapRow =
+      (storedMapId
+        ? selectableMapRows.find((row) => getMapId(row.map) === storedMapId)
+        : null) ||
       selectableMapRows.find((row) => row.map.difficulty === storedMapLevel) ||
       selectableMapRows[0] ||
       null;
+    const activeMapId = selectedMapRow ? getMapId(selectedMapRow.map) : "";
     const activeMapLevel = selectedMapRow ? selectedMapRow.map.difficulty : "";
 
-    if (selectedMapRow && storedMapLevel !== activeMapLevel) {
+    if (selectedMapRow && storedMapId !== activeMapId) {
+      setStoredValue(storageKeys.mapId, activeMapId);
+    }
+    if (selectedMapRow && String(storedMapLevel) !== String(activeMapLevel)) {
       setStoredValue(storageKeys.mapLevel, String(activeMapLevel));
     }
 
@@ -3833,11 +4473,11 @@
     }
     if (
       options.skipMapCardRebuild &&
-      canUpdateMapCardsInPlace(mapRows, activeMapLevel)
+      canUpdateMapCardsInPlace(mapRows, activeMapId)
     ) {
       updateMapCardValues(mapRows);
     } else {
-      renderMapCards(mapRows, activeMapLevel);
+      renderMapCards(mapRows, activeMapId);
     }
     renderTable(selectedMapRow ? selectedMapRow.baitRows : [], bestBaitRow);
   }
@@ -4035,6 +4675,16 @@
 
     if (elements.mapCardList) {
       elements.mapCardList.addEventListener("click", (event) => {
+        const catBuildingsButton = event.target.closest(
+          "[data-cat-buildings-open]",
+        );
+        if (catBuildingsButton) {
+          event.preventDefault();
+          event.stopPropagation();
+          openCatBuildingsModal();
+          return;
+        }
+
         const weatherButton = event.target.closest("[data-weather-step]");
         if (weatherButton) {
           event.stopPropagation();
@@ -4043,7 +4693,7 @@
           const stepValue = parseNumber(weatherButton.dataset.weatherStep);
           const currentWeather = getWeatherForMap(mapLevel, mapId);
           const nextType = getWeatherCycleType(currentWeather.type, stepValue);
-          setWeatherOverrideForMap(mapLevel, nextType);
+          setWeatherOverrideForMap(mapId, nextType);
           disableAutoNestBuffForManualEdit();
           render({ skipMapCardRebuild: true });
           return;
@@ -4067,7 +4717,7 @@
           return;
         }
 
-        const target = event.target.closest("[data-map-level]");
+        const target = event.target.closest("[data-map-id]");
         if (!target) {
           return;
         }
@@ -4076,18 +4726,22 @@
           return;
         }
 
+        setStoredValue(storageKeys.mapId, target.dataset.mapId || "");
         setStoredValue(storageKeys.mapLevel, target.dataset.mapLevel || "");
         render();
       });
 
       elements.mapCardList.addEventListener("keydown", (event) => {
-        if (event.target.closest("[data-bait-buff-step]")) {
+        if (
+          event.target.closest("[data-bait-buff-step]") ||
+          event.target.closest("[data-cat-buildings-open]")
+        ) {
           return;
         }
         if (event.key !== "Enter" && event.key !== " ") {
           return;
         }
-        const target = event.target.closest("[data-map-level]");
+        const target = event.target.closest("[data-map-id]");
         if (!target) {
           return;
         }
@@ -4095,6 +4749,7 @@
           return;
         }
         event.preventDefault();
+        setStoredValue(storageKeys.mapId, target.dataset.mapId || "");
         setStoredValue(storageKeys.mapLevel, target.dataset.mapLevel || "");
         render();
       });
@@ -4138,6 +4793,56 @@
         if (event.key === "Escape") {
           event.preventDefault();
           closeLeaderboardModal();
+        }
+      });
+    }
+
+    if (elements.catBuildingsModal) {
+      elements.catBuildingsModal.addEventListener("click", (event) => {
+        if (
+          event.target instanceof Element &&
+          event.target.closest("[data-cat-buildings-close]")
+        ) {
+          closeCatBuildingsModal();
+          return;
+        }
+
+        const stepButton =
+          event.target instanceof Element
+            ? event.target.closest("[data-cat-building-step]")
+            : null;
+        if (!stepButton) {
+          return;
+        }
+
+        const buildingId = stepButton.dataset.catBuildingId;
+        const building = catParadiseBuildings.find(
+          (item) => item.id === buildingId,
+        );
+        if (!building) {
+          return;
+        }
+
+        const step = Number.parseInt(stepButton.dataset.catBuildingStep, 10);
+        const currentLevel = getCatBuildingLevel(building.id);
+        const nextLevel = normalizeCatBuildingLevel(
+          building,
+          currentLevel + (Number.isFinite(step) ? step : 0),
+        );
+        if (nextLevel > currentLevel && !canUpgradeCatBuilding(building)) {
+          return;
+        }
+
+        catBuildingLevels[building.id] = nextLevel;
+        persistCatBuildingLevels();
+        renderCatBuildingsModal();
+        render({ skipMapCardRebuild: true });
+      });
+
+      elements.catBuildingsModal.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeCatBuildingsModal();
         }
       });
     }

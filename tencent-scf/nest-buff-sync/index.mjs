@@ -26,6 +26,63 @@ function assertNestBuffPayload(payload) {
   }
 }
 
+function parseNestBuffPayload(text) {
+  const quoteIntegerTokens = (value) => {
+    let result = "";
+    let index = 0;
+    let inString = false;
+    let escaped = false;
+
+    while (index < value.length) {
+      const char = value[index];
+      if (inString) {
+        result += char;
+        if (escaped) {
+          escaped = false;
+        } else if (char === "\\") {
+          escaped = true;
+        } else if (char === '"') {
+          inString = false;
+        }
+        index += 1;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = true;
+        result += char;
+        index += 1;
+        continue;
+      }
+
+      if (char === "-" || (char >= "0" && char <= "9")) {
+        const start = index;
+        index += 1;
+        while (/[0-9.eE+-]/.test(value[index] || "")) {
+          index += 1;
+        }
+        const token = value.slice(start, index);
+        result += /^-?(?:0|[1-9]\d*)$/.test(token)
+          ? `"${token}"`
+          : token;
+        continue;
+      }
+
+      result += char;
+      index += 1;
+    }
+
+    return result;
+  };
+
+  const normalizedText = String(text).replace(
+    /("collections"\s*:\s*)\[([^\]]*)\]/g,
+    (_match, prefix, body) => `${prefix}[${quoteIntegerTokens(body)}]`,
+  );
+
+  return JSON.parse(normalizedText);
+}
+
 function request(url, options = {}, body = null) {
   const target = new URL(url);
   const client = target.protocol === "https:" ? https : http;
@@ -148,7 +205,7 @@ async function fetchSourcePayload(config) {
     );
   }
 
-  const payload = JSON.parse(response.text);
+  const payload = parseNestBuffPayload(response.text);
   assertNestBuffPayload(payload);
   return payload;
 }
