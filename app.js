@@ -277,16 +277,26 @@
       return BigInt(Math.trunc(value));
     }
 
-    const text = String(value ?? "").trim();
-    if (!/^\d+$/.test(text)) {
-      return 0n;
+    const text = String(value ?? "");
+    const decimalText = text.trim();
+    if (/^\d+$/.test(decimalText)) {
+      try {
+        return BigInt(decimalText);
+      } catch (_error) {
+        return 0n;
+      }
     }
 
-    try {
-      return BigInt(text);
-    } catch (_error) {
-      return 0n;
+    let collectionValue = 0n;
+    for (let index = 0; index < text.length; index += 1) {
+      const chunk = text.charCodeAt(index) - 32;
+      if (chunk < 0 || chunk > 63) {
+        return 0n;
+      }
+      collectionValue |= BigInt(chunk) << BigInt(index * 6);
     }
+
+    return collectionValue;
   }
 
   function parseNestBuffPayload(text) {
