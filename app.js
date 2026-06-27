@@ -20,6 +20,11 @@
   const collectionLongPressMs = 280;
   const catParadiseConfig = config.catParadise || {};
   const catParadiseMapId = normalizeMapId(catParadiseConfig.mapId || "S1");
+  const catParadiseAllowedPlayerQQs = Array.isArray(
+    catParadiseConfig.allowedPlayerQQs,
+  )
+    ? catParadiseConfig.allowedPlayerQQs.map((qq) => String(qq).trim())
+    : [];
   const catParadiseBuildings = Array.isArray(catParadiseConfig.buildings)
     ? catParadiseConfig.buildings
     : [];
@@ -212,6 +217,35 @@
 
   function getMapId(map) {
     return normalizeMapId(map?.id);
+  }
+
+  function getPlayerQQValue() {
+    return String(elements.playerQQ?.value || "").trim();
+  }
+
+  function isAllowedCatParadisePlayerQQ() {
+    return (
+      catParadiseAllowedPlayerQQs.length === 0 ||
+      catParadiseAllowedPlayerQQs.includes(getPlayerQQValue())
+    );
+  }
+
+  function isMapVisible(map) {
+    return !isCatParadiseMap(map) || isAllowedCatParadisePlayerQQ();
+  }
+
+  function isMapIdVisible(mapId) {
+    return !isCatParadiseMap(mapId) || isAllowedCatParadisePlayerQQ();
+  }
+
+  function getVisibleMapEntries() {
+    return config.maps
+      .map((map, mapIndex) => ({ map, mapIndex }))
+      .filter(({ map }) => isMapVisible(map));
+  }
+
+  function getVisibleMaps() {
+    return getVisibleMapEntries().map(({ map }) => map);
   }
 
   function getMapDisplayCode(map) {
@@ -2338,7 +2372,7 @@
   }
 
   function calculateMapRows(inputs, rodLevel) {
-    return config.maps
+    return getVisibleMaps()
       .filter((map) => map.difficulty <= rodLevel)
       .map((map) => {
         const catEffects = getCatParadiseEffectsForMap(map);
@@ -2572,10 +2606,6 @@
 
   function getFishCollectionKey(map, fish) {
     return `${map.id}:${fish.name}`;
-  }
-
-  function getPlayerQQValue() {
-    return String(elements.playerQQ?.value || "").trim();
   }
 
   function getBaitReminderEnabled() {
@@ -3096,7 +3126,7 @@
     let collected = 0;
     let total = 0;
 
-    config.maps.forEach((map) => {
+    getVisibleMaps().forEach((map) => {
       getMapFishes(map).forEach((fish) => {
         const fishKey = getFishCollectionKey(map, fish);
         collectionRarities.forEach((rarity) => {
@@ -3176,7 +3206,7 @@
 
     renderCollectionLegend();
 
-    elements.collectionMapList.innerHTML = config.maps
+    elements.collectionMapList.innerHTML = getVisibleMaps()
       .map((map) => {
         const fishCards = getMapFishes(map)
           .map((fish) => {
@@ -3296,8 +3326,8 @@
       });
     }
 
-    return config.maps
-      .map((map, mapIndex) => getMapAchievementId(map, mapIndex))
+    return getVisibleMapEntries()
+      .map(({ map, mapIndex }) => getMapAchievementId(map, mapIndex))
       .map((mapId) => {
         const state = stateByMapId.get(mapId) || {
           stage: 0,
@@ -3336,6 +3366,7 @@
         };
       })
       .filter((item) => Boolean(item.mapId))
+      .filter((item) => isMapIdVisible(item.mapId))
       .sort(
         (left, right) =>
           getMapAchievementPointMultiplier(left.mapId) -
@@ -3374,9 +3405,15 @@
     const collectedMapIds = Array.isArray(entry.collectedMapIds)
       ? entry.collectedMapIds
       : [];
+    const visibleAchievementMapStates = achievementMapStates.filter((state) =>
+      isMapIdVisible(state?.mapId),
+    );
+    const visibleCollectedMapIds = collectedMapIds.filter((mapId) =>
+      isMapIdVisible(mapId),
+    );
     const mapAchievements = buildLeaderboardMapAchievementsHtml(entry);
 
-    return `<span class="has-tooltip ach-trigger leaderboard-achievement-summary" data-achievement-state='${escapeHtml(JSON.stringify(achievementMapStates))}' data-ach-maps="${escapeHtml(collectedMapIds.join(","))}">${mapAchievements}<span class="leaderboard-achievement-points">${escapeHtml(typeConfig.formatPrimaryValue(entry))}</span></span>`;
+    return `<span class="has-tooltip ach-trigger leaderboard-achievement-summary" data-achievement-state='${escapeHtml(JSON.stringify(visibleAchievementMapStates))}' data-ach-maps="${escapeHtml(visibleCollectedMapIds.join(","))}">${mapAchievements}<span class="leaderboard-achievement-points">${escapeHtml(typeConfig.formatPrimaryValue(entry))}</span></span>`;
   }
 
   function getAchievementTooltipState(trigger) {
@@ -4502,13 +4539,14 @@
     if (elements.playerLocationPanel && elements.playerLocationValue) {
       const locationId = String(activePlayerData.location_id || "").trim();
       const locationName = String(activePlayerData.location_name || "").trim();
-      const locationMap = config.maps.find(
-        (map) => String(map.id) === locationId,
-      );
-      elements.playerLocationValue.innerHTML = locationId
-        ? `<span class="player-map-code">${escapeHtml(locationId)}</span>${locationName ? `<span>${escapeHtml(locationName)}</span>` : ""}`
-        : "-";
-      elements.playerLocationPanel.hidden = !locationId;
+      const isHiddenCatParadiseLocation =
+        isCatParadiseMap(locationId) && !isAllowedCatParadisePlayerQQ();
+      elements.playerLocationValue.innerHTML =
+        locationId && !isHiddenCatParadiseLocation
+          ? `<span class="player-map-code">${escapeHtml(locationId)}</span>${locationName ? `<span>${escapeHtml(locationName)}</span>` : ""}`
+          : "-";
+      elements.playerLocationPanel.hidden =
+        !locationId || isHiddenCatParadiseLocation;
     }
 
     if (elements.playerBaitPanel && elements.playerBaitValue) {
@@ -4544,6 +4582,13 @@
     const inputs = getInputs();
     const selectedRodLevel = Number.parseInt(elements.rodLevel.value, 10);
     const mapRows = calculateMapRows(inputs, selectedRodLevel);
+    if (
+      !isAllowedCatParadisePlayerQQ() &&
+      elements.catBuildingsModal &&
+      !elements.catBuildingsModal.hidden
+    ) {
+      closeCatBuildingsModal();
+    }
     const selectableMapRows = mapRows.filter((row) => row.isSelectable);
     const storedMapId = normalizeMapId(getStoredValue(storageKeys.mapId));
     const storedMapLevel = Number.parseInt(
