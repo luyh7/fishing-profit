@@ -438,7 +438,8 @@
     },
   };
 
-  const lostWindUtrBaseProbability = 0.7;
+  const lostWindUtrBaseProbability = 0.2;
+  const lostWindUtrDeltaStepProbability = 0.1;
   const lostWindUtrPityCount = 150;
 
   const weatherTypeAliases = {
@@ -678,10 +679,20 @@
     return adjustedProfile;
   }
 
-  function getLostWindEffectiveUtrProbability(weatherBoostPercent = 0) {
-    const baseRate = lostWindUtrBaseProbability / 100;
+  function getLostWindBaseUtrProbability(rodLevel, mapDifficulty) {
+    const sceneLevel = parseNumber(mapDifficulty) + 1;
+    const levelDelta = Math.max(0, parseNumber(rodLevel) - sceneLevel);
+    return Math.min(
+      100,
+      lostWindUtrBaseProbability +
+        levelDelta * lostWindUtrDeltaStepProbability,
+    );
+  }
+
+  function getLostWindEffectiveUtrProbability(baseProbability) {
+    const baseRate = Math.max(0, Math.min(100, parseNumber(baseProbability))) / 100;
     const pityCount = Math.max(1, Math.floor(lostWindUtrPityCount));
-    if (!Number.isFinite(baseRate) || baseRate <= 0) {
+    if (baseRate <= 0) {
       return 0;
     }
 
@@ -691,18 +702,28 @@
 
     const cycleHitProbability = 1 - Math.pow(1 - baseRate, pityCount);
     if (cycleHitProbability <= 0) {
-      return Math.min(
-        100,
-        lostWindUtrBaseProbability *
-          getBoostedWeatherEffectFactor(weatherBoostPercent),
-      );
+      return baseRate * 100;
     }
 
-    return Math.min(
-      100,
-      (baseRate / cycleHitProbability) *
-        100 *
-        getBoostedWeatherEffectFactor(weatherBoostPercent),
+    return Math.min(100, (baseRate / cycleHitProbability) * 100);
+  }
+
+  function getCatAdjustedLostWindUtrProbability(rodLevel, mapDifficulty, effects) {
+    const bonusChance =
+      Math.max(0, Math.min(100, parseNumber(effects?.rodLevelBonusChancePercent))) /
+      100;
+    const baseProbability = getLostWindBaseUtrProbability(rodLevel, mapDifficulty);
+    if (bonusChance <= 0) {
+      return getLostWindEffectiveUtrProbability(baseProbability);
+    }
+
+    const bonusProbability = getLostWindBaseUtrProbability(
+      parseNumber(rodLevel) + 1,
+      mapDifficulty,
+    );
+    return (
+      getLostWindEffectiveUtrProbability(baseProbability) * (1 - bonusChance) +
+      getLostWindEffectiveUtrProbability(bonusProbability) * bonusChance
     );
   }
 
@@ -710,6 +731,7 @@
     profile,
     weather,
     weatherBoostPercent = 0,
+    lostWindUtrProbability = 0,
   ) {
     const type = normalizeWeatherType(weather?.type);
     if (isWeatherEffectivelyInactive(weather)) {
@@ -731,17 +753,18 @@
       return total + probability;
     }, 0);
 
+    const utrProbability = Math.max(
+      0,
+      Math.min(100, parseNumber(lostWindUtrProbability)),
+    );
+
     if (baseTotal <= 0) {
       return config.rarityOrder.reduce((adjustedProfile, rarity) => {
-        adjustedProfile[rarity] =
-          rarity === "UTR"
-            ? getLostWindEffectiveUtrProbability(weatherBoostPercent)
-            : 0;
+        adjustedProfile[rarity] = rarity === "UTR" ? utrProbability : 0;
         return adjustedProfile;
       }, {});
     }
 
-    const utrProbability = getLostWindEffectiveUtrProbability(weatherBoostPercent);
     const scale = (100 - utrProbability) / baseTotal;
     const adjustedProfile = {};
     baseRarityOrder.forEach((rarity) => {
@@ -2348,10 +2371,16 @@
         const delta = rodLevel - map.difficulty;
         const baseProfile = getCatAdjustedBaseProfile(delta, catEffects);
         const weather = getWeatherForMap(map.difficulty, map.id);
+        const lostWindUtrProbability = getCatAdjustedLostWindUtrProbability(
+          rodLevel,
+          map.difficulty,
+          catEffects,
+        );
         const weatherProfile = getWeatherAdjustedProbabilityProfile(
           baseProfile,
           weather,
           catEffects.weatherBoostPercent,
+          lostWindUtrProbability,
         );
         const materialDropRate = getCatMaterialDropRate(catEffects);
         const profile = getMaterialAdjustedProbabilityProfile(
