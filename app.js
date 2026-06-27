@@ -133,7 +133,9 @@
     selectedMapProbability: document.getElementById("selectedMapProbability"),
     selectedBestBait: document.getElementById("selectedBestBait"),
     selectedBestNet: document.getElementById("selectedBestNet"),
-    autoNestBuffSwitch: document.getElementById("autoNestBuffSwitch"),
+    autoNestBuffSwitches: Array.from(
+      document.querySelectorAll("[data-auto-nest-buff-switch]"),
+    ),
     refreshNestBuffStatus: document.getElementById("refreshNestBuffStatus"),
     refreshNestBuffError: document.getElementById("refreshNestBuffError"),
     fishPriceTooltip: document.getElementById("fishPriceTooltip"),
@@ -1280,6 +1282,14 @@
     );
   }
 
+  function getOrderedCatParadiseBuildings() {
+    return catParadiseBuildings.slice().sort(
+      (left, right) =>
+        (Number.parseInt(left.order, 10) || 0) -
+        (Number.parseInt(right.order, 10) || 0),
+    );
+  }
+
   function getCatBuildingMaxLevel(building) {
     return Math.min(
       catParadiseMaxOpenLevel,
@@ -1306,7 +1316,7 @@
       }
     }
 
-    return catParadiseBuildings.reduce((normalized, building) => {
+    return getOrderedCatParadiseBuildings().reduce((normalized, building) => {
       normalized[building.id] = normalizeCatBuildingLevel(
         building,
         parsed?.[building.id],
@@ -1324,6 +1334,58 @@
 
   function getCatBuildingLevel(buildingId) {
     return Number.parseInt(catBuildingLevels?.[buildingId], 10) || 0;
+  }
+
+  function buildCatBuildingLevelsFromPlayer(player) {
+    if (!player || player.cat_park === null || player.cat_park === undefined) {
+      return null;
+    }
+
+    const rawCatPark = Array.isArray(player.cat_park)
+      ? player.cat_park
+      : String(player.cat_park).trim().split("");
+    if (!rawCatPark.length) {
+      return null;
+    }
+
+    return getOrderedCatParadiseBuildings().reduce(
+      (levels, building, index) => {
+        levels[building.id] = normalizeCatBuildingLevel(
+          building,
+          rawCatPark[index],
+        );
+        return levels;
+      },
+      {},
+    );
+  }
+
+  function applyPlayerCatPark(player) {
+    const nextLevels = buildCatBuildingLevelsFromPlayer(player);
+    if (!nextLevels) {
+      return { changed: false };
+    }
+
+    let changed = false;
+    const mergedLevels = { ...catBuildingLevels };
+    getOrderedCatParadiseBuildings().forEach((building) => {
+      const nextLevel = normalizeCatBuildingLevel(
+        building,
+        nextLevels[building.id],
+      );
+      if (getCatBuildingLevel(building.id) !== nextLevel) {
+        changed = true;
+      }
+      mergedLevels[building.id] = nextLevel;
+    });
+
+    if (changed) {
+      catBuildingLevels = mergedLevels;
+      persistCatBuildingLevels();
+      refreshCatBuildingsModalIfOpen();
+    }
+
+    return { changed };
   }
 
   function isCatParadiseMap(mapOrId) {
@@ -1579,19 +1641,25 @@
     setStoredValue(storageKeys.baitBuffByMap, JSON.stringify(baitBuffByMap));
   }
 
-  function setAutoNestBuffSwitchState(isLoading = false) {
-    if (!elements.autoNestBuffSwitch) {
-      return;
-    }
-
-    elements.autoNestBuffSwitch.checked = isAutoNestBuffEnabled;
-    elements.autoNestBuffSwitch.setAttribute(
-      "aria-checked",
-      String(isAutoNestBuffEnabled),
+  function getAutoNestBuffSwitches() {
+    const switches = Array.from(
+      document.querySelectorAll("[data-auto-nest-buff-switch]"),
     );
-    elements.autoNestBuffSwitch
-      .closest(".auto-nest-buff-switch")
-      ?.classList.toggle("is-loading", isLoading);
+    elements.autoNestBuffSwitches = switches;
+    return switches;
+  }
+
+  function setAutoNestBuffSwitchState(isLoading = false) {
+    getAutoNestBuffSwitches().forEach((switchElement) => {
+      switchElement.checked = isAutoNestBuffEnabled;
+      switchElement.setAttribute(
+        "aria-checked",
+        String(isAutoNestBuffEnabled),
+      );
+      switchElement
+        .closest(".auto-nest-buff-switch")
+        ?.classList.toggle("is-loading", isLoading);
+    });
     document.body.classList.toggle("auto-mode", isAutoNestBuffEnabled);
   }
 
@@ -1692,13 +1760,19 @@
         refreshNestBuffs();
         startInterval();
       }, delayMs);
-      render({ skipMapCardRebuild: !snapshotResult.rodChanged });
+      render({
+        skipMapCardRebuild:
+          !snapshotResult.rodChanged && !snapshotResult.catParkChanged,
+      });
       return;
     }
 
     startInterval();
     startWeatherTooltipRefresh();
-    render({ skipMapCardRebuild: !snapshotResult.rodChanged });
+    render({
+      skipMapCardRebuild:
+        !snapshotResult.rodChanged && !snapshotResult.catParkChanged,
+    });
   }
 
   function disableAutoNestBuffForManualEdit() {
@@ -1770,11 +1844,12 @@
 
   function applyPlayerLevels(player) {
     if (!player) {
-      return { changed: false, rodChanged: false };
+      return { changed: false, rodChanged: false, catParkChanged: false };
     }
 
     let changed = false;
     let rodChanged = false;
+    let catParkChanged = false;
     isApplyingAutoPlayerData = true;
     try {
       const hookLevel = Number.parseInt(player.hook_level, 10);
@@ -1797,12 +1872,16 @@
         changed = changed || rodChanged;
         setStoredValue(storageKeys.rodLevel, String(rodLevel));
       }
+
+      const catParkResult = applyPlayerCatPark(player);
+      catParkChanged = catParkResult.changed;
+      changed = changed || catParkChanged;
     } finally {
       isApplyingAutoPlayerData = false;
     }
 
     updateLevelDisplays();
-    return { changed, rodChanged };
+    return { changed, rodChanged, catParkChanged };
   }
 
   function isChinaWeekend(utcString) {
@@ -1831,7 +1910,7 @@
       activePlayerData = null;
       fishCollection = {};
       setPlayerQQError("");
-      return { changed: false, rodChanged: false };
+      return { changed: false, rodChanged: false, catParkChanged: false };
     }
 
     activePlayerData = findPlayerData(payload);
@@ -1843,7 +1922,7 @@
 
     fishCollection = {};
     setPlayerQQError(`未在数据中找到 QQ 号 ${playerQQ}`);
-    return { changed: false, rodChanged: false };
+    return { changed: false, rodChanged: false, catParkChanged: false };
   }
 
   function applyLatestPlayerSnapshot() {
@@ -1926,7 +2005,10 @@
       setNestBuffLastUpdateAt(payload?.updated_at);
       setNestBuffLastRefreshAt(Date.now());
       showNestBuffSuccessStatus();
-      render({ skipMapCardRebuild: !playerSyncResult.rodChanged });
+      render({
+        skipMapCardRebuild:
+          !playerSyncResult.rodChanged && !playerSyncResult.catParkChanged,
+      });
     } catch (error) {
       console.error("获取实时打窝buff失败", error);
       showNestBuffError("获取实时打窝buff失败，请稍后重试。");
@@ -3629,17 +3711,29 @@
         return `${label} ${value}`;
       })
       .join("、");
-    elements.catBuildingsSummary.innerHTML = summaryText
-      ? `<span class="cat-buildings-chip cat-buildings-summary-trigger"><span>累计效果</span><span class="cat-buildings-summary-tooltip">${escapeHtml(summaryText)}</span></span>`
-      : `<span class="cat-buildings-chip"><span>累计效果</span><span class="cat-buildings-chip-value">无</span></span>`;
+    const autoSwitchHtml = `
+      <label class="auto-nest-buff-switch cat-buildings-auto-switch">
+        <input
+          type="checkbox"
+          data-auto-nest-buff-switch
+          role="switch"
+          aria-label="自动更新数据"
+        />
+        <span class="auto-nest-buff-switch-track" aria-hidden="true"></span>
+        <span class="auto-nest-buff-switch-text">自动更新数据</span>
+      </label>
+    `;
+    elements.catBuildingsSummary.innerHTML = `
+      ${
+        summaryText
+          ? `<span class="cat-buildings-chip cat-buildings-summary-trigger"><span>累计效果</span><span class="cat-buildings-summary-tooltip">${escapeHtml(summaryText)}</span></span>`
+          : `<span class="cat-buildings-chip"><span>累计效果</span><span class="cat-buildings-chip-value">无</span></span>`
+      }
+      ${autoSwitchHtml}
+    `;
+    setAutoNestBuffSwitchState(isRefreshingNestBuff);
 
-    elements.catBuildingsList.innerHTML = catParadiseBuildings
-      .slice()
-      .sort(
-        (left, right) =>
-          (Number.parseInt(left.order, 10) || 0) -
-          (Number.parseInt(right.order, 10) || 0),
-      )
+    elements.catBuildingsList.innerHTML = getOrderedCatParadiseBuildings()
       .map((building) => {
         const level = getCatBuildingLevel(building.id);
         const maxLevel = getCatBuildingMaxLevel(building);
@@ -3699,6 +3793,12 @@
     elements.mapCardList
       ?.querySelector("[data-cat-buildings-open]")
       ?.focus({ preventScroll: true });
+  }
+
+  function refreshCatBuildingsModalIfOpen() {
+    if (elements.catBuildingsModal && !elements.catBuildingsModal.hidden) {
+      renderCatBuildingsModal();
+    }
   }
 
   function openLeaderboardModal() {
@@ -4596,11 +4696,18 @@
       const syncPlayerQQ = () => {
         persistPlayerQQ();
         activePlayerData = null;
-        let playerSyncResult = { changed: false, rodChanged: false };
+        let playerSyncResult = {
+          changed: false,
+          rodChanged: false,
+          catParkChanged: false,
+        };
         if (isAutoNestBuffEnabled) {
           playerSyncResult = applyLatestPlayerSnapshot();
         }
-        render({ skipMapCardRebuild: !playerSyncResult.rodChanged });
+        render({
+          skipMapCardRebuild:
+            !playerSyncResult.rodChanged && !playerSyncResult.catParkChanged,
+        });
       };
       elements.playerQQ.addEventListener("input", syncPlayerQQ);
       elements.playerQQ.addEventListener("change", syncPlayerQQ);
@@ -4755,17 +4862,23 @@
       });
     }
 
-    if (elements.autoNestBuffSwitch) {
-      elements.autoNestBuffSwitch.addEventListener("change", () => {
-        if (elements.autoNestBuffSwitch.checked) {
-          startAutoNestBuff();
-          return;
-        }
+    document.addEventListener("change", (event) => {
+      const switchElement =
+        event.target instanceof Element
+          ? event.target.closest("[data-auto-nest-buff-switch]")
+          : null;
+      if (!switchElement) {
+        return;
+      }
 
-        stopAutoNestBuff();
-        render({ skipMapCardRebuild: true });
-      });
-    }
+      if (switchElement.checked) {
+        startAutoNestBuff();
+        return;
+      }
+
+      stopAutoNestBuff();
+      render({ skipMapCardRebuild: true });
+    });
 
     if (elements.openCollectionModal) {
       elements.openCollectionModal.addEventListener("click", () => {
@@ -4833,6 +4946,11 @@
           return;
         }
 
+        if (nextLevel === currentLevel) {
+          return;
+        }
+
+        disableAutoNestBuffForManualEdit();
         catBuildingLevels[building.id] = nextLevel;
         persistCatBuildingLevels();
         renderCatBuildingsModal();

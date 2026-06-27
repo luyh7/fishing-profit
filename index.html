@@ -2230,8 +2230,13 @@
       .cat-buildings-summary {
         display: flex;
         flex-wrap: wrap;
+        align-items: center;
         gap: 8px;
         padding: 0 28px 16px;
+      }
+
+      .cat-buildings-auto-switch {
+        margin-left: auto;
       }
 
       .cat-buildings-chip {
@@ -2867,6 +2872,10 @@
           padding: 0 14px 14px;
         }
 
+        .cat-buildings-auto-switch {
+          margin-left: 0;
+        }
+
         .cat-building-row {
           grid-template-columns: 30px minmax(0, 1fr);
           align-items: start;
@@ -3131,6 +3140,7 @@
                   <input
                     type="checkbox"
                     id="autoNestBuffSwitch"
+                    data-auto-nest-buff-switch
                     role="switch"
                     aria-label="自动更新数据"
                   />
@@ -3149,7 +3159,7 @@
                   >
                   <span class="tooltip"
                     >自动更新打窝 buff、天气、周末buff；填写 QQ
-                    后同步鱼钩和鱼竿等级</span
+                    后同步鱼钩、鱼竿和建筑等级</span
                   >
                 </span>
               </div>
