@@ -1151,7 +1151,7 @@
 
   function buildCatBuildingsButtonHtml(row) {
     return isCatParadiseMap(row.map)
-      ? `<button type="button" class="cat-buildings-btn" data-cat-buildings-open aria-label="猫猫乐园建筑" title=""><span class="cat-buildings-open-icon" aria-hidden="true">🏠</span></button>`
+      ? `<button type="button" class="cat-buildings-btn" data-cat-buildings-open aria-label="猫猫乐园建设" title=""><span class="cat-buildings-open-icon" aria-hidden="true">🏠</span></button>`
       : "";
   }
 
