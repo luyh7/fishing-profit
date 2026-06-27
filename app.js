@@ -3778,6 +3778,20 @@
         `;
       })
       .join("");
+    updateCatBuildingsSummaryGutter();
+  }
+
+  function updateCatBuildingsSummaryGutter() {
+    if (!elements.catBuildingsModal || !elements.catBuildingsSummary) {
+      return;
+    }
+
+    const body = elements.catBuildingsModal.querySelector(".collection-body");
+    const gutter = body ? Math.max(0, body.offsetWidth - body.clientWidth) : 0;
+    elements.catBuildingsSummary.style.setProperty(
+      "--cat-buildings-scrollbar-gutter",
+      `${gutter}px`,
+    );
   }
 
   function openCatBuildingsModal() {
@@ -3788,6 +3802,7 @@
     renderCatBuildingsModal();
     elements.catBuildingsModal.hidden = false;
     document.body.classList.add("collection-modal-open");
+    updateCatBuildingsSummaryGutter();
     elements.catBuildingsModal
       .querySelector(".collection-modal-panel")
       ?.focus({ preventScroll: true });

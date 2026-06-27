@@ -2228,15 +2228,18 @@
       }
 
       .cat-buildings-summary {
+        --cat-buildings-scrollbar-gutter: 0px;
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         gap: 8px;
-        padding: 0 28px 16px;
+        padding: 0 calc(28px + var(--cat-buildings-scrollbar-gutter)) 16px
+          28px;
       }
 
       .cat-buildings-auto-switch {
         margin-left: auto;
+        justify-self: end;
       }
 
       .cat-buildings-chip {
@@ -2869,11 +2872,8 @@
         }
 
         .cat-buildings-summary {
-          padding: 0 14px 14px;
-        }
-
-        .cat-buildings-auto-switch {
-          margin-left: 0;
+          padding: 0 calc(14px + var(--cat-buildings-scrollbar-gutter)) 14px
+            14px;
         }
 
         .cat-building-row {
