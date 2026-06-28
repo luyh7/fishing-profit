@@ -3781,11 +3781,14 @@
         );
         const nextLevelConfig = getCatBuildingNextLevelConfig(building);
         const nextEffectText = nextLevelConfig
-          ? formatCatEffects(nextLevelConfig.effects)
+          ? formatCatEffects(
+              getCatBuildingAccumulatedEffects(building, level + 1),
+            )
           : "";
         const upgradeAllowed = canUpgradeCatBuilding(building);
-        const prerequisite = building.prerequisiteText
-          ? `<div class="cat-building-meta">${escapeHtml(building.prerequisiteText)}</div>`
+        const prerequisiteText = getCatBuildingPrerequisiteText(building);
+        const prerequisite = prerequisiteText
+          ? `<div class="cat-building-meta">${escapeHtml(prerequisiteText)}</div>`
           : "";
         const effectHtml = `
           ${accumulatedEffectText ? `<div>当前效果：<span class="cat-building-current-effect">${escapeHtml(accumulatedEffectText)}</span></div>` : '<div class="cat-building-meta">当前无加成</div>'}
@@ -4161,9 +4164,35 @@
     );
   }
 
-  function canUpgradeCatBuilding(building) {
+  function getCatBuildingNextLevel(building) {
     const currentLevel = getCatBuildingLevel(building.id);
     if (currentLevel >= getCatBuildingMaxLevel(building)) {
+      return null;
+    }
+
+    return currentLevel + 1;
+  }
+
+  function getCatBuildingPrerequisiteLevel(building) {
+    if (building?.id !== "legendaryCatStatue") {
+      return null;
+    }
+
+    return getCatBuildingNextLevel(building);
+  }
+
+  function getCatBuildingPrerequisiteText(building) {
+    const prerequisiteLevel = getCatBuildingPrerequisiteLevel(building);
+    if (!prerequisiteLevel) {
+      return "";
+    }
+
+    return `需要其他8栋建筑全部达到 Lv${formatNumber(prerequisiteLevel, 0)}`;
+  }
+
+  function canUpgradeCatBuilding(building) {
+    const nextLevel = getCatBuildingNextLevel(building);
+    if (!nextLevel) {
       return false;
     }
 
@@ -4173,7 +4202,7 @@
 
     return catParadiseBuildings
       .filter((item) => item.id !== building.id)
-      .every((item) => getCatBuildingLevel(item.id) >= 1);
+      .every((item) => getCatBuildingLevel(item.id) >= nextLevel);
   }
 
   function renderSummary(selectedMapRow, bestBaitRow, inputs) {

@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.1",
-  gitCommitCount: 86,
+  gitCommitCount: 87,
   nestBuffSourceUrl:
     "https://fishing-profit-nest-buff.470103427.workers.dev/nest-buff.json",
   baseIntervalHours: 1,
@@ -40,7 +40,7 @@ window.FISH_FISHING_CONFIG = {
   ],
   catParadise: {
     mapId: "S1",
-    maxOpenLevel: 1,
+    maxOpenLevel: 2,
     buildings: [
       {
         id: "catCabin",
@@ -49,6 +49,10 @@ window.FISH_FISHING_CONFIG = {
         levels: [
           {
             level: 1,
+            effects: { baitSavingPercent: 3 },
+          },
+          {
+            level: 2,
             effects: { baitSavingPercent: 3 },
           },
         ],
@@ -60,6 +64,10 @@ window.FISH_FISHING_CONFIG = {
         levels: [
           {
             level: 1,
+            effects: { fishingSpeedPercent: 3 },
+          },
+          {
+            level: 2,
             effects: { fishingSpeedPercent: 3 },
           },
         ],
@@ -74,6 +82,10 @@ window.FISH_FISHING_CONFIG = {
             level: 1,
             effects: { materialDropRatePercent: 5 },
           },
+          {
+            level: 2,
+            effects: { materialDropRatePercent: 5 },
+          },
         ],
       },
       {
@@ -83,6 +95,10 @@ window.FISH_FISHING_CONFIG = {
         levels: [
           {
             level: 1,
+            effects: { fishPricePercent: 3 },
+          },
+          {
+            level: 2,
             effects: { fishPricePercent: 3 },
           },
         ],
@@ -96,6 +112,10 @@ window.FISH_FISHING_CONFIG = {
             level: 1,
             effects: { weatherBoostPercent: 3 },
           },
+          {
+            level: 2,
+            effects: { weatherBoostPercent: 3 },
+          },
         ],
       },
       {
@@ -105,6 +125,10 @@ window.FISH_FISHING_CONFIG = {
         levels: [
           {
             level: 1,
+            effects: { doubleCatchPercent: 3 },
+          },
+          {
+            level: 2,
             effects: { doubleCatchPercent: 3 },
           },
         ],
@@ -118,6 +142,10 @@ window.FISH_FISHING_CONFIG = {
             level: 1,
             effects: { rodLevelBonusChancePercent: 5 },
           },
+          {
+            level: 2,
+            effects: { rodLevelBonusChancePercent: 5 },
+          },
         ],
       },
       {
@@ -129,17 +157,24 @@ window.FISH_FISHING_CONFIG = {
             level: 1,
             effects: { dailySignDraws: 1 },
           },
+          {
+            level: 2,
+            effects: { dailySignDraws: 1 },
+          },
         ],
       },
       {
         id: "legendaryCatStatue",
         order: 9,
         name: "传奇猫雕像",
-        prerequisiteText: "需要其他8栋建筑全部达到 Lv1",
         levels: [
           {
             level: 1,
             effects: { unlockLevel: 2 },
+          },
+          {
+            level: 2,
+            effects: { unlockLevel: 1 },
           },
         ],
       },
