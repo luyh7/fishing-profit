@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.1",
-  gitCommitCount: 84,
+  gitCommitCount: 85,
   nestBuffSourceUrl:
     "https://fishing-profit-nest-buff.470103427.workers.dev/nest-buff.json",
   baseIntervalHours: 1,
@@ -105,7 +105,7 @@ window.FISH_FISHING_CONFIG = {
         levels: [
           {
             level: 1,
-            effects: { doubleCatchPercent: 1 },
+            effects: { doubleCatchPercent: 3 },
           },
         ],
       },
