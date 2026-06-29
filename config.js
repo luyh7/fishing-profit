@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.1",
-  gitCommitCount: 87,
+  gitCommitCount: 88,
   nestBuffSourceUrl:
     "https://fishing-profit-nest-buff.470103427.workers.dev/nest-buff.json",
   baseIntervalHours: 1,
@@ -40,6 +40,7 @@ window.FISH_FISHING_CONFIG = {
   ],
   catParadise: {
     mapId: "S1",
+    collectionIndex: 20,
     maxOpenLevel: 2,
     buildings: [
       {

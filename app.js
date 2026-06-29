@@ -20,6 +20,11 @@
   const collectionLongPressMs = 280;
   const catParadiseConfig = config.catParadise || {};
   const catParadiseMapId = normalizeMapId(catParadiseConfig.mapId || "S1");
+  const catParadiseCollectionIndex = Number.isInteger(
+    Number(catParadiseConfig.collectionIndex),
+  )
+    ? Number(catParadiseConfig.collectionIndex)
+    : 20;
   const catParadiseBuildings = Array.isArray(catParadiseConfig.buildings)
     ? catParadiseConfig.buildings
     : [];
@@ -249,6 +254,10 @@
 
   function getMapAchievementId(map, mapIndex) {
     return getMapId(map) || String(mapIndex + 1);
+  }
+
+  function getMapCollectionIndex(map, mapIndex) {
+    return isCatParadiseMap(map) ? catParadiseCollectionIndex : mapIndex;
   }
 
   function getMapCardElement(mapId) {
@@ -1481,8 +1490,9 @@
       : [];
 
     return config.maps.reduce((normalized, map, mapIndex) => {
+      const collectionIndex = getMapCollectionIndex(map, mapIndex);
       const mapCollectionValue = parseCollectionValue(
-        collectionValues[mapIndex],
+        collectionValues[collectionIndex],
       );
       if (mapCollectionValue <= 0n) {
         return normalized;
@@ -2823,8 +2833,9 @@
 
       config.maps.forEach((map, mapIndex) => {
         const mapId = getMapAchievementId(map, mapIndex);
+        const collectionIndex = getMapCollectionIndex(map, mapIndex);
         const mapCollectionValue = parseCollectionValue(
-          player.collections[mapIndex],
+          player.collections[collectionIndex],
         );
         if (mapCollectionValue <= 0n) {
           achievementMapStates.push({
