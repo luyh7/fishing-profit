@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.1",
-  gitCommitCount: 89,
+  gitCommitCount: 90,
   nestBuffSourceUrl:
     "https://fishing-profit-nest-buff.470103427.workers.dev/nest-buff.json",
   baseIntervalHours: 1,
@@ -41,7 +41,7 @@ window.FISH_FISHING_CONFIG = {
   catParadise: {
     mapId: "S1",
     collectionIndex: 20,
-    maxOpenLevel: 2,
+    maxOpenLevel: 3,
     buildings: [
       {
         id: "catCabin",
@@ -55,6 +55,10 @@ window.FISH_FISHING_CONFIG = {
           {
             level: 2,
             effects: { baitSavingPercent: 3 },
+          },
+          {
+            level: 3,
+            effects: { baitSavingPercent: 4 },
           },
         ],
       },
@@ -70,6 +74,10 @@ window.FISH_FISHING_CONFIG = {
           {
             level: 2,
             effects: { fishingSpeedPercent: 3 },
+          },
+          {
+            level: 3,
+            effects: { fishingSpeedPercent: 4 },
           },
         ],
       },
@@ -87,6 +95,10 @@ window.FISH_FISHING_CONFIG = {
             level: 2,
             effects: { materialDropRatePercent: 5 },
           },
+          {
+            level: 3,
+            effects: { materialDropRatePercent: 5 },
+          },
         ],
       },
       {
@@ -101,6 +113,10 @@ window.FISH_FISHING_CONFIG = {
           {
             level: 2,
             effects: { fishPricePercent: 3 },
+          },
+          {
+            level: 3,
+            effects: { fishPricePercent: 4 },
           },
         ],
       },
@@ -117,6 +133,10 @@ window.FISH_FISHING_CONFIG = {
             level: 2,
             effects: { weatherBoostPercent: 3 },
           },
+          {
+            level: 3,
+            effects: { weatherBoostPercent: 4 },
+          },
         ],
       },
       {
@@ -131,6 +151,10 @@ window.FISH_FISHING_CONFIG = {
           {
             level: 2,
             effects: { doubleCatchPercent: 3 },
+          },
+          {
+            level: 3,
+            effects: { doubleCatchPercent: 4 },
           },
         ],
       },
@@ -147,6 +171,10 @@ window.FISH_FISHING_CONFIG = {
             level: 2,
             effects: { rodLevelBonusChancePercent: 10 },
           },
+          {
+            level: 3,
+            effects: { rodLevelBonusChancePercent: 15 },
+          },
         ],
       },
       {
@@ -160,6 +188,10 @@ window.FISH_FISHING_CONFIG = {
           },
           {
             level: 2,
+            effects: { dailySignDraws: 1 },
+          },
+          {
+            level: 3,
             effects: { dailySignDraws: 1 },
           },
         ],
@@ -176,6 +208,10 @@ window.FISH_FISHING_CONFIG = {
           {
             level: 2,
             effects: { unlockLevel: 1 },
+          },
+          {
+            level: 3,
+            effects: { rodLevelBonus: 1 },
           },
         ],
       },

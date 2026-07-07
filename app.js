@@ -1471,6 +1471,13 @@
     }, {});
   }
 
+  function getGlobalCatBuildingEffects() {
+    const effects = getCatParadiseBuildingEffects();
+    return {
+      rodLevelBonus: effects.rodLevelBonus,
+    };
+  }
+
   function getCatParadiseEffectsForMap(map) {
     return isCatParadiseMap(map) ? getCatParadiseBuildingEffects() : {};
   }
@@ -1881,7 +1888,12 @@
       elements.hookLevelDisplay.textContent = `Lv.${hookVal}`;
     }
     if (elements.rodLevelDisplay) {
-      elements.rodLevelDisplay.textContent = `Lv.${rodVal}`;
+      const rodLevelBonus = getGlobalRodLevelBonus();
+      elements.rodLevelDisplay.innerHTML =
+        `<span>Lv.${formatNumber(rodVal, 0)}</span>` +
+        (rodLevelBonus > 0
+          ? `<span class="select-level-bonus">+${formatNumber(rodLevelBonus, 0)}</span>`
+          : "");
     }
   }
 
@@ -2137,7 +2149,24 @@
   }
 
   function getProbabilityProfile(delta) {
-    return config.probabilityByDelta[delta] || config.probabilityByDelta[1];
+    const probabilityByDelta = config.probabilityByDelta || {};
+    const deltas = Object.keys(probabilityByDelta)
+      .map((key) => Number.parseInt(key, 10))
+      .filter(Number.isFinite)
+      .sort((left, right) => left - right);
+    if (!deltas.length) {
+      return {};
+    }
+
+    const normalizedDelta = Math.floor(parseNumber(delta));
+    const matchedDelta = deltas.includes(normalizedDelta)
+      ? normalizedDelta
+      : deltas.reduce(
+          (candidate, current) =>
+            current <= normalizedDelta ? current : candidate,
+          deltas[0],
+        );
+    return probabilityByDelta[matchedDelta] || probabilityByDelta[deltas[0]];
   }
 
   function blendProbabilityProfiles(baseProfile, bonusProfile, chancePercent) {
@@ -2160,6 +2189,18 @@
       config.probabilityByDelta[delta + 1] || getProbabilityProfile(delta),
       effects.rodLevelBonusChancePercent,
     );
+  }
+
+  function getCatRodLevelBonus(effects) {
+    return Math.max(0, Math.floor(parseNumber(effects?.rodLevelBonus)));
+  }
+
+  function getGlobalRodLevelBonus() {
+    return getCatRodLevelBonus(getGlobalCatBuildingEffects());
+  }
+
+  function getEffectiveRodLevel(rodLevel) {
+    return rodLevel + getGlobalRodLevelBonus();
   }
 
   function getCatAdjustedFishes(fishes, effects) {
@@ -2371,18 +2412,19 @@
   }
 
   function calculateMapRows(inputs, rodLevel) {
+    const effectiveRodLevel = getEffectiveRodLevel(rodLevel);
     return config.maps
-      .filter((map) => map.difficulty <= rodLevel)
+      .filter((map) => map.difficulty <= effectiveRodLevel)
       .map((map) => {
         const catEffects = getCatParadiseEffectsForMap(map);
         const sourceFishes = getMapFishes(map);
         const fishes = getCatAdjustedFishes(sourceFishes, catEffects);
         const averageNPrice = calculateAverageNPrice(fishes);
-        const delta = rodLevel - map.difficulty;
+        const delta = effectiveRodLevel - map.difficulty;
         const baseProfile = getCatAdjustedBaseProfile(delta, catEffects);
         const weather = getWeatherForMap(map.difficulty, map.id);
         const lostWindUtrProbability = getCatAdjustedLostWindUtrProbability(
-          rodLevel,
+          effectiveRodLevel,
           map.difficulty,
           catEffects,
         );
@@ -3744,20 +3786,27 @@
       ["weatherBoostPercent", "天气增幅"],
       ["doubleCatchPercent", "双倍鱼获"],
       ["rodLevelBonusChancePercent", "钓鱼等级+1"],
+      ["rodLevelBonus", "鱼竿等级"],
       ["materialDropRatePercent", "材料率"],
       ["dailySignDraws", "每日签到"],
       ["unlockLevel", "解锁"],
     ];
 
     const summaryText = summaryItems
-      .filter(([key]) => parseNumber(effects[key]) > 0)
+      .filter(
+        ([key]) =>
+          parseNumber(effects[key]) > 0 &&
+          !(key === "unlockLevel" && getCatRodLevelBonus(effects) > 0),
+      )
       .map(([key, label]) => {
         const value =
           key === "dailySignDraws"
             ? `${formatNumber(parseNumber(effects[key]), 0)}抽`
             : key === "unlockLevel"
               ? `Lv${formatNumber(parseNumber(effects[key]), 0)}`
-              : `${formatNumber(parseNumber(effects[key]), 2)}%`;
+              : key === "rodLevelBonus"
+                ? `+${formatNumber(parseNumber(effects[key]), 0)}`
+                : `${formatNumber(parseNumber(effects[key]), 2)}%`;
         return `${label} ${value}`;
       })
       .join("、");
@@ -4132,6 +4181,8 @@
         return `双倍鱼获 ${formatNumber(numericValue, 2)}%`;
       case "rodLevelBonusChancePercent":
         return `钓鱼等级+1概率 ${formatNumber(numericValue, 2)}%`;
+      case "rodLevelBonus":
+        return `鱼竿等级 +${formatNumber(numericValue, 0)}`;
       case "dailySignDraws":
         return `每日签到 ${formatNumber(numericValue, 0)}抽`;
       case "unlockLevel":
@@ -4147,7 +4198,11 @@
     }
 
     return Object.entries(effects)
-      .filter(([, value]) => parseNumber(value) !== 0)
+      .filter(
+        ([key, value]) =>
+          parseNumber(value) !== 0 &&
+          !(key === "unlockLevel" && getCatRodLevelBonus(effects) > 0),
+      )
       .map(([key, value]) => formatCatEffectItem(key, value))
       .join("、");
   }
@@ -4610,6 +4665,7 @@
   }
 
   function render(options = {}) {
+    updateLevelDisplays();
     const inputs = getInputs();
     const selectedRodLevel = Number.parseInt(elements.rodLevel.value, 10);
     const mapRows = calculateMapRows(inputs, selectedRodLevel);
