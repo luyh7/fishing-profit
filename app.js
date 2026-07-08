@@ -2223,6 +2223,18 @@
     );
   }
 
+  function getCatMaterialValue(effects) {
+    return Math.max(0, parseNumber(effects?.materialValue));
+  }
+
+  function calculateMaterialExpectedValue(materialDropRate, materialValue) {
+    return (
+      (getCatMaterialDropRate({ materialDropRatePercent: materialDropRate }) /
+        100) *
+      Math.max(0, parseNumber(materialValue))
+    );
+  }
+
   function getMaterialAdjustedProbabilityProfile(profile, materialDropRate) {
     const fishRate = Math.max(0, 1 - getCatMaterialDropRate({
       materialDropRatePercent: materialDropRate,
@@ -2452,6 +2464,10 @@
         const baseExpectedPrice = isSelectable
           ? calculateExpectedFishPrice(profile, averageNPrice)
           : Number.NaN;
+        const materialValue = getCatMaterialValue(catEffects);
+        const materialExpectedValue = isSelectable
+          ? calculateMaterialExpectedValue(materialDropRate, materialValue)
+          : 0;
         const fallbackBaitRow = isSelectable
           ? getBestBaitRow(
               calculateBaitRows(
@@ -2478,9 +2494,13 @@
               catEffects.weatherBoostPercent,
             )
           : Number.NaN;
+        const displayExpectedPrice = Number.isFinite(expectedPrice)
+          ? expectedPrice + materialExpectedValue
+          : expectedPrice;
         const profitExpectedPrice = Number.isFinite(expectedPrice)
           ? expectedPrice *
-            (1 + Math.max(0, parseNumber(catEffects.doubleCatchPercent)) / 100)
+              (1 + Math.max(0, parseNumber(catEffects.doubleCatchPercent)) / 100) +
+            materialExpectedValue
           : expectedPrice;
         const baitRows = isSelectable
           ? calculateBaitRows(
@@ -2505,8 +2525,10 @@
           profile,
           baseExpectedPrice,
           expectedPrice,
+          displayExpectedPrice,
           profitExpectedPrice,
           materialDropRate,
+          materialExpectedValue,
           catEffects,
           baitBuff,
           weather,
@@ -3788,6 +3810,7 @@
       ["rodLevelBonusChancePercent", "钓鱼等级+1"],
       ["rodLevelBonus", "鱼竿等级"],
       ["materialDropRatePercent", "材料率"],
+      ["materialValue", "材料价值"],
       ["dailySignDraws", "每日签到"],
       ["unlockLevel", "解锁"],
     ];
@@ -3806,7 +3829,9 @@
               ? `Lv${formatNumber(parseNumber(effects[key]), 0)}`
               : key === "rodLevelBonus"
                 ? `+${formatNumber(parseNumber(effects[key]), 0)}`
-                : `${formatNumber(parseNumber(effects[key]), 2)}%`;
+                : key === "materialValue"
+                  ? `¥${formatNumber(parseNumber(effects[key]), 0)}`
+                  : `${formatNumber(parseNumber(effects[key]), 2)}%`;
         return `${label} ${value}`;
       })
       .join("、");
@@ -4173,6 +4198,8 @@
         return `钓鱼速度 ${formatSignedPercent(numericValue)}`;
       case "materialDropRatePercent":
         return `材料率 ${formatNumber(numericValue, 2)}%`;
+      case "materialValue":
+        return `材料价值 ¥${formatNumber(numericValue, 0)}`;
       case "fishPricePercent":
         return `鱼价 ${formatSignedPercent(numericValue)}`;
       case "weatherBoostPercent":
@@ -4285,7 +4312,7 @@
       ? `<span class="selected-map-delta-item"><span class="selected-map-delta-label">🎣渔力</span><span class="selected-map-delta-value">${selectedMapRow.delta}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">🪝鱼钩</span><span class="selected-map-buff-value">${formatPercent(inputs?.hookConfig?.speed ?? 0, 2)}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">⚡${highlightPercentValues(inputs?.systemBuffConfig?.name ?? "", "selected-map-buff-value")}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">🌽打窝</span><span class="selected-map-buff-value">${formatNumber(selectedMapRow.baitBuff, 2)}%</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">${getWeatherMeta(selectedMapRow.weather?.type).emoji}天气</span><span class="selected-map-buff-value">${getWeatherMeta(selectedMapRow.weather?.type).label}</span></span>`
       : "-";
     elements.selectedFishPrice.textContent = selectedMapRow
-      ? `¥${formatNumber(selectedMapRow.expectedPrice, 2)}`
+      ? `¥${formatNumber(selectedMapRow.displayExpectedPrice, 2)}`
       : "-";
     if (selectedMapRow) {
       const visibleRarities = config.rarityOrder
