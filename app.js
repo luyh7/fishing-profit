@@ -2010,7 +2010,11 @@
         return;
       }
 
-      const nestValue = (parseNumber(location?.buffs?.nest) + parseNumber(location?.buffs?.frame)) * 5;
+      const nestValue =
+        (parseNumber(location?.buffs?.nest) +
+          parseNumber(location?.buffs?.frame) +
+          parseNumber(location?.buffs?.starry_bonus)) *
+        5;
       if (nestValue > 0) {
         nextBaitBuffByMap[mapId] = String(nestValue);
       }
