@@ -331,6 +331,58 @@
         margin-bottom: 6px;
       }
 
+      .fish-price-tooltip-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .fish-price-shortcut-hint {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 5px;
+        color: rgba(237, 242, 255, 0.72);
+        white-space: nowrap;
+      }
+
+      .fish-price-shortcut-hint kbd {
+        min-width: 24px;
+        padding: 0 5px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text);
+        font: inherit;
+        font-weight: 700;
+        line-height: 17px;
+        text-align: center;
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+      }
+
+      .fish-price-original-label,
+      .tooltip-price-original,
+      .fish-price-shortcut-release {
+        display: none;
+      }
+
+      #fishPriceTooltip.is-showing-original-price
+        .fish-price-current-label,
+      #fishPriceTooltip.is-showing-original-price .tooltip-price-current,
+      #fishPriceTooltip.is-showing-original-price
+        .fish-price-shortcut-view {
+        display: none;
+      }
+
+      #fishPriceTooltip.is-showing-original-price
+        .fish-price-original-label,
+      #fishPriceTooltip.is-showing-original-price .tooltip-price-original,
+      #fishPriceTooltip.is-showing-original-price
+        .fish-price-shortcut-release {
+        display: inline;
+      }
+
       .tooltip-table {
         width: 100%;
         min-width: 0;

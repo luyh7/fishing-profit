@@ -155,6 +155,7 @@
     resultBody: document.getElementById("resultBody"),
     emptyState: document.getElementById("emptyState"),
   };
+  let isFishPriceAltPressed = false;
 
   function parseNumber(value) {
     const parsed = Number.parseFloat(value);
@@ -2835,6 +2836,8 @@
     if (!selectedMapRow || !visibleRarities.length) {
       tooltip.hidden = true;
       tooltip.innerHTML = "";
+      tooltip.dataset.hasFishPriceBonus = "false";
+      tooltip.classList.remove("is-showing-original-price");
       return;
     }
 
@@ -2843,8 +2846,19 @@
     if (!fishes.length) {
       tooltip.hidden = true;
       tooltip.innerHTML = "";
+      tooltip.dataset.hasFishPriceBonus = "false";
+      tooltip.classList.remove("is-showing-original-price");
       return;
     }
+
+    const originalFishByKey = new Map(
+      achievementFishes.map((fish) => [
+        getFishCollectionKey(selectedMapRow.map, fish),
+        fish,
+      ]),
+    );
+    const hasFishPriceBonus =
+      parseNumber(selectedMapRow.catEffects?.fishPricePercent) > 0;
 
     const headerCells = visibleRarities
       .map(
@@ -2859,10 +2873,12 @@
     const rows = fishes
       .map((fish) => {
         const fishKey = getFishCollectionKey(selectedMapRow.map, fish);
+        const originalFish = originalFishByKey.get(fishKey) || fish;
         const cells = visibleRarities
           .map((rarity) => {
             const multiplier = parseNumber(config.rarityMultipliers[rarity]);
             const price = parseNumber(fish.nPrice) * multiplier;
+            const originalPrice = parseNumber(originalFish.nPrice) * multiplier;
             const isMissing =
               shouldMarkMissingPrices &&
               !isFishRarityCollected(fishKey, rarity);
@@ -2871,7 +2887,9 @@
               isMissing ? "未收集" : "已收集"
             }`;
             const priceStyle = `--rarity-color: ${rarityColor(rarity)};`;
-            const priceText = `¥${formatNumber(price, 0)}`;
+            const priceText = hasFishPriceBonus
+              ? `<span class="tooltip-price-current">¥${formatNumber(price, 0)}</span><span class="tooltip-price-original">¥${formatNumber(originalPrice, 0)}</span>`
+              : `¥${formatNumber(price, 0)}`;
             return (
               `<td><span class="${priceClass}" style="${priceStyle}" ` +
               `aria-label="${escapeHtml(priceLabel)}">${priceText}</span></td>`
@@ -2893,10 +2911,18 @@
       })
       .join("");
     const achievementRow = `<tr class="tooltip-achievement-row"><td>成就</td>${achievementCells}</tr>`;
+    const title = hasFishPriceBonus
+      ? `<div class="tooltip-title fish-price-tooltip-title"><span><span class="fish-price-current-label">各稀有度单鱼价格（已含建筑鱼价）</span><span class="fish-price-original-label">各稀有度单鱼价格（原价）</span></span><span class="fish-price-shortcut-hint"><kbd>Alt</kbd><span class="fish-price-shortcut-view">查看原价</span><span class="fish-price-shortcut-release">松开恢复加成价</span></span></div>`
+      : `<div class="tooltip-title">各稀有度单鱼价格</div>`;
 
     tooltip.hidden = false;
+    tooltip.dataset.hasFishPriceBonus = String(hasFishPriceBonus);
+    tooltip.classList.toggle(
+      "is-showing-original-price",
+      hasFishPriceBonus && isFishPriceAltPressed,
+    );
     tooltip.innerHTML = `
-      <div class="tooltip-title">${isCatParadiseMap(selectedMapRow.map) ? "各稀有度单鱼价格（已含建筑鱼价）" : "各稀有度单鱼价格"}</div>
+      ${title}
       <table class="tooltip-table">
         <thead><tr><th>鱼种</th>${headerCells}</tr></thead>
         <tbody>${rows}${achievementRow}</tbody>
@@ -5247,9 +5273,42 @@
     }
 
     document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        isFishPriceAltPressed = false;
+        elements.fishPriceTooltip?.classList.remove(
+          "is-showing-original-price",
+        );
+        return;
+      }
       if (!document.hidden) {
         maybeShowBaitReminder();
       }
+    });
+
+    const setFishPriceAltPressed = (isPressed) => {
+      isFishPriceAltPressed = isPressed;
+      const tooltip = elements.fishPriceTooltip;
+      if (!tooltip) {
+        return;
+      }
+      tooltip.classList.toggle(
+        "is-showing-original-price",
+        isPressed && tooltip.dataset.hasFishPriceBonus === "true",
+      );
+    };
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Alt" && !event.repeat) {
+        setFishPriceAltPressed(true);
+      }
+    });
+    window.addEventListener("keyup", (event) => {
+      if (event.key === "Alt") {
+        setFishPriceAltPressed(false);
+      }
+    });
+    window.addEventListener("blur", () => {
+      setFishPriceAltPressed(false);
     });
 
     if (elements.mapCardList) {
