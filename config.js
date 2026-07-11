@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.1",
-  gitCommitCount: 96,
+  gitCommitCount: 97,
   nestBuffSourceUrl:
     "https://fishing-profit-nest-buff.470103427.workers.dev/nest-buff.json",
   baseIntervalHours: 1,
@@ -526,7 +526,7 @@ window.FISH_FISHING_CONFIG = {
     8: { UR: 34.72, SSR: 48.9, SR: 16.38, R: 0, N: 0 },
     9: { UR: 55.49, SSR: 37.74, SR: 6.77, R: 0, N: 0 },
     10: { UR: 76.65, SSR: 23.35, SR: 0, R: 0, N: 0 },
-    11: { UR: 0, SSR: 0, SR: 0, R: 0, N: 0 },
+    11: { UR: 89.15, SSR: 10.85, SR: 0, R: 0, N: 0 },
     12: { UR: 0, SSR: 0, SR: 0, R: 0, N: 0 },
     13: { UR: 0, SSR: 0, SR: 0, R: 0, N: 0 },
     14: { UR: 0, SSR: 0, SR: 0, R: 0, N: 0 },

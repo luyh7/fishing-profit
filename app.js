@@ -1616,13 +1616,6 @@
     }, {});
   }
 
-  function getGlobalCatBuildingEffects() {
-    const effects = getCatParadiseBuildingEffects();
-    return {
-      rodLevelBonus: effects.rodLevelBonus,
-    };
-  }
-
   function getCatParadiseEffectsForMap(map) {
     return isCatParadiseMap(map) ? getCatParadiseBuildingEffects() : {};
   }
@@ -2042,12 +2035,7 @@
       elements.hookLevelDisplay.textContent = `Lv.${hookVal}`;
     }
     if (elements.rodLevelDisplay) {
-      const rodLevelBonus = getGlobalRodLevelBonus();
-      elements.rodLevelDisplay.innerHTML =
-        `<span>Lv.${formatNumber(rodVal, 0)}</span>` +
-        (rodLevelBonus > 0
-          ? `<span class="select-level-bonus">+${formatNumber(rodLevelBonus, 0)}</span>`
-          : "");
+      elements.rodLevelDisplay.textContent = `Lv.${rodVal}`;
     }
   }
 
@@ -2407,14 +2395,6 @@
     );
   }
 
-  function getCatRodLevelBonus(effects) {
-    return Math.max(0, Math.floor(parseNumber(effects?.rodLevelBonus)));
-  }
-
-  function getGlobalRodLevelBonus() {
-    return getCatRodLevelBonus(getGlobalCatBuildingEffects());
-  }
-
   function getEffectiveRodLevel(
     rodLevel,
     potionConfig = getPotionConfig("none"),
@@ -2423,10 +2403,7 @@
       0,
       Math.floor(parseNumber(potionConfig?.rodLevelPenalty)),
     );
-    return Math.max(
-      0,
-      parseNumber(rodLevel) + getGlobalRodLevelBonus() - potionPenalty,
-    );
+    return Math.max(0, parseNumber(rodLevel) - potionPenalty);
   }
 
   function getCatAdjustedFishes(fishes, effects) {
@@ -4069,7 +4046,7 @@
       .filter(
         ([key]) =>
           parseNumber(effects[key]) > 0 &&
-          !(key === "unlockLevel" && getCatRodLevelBonus(effects) > 0),
+          !(key === "unlockLevel" && parseNumber(effects.rodLevelBonus) > 0),
       )
       .map(([key, label]) => {
         const value =
@@ -4078,7 +4055,7 @@
             : key === "unlockLevel"
               ? `Lv${formatNumber(parseNumber(effects[key]), 0)}`
               : key === "rodLevelBonus"
-                ? `+${formatNumber(parseNumber(effects[key]), 0)}`
+                ? `+${formatNumber(parseNumber(effects[key]), 0)}（请自行选择实际等级或自动更新）`
                 : key === "materialValue"
                   ? `¥${formatNumber(parseNumber(effects[key]), 0)}`
                   : `${formatNumber(parseNumber(effects[key]), 2)}%`;
@@ -4459,7 +4436,7 @@
       case "rodLevelBonusChancePercent":
         return `钓鱼等级+1概率 ${formatNumber(numericValue, 2)}%`;
       case "rodLevelBonus":
-        return `鱼竿等级 +${formatNumber(numericValue, 0)}`;
+        return `鱼竿等级 +${formatNumber(numericValue, 0)}（请自行选择实际等级或自动更新）`;
       case "dailySignDraws":
         return `每日签到 ${formatNumber(numericValue, 0)}抽`;
       case "unlockLevel":
@@ -4478,7 +4455,7 @@
       .filter(
         ([key, value]) =>
           parseNumber(value) !== 0 &&
-          !(key === "unlockLevel" && getCatRodLevelBonus(effects) > 0),
+          !(key === "unlockLevel" && parseNumber(effects.rodLevelBonus) > 0),
       )
       .map(([key, value]) => formatCatEffectItem(key, value))
       .join("、");
