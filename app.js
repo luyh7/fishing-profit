@@ -5297,16 +5297,44 @@
       );
     };
 
-    window.addEventListener("keydown", (event) => {
-      if (event.key === "Alt" && !event.repeat) {
-        setFishPriceAltPressed(true);
-      }
-    });
-    window.addEventListener("keyup", (event) => {
-      if (event.key === "Alt") {
+    const canUseFishPriceAltShortcut = () => {
+      const tooltip = elements.fishPriceTooltip;
+      const fishPriceCard = tooltip?.closest("#fishPriceCard");
+      return Boolean(
+        tooltip &&
+          fishPriceCard &&
+          !tooltip.hidden &&
+          tooltip.dataset.hasFishPriceBonus === "true" &&
+          fishPriceCard.matches(":hover, :focus-within"),
+      );
+    };
+
+    window.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key !== "Alt" || !canUseFishPriceAltShortcut()) {
+          return;
+        }
+        event.preventDefault();
+        if (!event.repeat) {
+          setFishPriceAltPressed(true);
+        }
+      },
+      { capture: true },
+    );
+    window.addEventListener(
+      "keyup",
+      (event) => {
+        if (event.key !== "Alt") {
+          return;
+        }
+        if (isFishPriceAltPressed || canUseFishPriceAltShortcut()) {
+          event.preventDefault();
+        }
         setFishPriceAltPressed(false);
-      }
-    });
+      },
+      { capture: true },
+    );
     window.addEventListener("blur", () => {
       setFishPriceAltPressed(false);
     });
