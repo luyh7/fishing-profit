@@ -15,13 +15,13 @@ const baseOptions = {
   rollCount: 2,
 };
 
-test("配置包含 id 为 xingyun 的幸运药水", () => {
+test("配置包含 id 为 lucky_double 的幸运药水", () => {
   const previousWindow = global.window;
   global.window = {};
   delete require.cache[require.resolve("../config.js")];
   require("../config.js");
   const potion = global.window.FISH_FISHING_CONFIG.potions.find(
-    (item) => item.id === "xingyun",
+    (item) => item.id === "lucky_double",
   );
   global.window = previousWindow;
 
