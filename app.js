@@ -2818,6 +2818,7 @@
     }
 
     const fishes = selectedMapRow.fishes || [];
+    const achievementFishes = getMapFishes(selectedMapRow.map);
     if (!fishes.length) {
       tooltip.hidden = true;
       tooltip.innerHTML = "";
@@ -2863,7 +2864,7 @@
       .map((rarity) => {
         const multiplier = parseNumber(config.rarityMultipliers[rarity]);
         const totalPrice =
-          fishes.reduce(
+          achievementFishes.reduce(
             (sum, fish) => sum + parseNumber(fish.nPrice) * multiplier,
             0,
           ) * 3;
