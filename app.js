@@ -1011,22 +1011,31 @@
   function renderPotionTooltip() {
     const tooltip = elements.potionTooltip;
     const potionConfig = getPotionConfig(elements.potion?.value);
-    const startTime = parseWeatherTime(activePlayerPotionBuff?.start_time);
-    const endTime = parseWeatherTime(activePlayerPotionBuff?.end_time);
-    const shouldShow = Boolean(
-      tooltip &&
-        isAutoNestBuffEnabled &&
-        activePlayerData &&
-        activePlayerPotionBuff &&
-        potionConfig.id !== "none" &&
-        Number.isFinite(startTime) &&
-        Number.isFinite(endTime),
-    );
 
     if (!tooltip) {
       return;
     }
-    if (!shouldShow) {
+    if (potionConfig.id === "none") {
+      tooltip.hidden = true;
+      tooltip.innerHTML = "";
+      return;
+    }
+
+    const titleHtml = `<div class="tooltip-title potion-tooltip-title"><span>🧪 ${escapeHtml(potionConfig.name)}</span><span>${escapeHtml(potionConfig.effectText || "")}</span></div>`;
+    if (!isAutoNestBuffEnabled) {
+      tooltip.innerHTML = `${titleHtml}<div>手动模式下不会结束</div>`;
+      tooltip.hidden = false;
+      return;
+    }
+
+    const startTime = parseWeatherTime(activePlayerPotionBuff?.start_time);
+    const endTime = parseWeatherTime(activePlayerPotionBuff?.end_time);
+    if (
+      !activePlayerData ||
+      !activePlayerPotionBuff ||
+      !Number.isFinite(startTime) ||
+      !Number.isFinite(endTime)
+    ) {
       tooltip.hidden = true;
       tooltip.innerHTML = "";
       return;
@@ -1034,7 +1043,7 @@
 
     const now = Date.now();
     tooltip.innerHTML = `
-      <div class="tooltip-title potion-tooltip-title"><span>🧪 ${escapeHtml(potionConfig.name)}</span><span>${escapeHtml(potionConfig.effectText || "")}</span></div>
+      ${titleHtml}
       <div><span data-potion-elapsed data-potion-start-time="${startTime}">${formatDurationElapsed(now - startTime)}</span></div>
       <div class="potion-tooltip-countdown">还剩余 <span data-potion-countdown data-potion-end-time="${endTime}">${formatDurationCountdown(endTime - now)}</span></div>
     `;
