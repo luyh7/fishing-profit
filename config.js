@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.1",
-  gitCommitCount: 96,
+  gitCommitCount: 97,
   nestBuffSourceUrl:
     "https://fishing-profit-nest-buff.470103427.workers.dev/nest-buff.json",
   baseIntervalHours: 1,
@@ -51,6 +51,14 @@ window.FISH_FISHING_CONFIG = {
       effectText: "鱼竿等级-1，鱼获数量翻倍",
       rodLevelPenalty: 1,
       fishCatchMultiplier: 2,
+    },
+    {
+      id: "xingyun",
+      name: "幸运药水",
+      effectText: "每次鱼获判定2次，取更好的结果",
+      rodLevelPenalty: 0,
+      fishCatchMultiplier: 1,
+      bestCatchRolls: 2,
     },
   ],
   catParadise: {

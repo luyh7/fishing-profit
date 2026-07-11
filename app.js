@@ -12,6 +12,8 @@
     ? config.systemBuffs
     : [];
   const potionConfigs = Array.isArray(config.potions) ? config.potions : [];
+  const calculateBestCatchDistribution =
+    window.FISH_CATCH_OUTCOME?.calculateBestCatchDistribution;
   const baseRarityOrder = config.rarityOrder.filter(
     (rarity) => rarity !== "UTR",
   );
@@ -1523,6 +1525,16 @@
     return Number.parseInt(catBuildingLevels?.[buildingId], 10) || 0;
   }
 
+  function areAllCatParadiseBuildingsMaxed() {
+    return (
+      catParadiseBuildings.length > 0 &&
+      catParadiseBuildings.every(
+        (building) =>
+          getCatBuildingLevel(building.id) >= getCatBuildingMaxLevel(building),
+      )
+    );
+  }
+
   function buildCatBuildingLevelsFromPlayer(player) {
     if (!player || player.cat_park === null || player.cat_park === undefined) {
       return null;
@@ -2310,6 +2322,13 @@
     );
   }
 
+  function getPotionBestCatchRolls(potionConfig) {
+    return Math.max(
+      1,
+      Math.floor(parseNumber(potionConfig?.bestCatchRolls) || 1),
+    );
+  }
+
   function getMapFishes(map) {
     return Array.isArray(map.fishes) ? map.fishes : [];
   }
@@ -2556,7 +2575,10 @@
     mapId,
   ) {
     if (!hasPlayerAchievementForMap(mapId)) {
-      return expectedFishPrice;
+      return calculateExpectedFishPrice(
+        profile,
+        calculateAverageNPrice(fishes),
+      );
     }
 
     return calculateHighestSameRarityFishPrice(profile, fishes);
@@ -2679,8 +2701,8 @@
           catEffects.weatherBoostPercent,
           lostWindUtrProbability,
         );
-        const materialDropRate = getCatMaterialDropRate(catEffects);
-        const profile = getMaterialAdjustedProbabilityProfile(
+        let materialDropRate = getCatMaterialDropRate(catEffects);
+        let profile = getMaterialAdjustedProbabilityProfile(
           weatherProfile,
           materialDropRate,
         );
@@ -2694,13 +2716,35 @@
           weather,
           catEffects.weatherBoostPercent,
         );
-        const baseExpectedPrice = isSelectable
+        let baseExpectedPrice = isSelectable
           ? calculateExpectedFishPrice(profile, averageNPrice)
           : Number.NaN;
         const materialValue = getCatMaterialValue(catEffects);
-        const materialExpectedValue = isSelectable
+        let materialExpectedValue = isSelectable
           ? calculateMaterialExpectedValue(materialDropRate, materialValue)
           : 0;
+        const bestCatchRolls = getPotionBestCatchRolls(inputs.potionConfig);
+        if (
+          isSelectable &&
+          bestCatchRolls > 1 &&
+          typeof calculateBestCatchDistribution === "function"
+        ) {
+          const bestCatch = calculateBestCatchDistribution({
+            profile,
+            rarityOrder: config.rarityOrder,
+            rarityMultipliers: config.rarityMultipliers,
+            fishes,
+            materialDropRate,
+            materialValue,
+            rollCount: bestCatchRolls,
+            preferMaterial:
+              isCatParadiseMap(map) && !areAllCatParadiseBuildingsMaxed(),
+          });
+          profile = bestCatch.profile;
+          baseExpectedPrice = bestCatch.fishExpectedValue;
+          materialDropRate = bestCatch.materialDropRate;
+          materialExpectedValue = bestCatch.materialExpectedValue;
+        }
         const baitRowInputs = {
           ...inputs,
           weatherMultiplier,
@@ -4417,7 +4461,7 @@
     }
 
     const effects = row.catEffects || {};
-    const materialRate = getCatMaterialDropRate(effects);
+    const materialRate = Math.max(0, parseNumber(row.materialDropRate));
     const chips = [];
     if (materialRate > 0) {
       chips.push(
