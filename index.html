@@ -971,10 +971,10 @@
       }
 
       .auto-nest-buff-help .tooltip {
-        left: 50%;
-        right: auto;
+        left: auto;
+        right: 0;
         top: calc(100% + 8px);
-        transform: translateX(-50%);
+        transform: none;
         z-index: 160;
         width: max-content;
         max-width: min(280px, calc(100vw - 24px));
@@ -1378,6 +1378,24 @@
         z-index: 160;
       }
 
+      .potion-field .tooltip {
+        width: max-content;
+        max-width: min(280px, calc(100vw - 24px));
+        z-index: 160;
+      }
+
+      .potion-tooltip-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .potion-tooltip-countdown {
+        color: #4ade80;
+        font-weight: 700;
+      }
+
       .player-location-panel {
         display: flex;
         align-items: center;
@@ -1428,7 +1446,7 @@
       }
 
       .bait-reminder-tools {
-        position: relative;
+        position: static;
         z-index: 31;
         display: inline-flex;
         align-items: center;
@@ -1487,7 +1505,7 @@
       }
 
       .bait-reminder-toggle {
-        position: relative;
+        position: static;
         display: inline-flex;
         align-items: center;
         gap: 6px;
@@ -1503,7 +1521,7 @@
 
       .bait-reminder-toggle.has-tooltip:hover,
       .bait-reminder-toggle.has-tooltip:focus-within {
-        transform: translateY(-1px);
+        transform: none;
         color: var(--text);
       }
 
@@ -1518,12 +1536,12 @@
       }
 
       .bait-reminder-toggle .tooltip {
-        left: 50%;
-        right: auto;
+        left: 0;
+        right: 0;
         top: calc(100% + 8px);
-        transform: translateX(-50%);
-        width: max-content;
-        max-width: min(280px, calc(100vw - 24px));
+        transform: none;
+        width: auto;
+        max-width: none;
         white-space: normal;
         z-index: 120;
         pointer-events: none;
@@ -2997,12 +3015,20 @@
                   ></span>
                 </div>
               </div>
-              <div class="field full">
+              <div class="field">
                 <label for="systemBuff"
                   >周末buff
                   <span class="field-label-badge auto">自动</span></label
                 >
                 <select id="systemBuff"></select>
+              </div>
+              <div class="field potion-field has-tooltip">
+                <label for="potion"
+                  >药水
+                  <span class="field-label-badge auto">自动</span></label
+                >
+                <select id="potion"></select>
+                <div class="tooltip" id="potionTooltip" hidden></div>
               </div>
               <div class="field full">
                 <label for="playerQQ"
@@ -3167,7 +3193,7 @@
                   >
                   <span class="tooltip"
                     >自动更新打窝 buff、天气、周末buff；填写 QQ
-                    后同步鱼钩、鱼竿和建筑等级</span
+                    后同步鱼钩、鱼竿、药水和建筑等级</span
                   >
                 </span>
               </div>

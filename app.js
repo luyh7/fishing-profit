@@ -11,6 +11,7 @@
   const systemBuffs = Array.isArray(config.systemBuffs)
     ? config.systemBuffs
     : [];
+  const potionConfigs = Array.isArray(config.potions) ? config.potions : [];
   const baseRarityOrder = config.rarityOrder.filter(
     (rarity) => rarity !== "UTR",
   );
@@ -37,6 +38,7 @@
     hookLevel: "fish_calculator_hook_level",
     rodLevel: "fish_calculator_rod_level",
     systemBuff: "fish_calculator_system_buff",
+    potion: "fish_calculator_potion",
     mapLevel: "fish_calculator_map_level",
     mapId: "fish_calculator_map_id",
     baitBuffByMap: "fish_calculator_bait_buff_by_map",
@@ -97,6 +99,8 @@
     hookLevelDisplay: document.getElementById("hookLevelDisplay"),
     rodLevelDisplay: document.getElementById("rodLevelDisplay"),
     systemBuff: document.getElementById("systemBuff"),
+    potion: document.getElementById("potion"),
+    potionTooltip: document.getElementById("potionTooltip"),
     playerQQ: document.getElementById("playerQQ"),
     playerQQNickname: document.getElementById("playerQQNickname"),
     playerQQError: document.getElementById("playerQQError"),
@@ -484,6 +488,69 @@
 
     const parsed = Date.parse(value || "");
     return Number.isFinite(parsed) ? parsed : Number.NaN;
+  }
+
+  function normalizePotionType(value) {
+    return String(value ?? "").trim().toLowerCase();
+  }
+
+  function getPotionConfigForBuff(buff) {
+    const type = normalizePotionType(buff?.type);
+    if (!type || type === "none") {
+      return null;
+    }
+
+    return (
+      potionConfigs.find(
+        (potion) => normalizePotionType(potion?.id) === type,
+      ) || null
+    );
+  }
+
+  function getActivePlayerPotionBuff(player, now = Date.now()) {
+    const buffs = Array.isArray(player?.buffs) ? player.buffs : [];
+    return (
+      buffs
+        .filter((buff) => {
+          if (!getPotionConfigForBuff(buff) || parseNumber(buff?.value) <= 0) {
+            return false;
+          }
+
+          const startTime = parseWeatherTime(buff?.start_time);
+          const endTime = parseWeatherTime(buff?.end_time);
+          return (
+            Number.isFinite(startTime) &&
+            Number.isFinite(endTime) &&
+            startTime <= now &&
+            now < endTime
+          );
+        })
+        .sort((left, right) => {
+          const endDelta =
+            parseWeatherTime(right?.end_time) -
+            parseWeatherTime(left?.end_time);
+          if (endDelta !== 0) {
+            return endDelta;
+          }
+          return (
+            parseWeatherTime(right?.start_time) -
+            parseWeatherTime(left?.start_time)
+          );
+        })[0] || null
+    );
+  }
+
+  function getPotionBuffIdentity(buff) {
+    if (!buff) {
+      return "";
+    }
+
+    return [
+      normalizePotionType(buff.type),
+      String(buff.value ?? ""),
+      String(buff.start_time ?? ""),
+      String(buff.end_time ?? ""),
+    ].join("|");
   }
 
   function getWeatherMeta(type) {
@@ -939,6 +1006,75 @@
       parseWeatherTime(weather?.start_time),
       effectiveNow,
     );
+  }
+
+  function renderPotionTooltip() {
+    const tooltip = elements.potionTooltip;
+    const potionConfig = getPotionConfig(elements.potion?.value);
+    const startTime = parseWeatherTime(activePlayerPotionBuff?.start_time);
+    const endTime = parseWeatherTime(activePlayerPotionBuff?.end_time);
+    const shouldShow = Boolean(
+      tooltip &&
+        isAutoNestBuffEnabled &&
+        activePlayerData &&
+        activePlayerPotionBuff &&
+        potionConfig.id !== "none" &&
+        Number.isFinite(startTime) &&
+        Number.isFinite(endTime),
+    );
+
+    if (!tooltip) {
+      return;
+    }
+    if (!shouldShow) {
+      tooltip.hidden = true;
+      tooltip.innerHTML = "";
+      return;
+    }
+
+    const now = Date.now();
+    tooltip.innerHTML = `
+      <div class="tooltip-title potion-tooltip-title"><span>🧪 ${escapeHtml(potionConfig.name)}</span><span>${escapeHtml(potionConfig.effectText || "")}</span></div>
+      <div><span data-potion-elapsed data-potion-start-time="${startTime}">${formatDurationElapsed(now - startTime)}</span></div>
+      <div class="potion-tooltip-countdown">还剩余 <span data-potion-countdown data-potion-end-time="${endTime}">${formatDurationCountdown(endTime - now)}</span></div>
+    `;
+    tooltip.hidden = false;
+  }
+
+  function updatePotionTooltipCountdowns() {
+    if (!isAutoNestBuffEnabled) {
+      return;
+    }
+
+    const now = Date.now();
+    const nextBuff = getActivePlayerPotionBuff(activePlayerData, now);
+    const nextPotionConfig =
+      getPotionConfigForBuff(nextBuff) || getPotionConfig("none");
+    const hasPotionTransition =
+      getPotionBuffIdentity(nextBuff) !==
+        getPotionBuffIdentity(activePlayerPotionBuff) ||
+      elements.potion?.value !== String(nextPotionConfig.id);
+
+    if (hasPotionTransition) {
+      syncPlayerPotionFromPlayer(activePlayerData, now);
+      render();
+      return;
+    }
+
+    const elapsedEl = elements.potionTooltip?.querySelector(
+      "[data-potion-elapsed]",
+    );
+    const countdownEl = elements.potionTooltip?.querySelector(
+      "[data-potion-countdown]",
+    );
+    if (!elapsedEl || !countdownEl || !activePlayerPotionBuff) {
+      return;
+    }
+
+    const startTime = parseWeatherTime(activePlayerPotionBuff.start_time);
+    const endTime = parseWeatherTime(activePlayerPotionBuff.end_time);
+    elapsedEl.textContent = formatDurationElapsed(now - startTime);
+    countdownEl.textContent = formatDurationCountdown(endTime - now);
   }
 
   function updateWeatherTooltipCountdowns() {
@@ -1548,6 +1684,7 @@
   let latestNestBuffPayload = null;
   let sourceWeatherByMap = {};
   let activePlayerData = null;
+  let activePlayerPotionBuff = null;
   let leaderboardActiveType = leaderboardTypes[0]?.key || "rod";
   let weatherOverrideByMap = loadWeatherOverrideMap();
   let isRefreshingNestBuff = false;
@@ -1723,11 +1860,13 @@
     }
 
     updateWeatherTooltipCountdowns();
+    updatePotionTooltipCountdowns();
     weatherTooltipRefreshIntervalId = window.setInterval(() => {
       if (!isAutoNestBuffEnabled) {
         return;
       }
       updateWeatherTooltipCountdowns();
+      updatePotionTooltipCountdowns();
     }, 1000);
   }
 
@@ -1744,6 +1883,7 @@
     freezeAllCurrentWeatherAsManualOverrides();
     isAutoNestBuffEnabled = false;
     activePlayerData = null;
+    activePlayerPotionBuff = null;
     fishCollection = {};
     setPlayerQQError("");
     if (autoNestBuffIntervalId !== null) {
@@ -1764,6 +1904,7 @@
   function startAutoNestBuff({ persist = true, fetchImmediately = true } = {}) {
     isAutoNestBuffEnabled = true;
     activePlayerData = null;
+    activePlayerPotionBuff = null;
     fishCollection = {};
     const snapshotResult = applyLatestNestBuffSnapshot();
     autoSelectSystemBuff(latestNestBuffPayload);
@@ -1812,7 +1953,9 @@
       }, delayMs);
       render({
         skipMapCardRebuild:
-          !snapshotResult.rodChanged && !snapshotResult.catParkChanged,
+          !snapshotResult.rodChanged &&
+          !snapshotResult.catParkChanged &&
+          !snapshotResult.potionChanged,
       });
       return;
     }
@@ -1821,7 +1964,9 @@
     startWeatherTooltipRefresh();
     render({
       skipMapCardRebuild:
-        !snapshotResult.rodChanged && !snapshotResult.catParkChanged,
+        !snapshotResult.rodChanged &&
+        !snapshotResult.catParkChanged &&
+        !snapshotResult.potionChanged,
     });
   }
 
@@ -1959,25 +2104,62 @@
     }
   }
 
+  function syncPlayerPotionFromPlayer(player, now = Date.now()) {
+    if (!isAutoNestBuffEnabled || !elements.potion) {
+      return { changed: false };
+    }
+
+    const nextBuff = getActivePlayerPotionBuff(player, now);
+    const nextPotionConfig =
+      getPotionConfigForBuff(nextBuff) || getPotionConfig("none");
+    const previousPotionId = elements.potion.value;
+
+    activePlayerPotionBuff = nextBuff;
+    setSelectValueIfOptionExists(elements.potion, nextPotionConfig.id);
+    setStoredValue(storageKeys.potion, elements.potion.value);
+
+    return {
+      changed: previousPotionId !== elements.potion.value,
+    };
+  }
+
   function applyPlayerSnapshot(payload) {
     const playerQQ = getPlayerQQValue();
     if (!playerQQ || !payload) {
       activePlayerData = null;
       fishCollection = {};
       setPlayerQQError("");
-      return { changed: false, rodChanged: false, catParkChanged: false };
+      const potionResult = syncPlayerPotionFromPlayer(null);
+      return {
+        changed: potionResult.changed,
+        rodChanged: false,
+        catParkChanged: false,
+        potionChanged: potionResult.changed,
+      };
     }
 
     activePlayerData = findPlayerData(payload);
     if (activePlayerData) {
       syncFishCollectionFromPlayer(activePlayerData);
       setPlayerQQError("");
-      return applyPlayerLevels(activePlayerData);
+      const playerLevelResult = applyPlayerLevels(activePlayerData);
+      const potionResult = syncPlayerPotionFromPlayer(activePlayerData);
+      return {
+        ...playerLevelResult,
+        changed: playerLevelResult.changed || potionResult.changed,
+        potionChanged: potionResult.changed,
+      };
     }
 
     fishCollection = {};
     setPlayerQQError(`未在数据中找到 QQ 号 ${playerQQ}`);
-    return { changed: false, rodChanged: false, catParkChanged: false };
+    const potionResult = syncPlayerPotionFromPlayer(null);
+    return {
+      changed: potionResult.changed,
+      rodChanged: false,
+      catParkChanged: false,
+      potionChanged: potionResult.changed,
+    };
   }
 
   function applyLatestPlayerSnapshot() {
@@ -1986,7 +2168,14 @@
 
   function applyLatestNestBuffSnapshot() {
     if (!latestNestBuffPayload) {
-      return { changed: false, rodChanged: false, hasSnapshot: false };
+      const potionResult = syncPlayerPotionFromPlayer(null);
+      return {
+        changed: potionResult.changed,
+        rodChanged: false,
+        catParkChanged: false,
+        potionChanged: potionResult.changed,
+        hasSnapshot: false,
+      };
     }
 
     clearWeatherOverrides();
@@ -2066,7 +2255,9 @@
       showNestBuffSuccessStatus();
       render({
         skipMapCardRebuild:
-          !playerSyncResult.rodChanged && !playerSyncResult.catParkChanged,
+          !playerSyncResult.rodChanged &&
+          !playerSyncResult.catParkChanged &&
+          !playerSyncResult.potionChanged,
       });
     } catch (error) {
       console.error("获取实时打窝buff失败", error);
@@ -2095,6 +2286,18 @@
     return (
       systemBuffs.find((item) => item.id === id) ||
       systemBuffs[0] || { id: "none", name: "无", value: 0 }
+    );
+  }
+
+  function getPotionConfig(id) {
+    return (
+      potionConfigs.find((item) => item.id === id) ||
+      potionConfigs[0] || {
+        id: "none",
+        name: "无",
+        rodLevelPenalty: 0,
+        fishCatchMultiplier: 1,
+      }
     );
   }
 
@@ -2203,8 +2406,18 @@
     return getCatRodLevelBonus(getGlobalCatBuildingEffects());
   }
 
-  function getEffectiveRodLevel(rodLevel) {
-    return rodLevel + getGlobalRodLevelBonus();
+  function getEffectiveRodLevel(
+    rodLevel,
+    potionConfig = getPotionConfig("none"),
+  ) {
+    const potionPenalty = Math.max(
+      0,
+      Math.floor(parseNumber(potionConfig?.rodLevelPenalty)),
+    );
+    return Math.max(
+      0,
+      parseNumber(rodLevel) + getGlobalRodLevelBonus() - potionPenalty,
+    );
   }
 
   function getCatAdjustedFishes(fishes, effects) {
@@ -2428,7 +2641,14 @@
   }
 
   function calculateMapRows(inputs, rodLevel) {
-    const effectiveRodLevel = getEffectiveRodLevel(rodLevel);
+    const effectiveRodLevel = getEffectiveRodLevel(
+      rodLevel,
+      inputs.potionConfig,
+    );
+    const potionFishCatchMultiplier = Math.max(
+      1,
+      parseNumber(inputs.potionConfig?.fishCatchMultiplier),
+    );
     return config.maps
       .filter((map) => map.difficulty <= effectiveRodLevel)
       .map((map) => {
@@ -2472,54 +2692,68 @@
         const materialExpectedValue = isSelectable
           ? calculateMaterialExpectedValue(materialDropRate, materialValue)
           : 0;
-        const fallbackBaitRow = isSelectable
+        const baitRowInputs = {
+          ...inputs,
+          weatherMultiplier,
+          baitCostMultiplier,
+          independentSpeedPercent: catEffects.fishingSpeedPercent,
+          baitSavingPercent: catEffects.baitSavingPercent,
+        };
+        const fishCatchMultiplier =
+          potionFishCatchMultiplier *
+          (1 + Math.max(0, parseNumber(catEffects.doubleCatchPercent)) / 100);
+        const getProfitExpectedPrice = (fishExpectedPrice) =>
+          Number.isFinite(fishExpectedPrice)
+            ? fishExpectedPrice * fishCatchMultiplier + materialExpectedValue
+            : fishExpectedPrice;
+        let fallbackBait = isSelectable
           ? getBestBaitRow(
               calculateBaitRows(
-                {
-                  ...inputs,
-                  weatherMultiplier,
-                  baitCostMultiplier,
-                  independentSpeedPercent: catEffects.fishingSpeedPercent,
-                  baitSavingPercent: catEffects.baitSavingPercent,
-                },
-                baseExpectedPrice,
+                baitRowInputs,
+                getProfitExpectedPrice(baseExpectedPrice),
                 baitBuff,
               ),
-            )
+            )?.bait || null
           : null;
-        const expectedPrice = isSelectable
-          ? getWeatherAdjustedExpectedFishPrice(
-              baseExpectedPrice,
-              weather,
-              fallbackBaitRow?.bait || null,
-              profile,
-              fishes,
-              map.id,
-              catEffects.weatherBoostPercent,
-            )
-          : Number.NaN;
+        let expectedPrice = isSelectable ? baseExpectedPrice : Number.NaN;
+        let profitExpectedPrice = getProfitExpectedPrice(expectedPrice);
+        let baitRows = [];
+        let bestBaitRow = null;
+
+        // Cat weather's fallback gift value depends on the final best bait.
+        for (
+          let attempt = 0;
+          isSelectable && attempt <= config.baitList.length;
+          attempt += 1
+        ) {
+          expectedPrice = getWeatherAdjustedExpectedFishPrice(
+            baseExpectedPrice,
+            weather,
+            fallbackBait,
+            profile,
+            fishes,
+            map.id,
+            catEffects.weatherBoostPercent,
+          );
+          profitExpectedPrice = getProfitExpectedPrice(expectedPrice);
+          baitRows = calculateBaitRows(
+            baitRowInputs,
+            profitExpectedPrice,
+            baitBuff,
+          );
+          bestBaitRow = getBestBaitRow(baitRows);
+          if (
+            !bestBaitRow ||
+            String(bestBaitRow.bait.id) === String(fallbackBait?.id ?? "")
+          ) {
+            break;
+          }
+          fallbackBait = bestBaitRow.bait;
+        }
+
         const displayExpectedPrice = Number.isFinite(expectedPrice)
           ? expectedPrice + materialExpectedValue
           : expectedPrice;
-        const profitExpectedPrice = Number.isFinite(expectedPrice)
-          ? expectedPrice *
-              (1 + Math.max(0, parseNumber(catEffects.doubleCatchPercent)) / 100) +
-            materialExpectedValue
-          : expectedPrice;
-        const baitRows = isSelectable
-          ? calculateBaitRows(
-              {
-                ...inputs,
-                weatherMultiplier,
-                baitCostMultiplier,
-                independentSpeedPercent: catEffects.fishingSpeedPercent,
-                baitSavingPercent: catEffects.baitSavingPercent,
-              },
-              profitExpectedPrice,
-              baitBuff,
-            )
-          : [];
-        const bestBaitRow = getBestBaitRow(baitRows);
 
         return {
           map,
@@ -2552,12 +2786,14 @@
     const hookLevelValue = Number.parseInt(elements.hookLevel.value, 10);
     const rodLevelValue = Number.parseInt(elements.rodLevel.value, 10);
     const systemBuffConfig = getSystemBuffConfig(elements.systemBuff.value);
+    const potionConfig = getPotionConfig(elements.potion.value);
 
     return {
       hookConfig: getHookConfig(hookLevelValue),
       rodConfig: getRodConfig(rodLevelValue),
       systemBuffConfig,
       systemBuff: parseNumber(systemBuffConfig.value),
+      potionConfig,
     };
   }
 
@@ -4313,7 +4549,7 @@
       ? "small selected-map-delta"
       : "small";
     elements.selectedMapDelta.innerHTML = selectedMapRow
-      ? `<span class="selected-map-delta-item"><span class="selected-map-delta-label">🎣渔力</span><span class="selected-map-delta-value">${selectedMapRow.delta}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">🪝鱼钩</span><span class="selected-map-buff-value">${formatPercent(inputs?.hookConfig?.speed ?? 0, 2)}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">⚡${highlightPercentValues(inputs?.systemBuffConfig?.name ?? "", "selected-map-buff-value")}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">🌽打窝</span><span class="selected-map-buff-value">${formatNumber(selectedMapRow.baitBuff, 2)}%</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">${getWeatherMeta(selectedMapRow.weather?.type).emoji}天气</span><span class="selected-map-buff-value">${getWeatherMeta(selectedMapRow.weather?.type).label}</span></span>`
+      ? `<span class="selected-map-delta-item"><span class="selected-map-delta-label">🎣渔力</span><span class="selected-map-delta-value">${selectedMapRow.delta}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">🪝鱼钩</span><span class="selected-map-buff-value">${formatPercent(inputs?.hookConfig?.speed ?? 0, 2)}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">⚡${highlightPercentValues(inputs?.systemBuffConfig?.name ?? "", "selected-map-buff-value")}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">🧪药水</span><span class="selected-map-buff-value">${escapeHtml(inputs?.potionConfig?.name ?? "无")}</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">🌽打窝</span><span class="selected-map-buff-value">${formatNumber(selectedMapRow.baitBuff, 2)}%</span></span><span class="selected-map-delta-item"><span class="selected-map-delta-label">${getWeatherMeta(selectedMapRow.weather?.type).emoji}天气</span><span class="selected-map-buff-value">${getWeatherMeta(selectedMapRow.weather?.type).label}</span></span>`
       : "-";
     elements.selectedFishPrice.textContent = selectedMapRow
       ? `¥${formatNumber(selectedMapRow.displayExpectedPrice, 2)}`
@@ -4696,7 +4932,11 @@
   }
 
   function render(options = {}) {
+    if (isAutoNestBuffEnabled) {
+      syncPlayerPotionFromPlayer(activePlayerData);
+    }
     updateLevelDisplays();
+    renderPotionTooltip();
     const inputs = getInputs();
     const selectedRodLevel = Number.parseInt(elements.rodLevel.value, 10);
     const mapRows = calculateMapRows(inputs, selectedRodLevel);
@@ -4741,6 +4981,7 @@
       mapRows,
       averageNPrice: selectedMapRow ? selectedMapRow.averageNPrice : Number.NaN,
       systemBuff: inputs.systemBuffConfig,
+      potion: inputs.potionConfig,
       player: activePlayerData,
     };
 
@@ -4792,6 +5033,12 @@
       (item) => item.id,
       (item) => item.name,
     );
+    buildOption(
+      elements.potion,
+      potionConfigs,
+      (item) => item.id,
+      (item) => item.name,
+    );
 
     const storedHookLevel = Number.parseInt(
       getStoredValue(storageKeys.hookLevel) || "",
@@ -4802,11 +5049,13 @@
       10,
     );
     const storedSystemBuffId = getStoredValue(storageKeys.systemBuff);
+    const storedPotionId = getStoredValue(storageKeys.potion);
     const storedPlayerQQ = getStoredValue(storageKeys.playerQQ) || "";
 
     const defaultHookLevel = config.hookLevels[0]?.level ?? 1;
     const defaultRodLevel = config.rodLevels[0]?.level ?? 1;
     const defaultSystemBuffId = systemBuffs[0]?.id ?? "none";
+    const defaultPotionId = potionConfigs[0]?.id ?? "none";
 
     elements.hookLevel.value = String(
       config.hookLevels.some((item) => item.level === storedHookLevel)
@@ -4825,6 +5074,11 @@
     )
       ? storedSystemBuffId
       : defaultSystemBuffId;
+    elements.potion.value = potionConfigs.some(
+      (item) => item.id === storedPotionId,
+    )
+      ? storedPotionId
+      : defaultPotionId;
     if (elements.playerQQ) {
       elements.playerQQ.value = storedPlayerQQ;
     }
@@ -4833,6 +5087,7 @@
       setStoredValue(storageKeys.hookLevel, elements.hookLevel.value);
       setStoredValue(storageKeys.rodLevel, elements.rodLevel.value);
       setStoredValue(storageKeys.systemBuff, elements.systemBuff.value);
+      setStoredValue(storageKeys.potion, elements.potion.value);
     };
 
     const handleManualLevelChange = () => {
@@ -4854,19 +5109,21 @@
       });
     });
 
-    elements.systemBuff.addEventListener("input", () => {
-      if (isAutoNestBuffEnabled) {
-        disableAutoNestBuffForManualEdit();
-      }
-      persist();
-      render();
-    });
-    elements.systemBuff.addEventListener("change", () => {
-      if (isAutoNestBuffEnabled) {
-        disableAutoNestBuffForManualEdit();
-      }
-      persist();
-      render();
+    [elements.systemBuff, elements.potion].forEach((element) => {
+      element.addEventListener("input", () => {
+        if (isAutoNestBuffEnabled) {
+          disableAutoNestBuffForManualEdit();
+        }
+        persist();
+        render();
+      });
+      element.addEventListener("change", () => {
+        if (isAutoNestBuffEnabled) {
+          disableAutoNestBuffForManualEdit();
+        }
+        persist();
+        render();
+      });
     });
 
     if (elements.playerQQ) {
@@ -4881,13 +5138,16 @@
           changed: false,
           rodChanged: false,
           catParkChanged: false,
+          potionChanged: false,
         };
         if (isAutoNestBuffEnabled) {
           playerSyncResult = applyLatestPlayerSnapshot();
         }
         render({
           skipMapCardRebuild:
-            !playerSyncResult.rodChanged && !playerSyncResult.catParkChanged,
+            !playerSyncResult.rodChanged &&
+            !playerSyncResult.catParkChanged &&
+            !playerSyncResult.potionChanged,
         });
       };
       elements.playerQQ.addEventListener("input", syncPlayerQQ);

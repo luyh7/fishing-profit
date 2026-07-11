@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.1",
-  gitCommitCount: 93,
+  gitCommitCount: 94,
   nestBuffSourceUrl:
     "https://fishing-profit-nest-buff.470103427.workers.dev/nest-buff.json",
   baseIntervalHours: 1,
@@ -37,6 +37,21 @@ window.FISH_FISHING_CONFIG = {
   systemBuffs: [
     { id: "none", name: "无", value: 0 },
     { id: "weekend", name: "加速30%", value: 30 },
+  ],
+  potions: [
+    {
+      id: "none",
+      name: "无",
+      rodLevelPenalty: 0,
+      fishCatchMultiplier: 1,
+    },
+    {
+      id: "duoduo",
+      name: "多多药水",
+      effectText: "鱼竿等级-1，鱼获数量翻倍",
+      rodLevelPenalty: 1,
+      fishCatchMultiplier: 2,
+    },
   ],
   catParadise: {
     mapId: "S1",
