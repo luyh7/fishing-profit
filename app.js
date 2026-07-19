@@ -12,8 +12,30 @@
     ? config.systemBuffs
     : [];
   const potionConfigs = Array.isArray(config.potions) ? config.potions : [];
+  const catchOutcomeApi = window.FISH_CATCH_OUTCOME || {};
+  const canUpgradeCatBuildingLevel =
+    catchOutcomeApi.canUpgradeCatBuildingLevel;
   const calculateBestCatchDistribution =
-    window.FISH_CATCH_OUTCOME?.calculateBestCatchDistribution;
+    catchOutcomeApi.calculateBestCatchDistribution;
+  const calculateCatBaitConsumptionFactor =
+    catchOutcomeApi.calculateCatBaitConsumptionFactor;
+  const calculateCatWeatherExpectedValue =
+    catchOutcomeApi.calculateCatWeatherExpectedValue;
+  const calculateExpectedFishQuantity =
+    catchOutcomeApi.calculateExpectedFishQuantity;
+  const calculateFishSalePrice = catchOutcomeApi.calculateFishSalePrice;
+  const calculateSpecialUtrDropRate =
+    catchOutcomeApi.calculateSpecialUtrDropRate;
+  const getCatBuildingLevelAfterStep =
+    catchOutcomeApi.getCatBuildingLevelAfterStep;
+  const getClampedRarityDistribution =
+    catchOutcomeApi.getClampedRarityDistribution;
+  const getMappedRarityEntries = catchOutcomeApi.getMappedRarityEntries;
+  const getMappedRarityProfile = catchOutcomeApi.getMappedRarityProfile;
+  const isMapAccessibleByRod = catchOutcomeApi.isMapAccessibleByRod;
+  const isSpecialUtrEnabled = catchOutcomeApi.isSpecialUtrEnabled;
+  const normalizeCatBuildingLevels =
+    catchOutcomeApi.normalizeCatBuildingLevels;
   const baseRarityOrder = config.rarityOrder.filter(
     (rarity) => rarity !== "UTR",
   );
@@ -724,40 +746,6 @@
     );
   }
 
-  function adjustMeteorProbabilityProfile(profile, weatherBoostPercent = 0) {
-    const activeRarities = baseRarityOrder.filter(
-      (rarity) => parseNumber(profile?.[rarity]) > 0,
-    );
-
-    if (activeRarities.length < 2) {
-      return profile;
-    }
-
-    const highestRarity = activeRarities[0];
-    const secondHighestRarity = activeRarities[1];
-    const secondProbability = parseNumber(profile?.[secondHighestRarity]);
-    const shift = Math.min(
-      2 * getBoostedWeatherEffectFactor(weatherBoostPercent),
-      secondProbability,
-    );
-
-    if (shift <= 0) {
-      return profile;
-    }
-
-    const adjustedProfile = { ...profile };
-    baseRarityOrder.forEach((rarity) => {
-      adjustedProfile[rarity] = parseNumber(profile?.[rarity]);
-    });
-    adjustedProfile[highestRarity] += shift;
-    adjustedProfile[secondHighestRarity] = Math.max(
-      0,
-      adjustedProfile[secondHighestRarity] - shift,
-    );
-
-    return adjustedProfile;
-  }
-
   function getLostWindBaseUtrProbability(rodLevel, mapDifficulty) {
     const sceneLevel = parseNumber(mapDifficulty) + 1;
     const levelDelta = Math.max(0, parseNumber(rodLevel) - sceneLevel);
@@ -768,90 +756,134 @@
     );
   }
 
-  function getLostWindEffectiveUtrProbability(baseProbability) {
-    const baseRate = Math.max(0, Math.min(100, parseNumber(baseProbability))) / 100;
-    const pityCount = Math.max(1, Math.floor(lostWindUtrPityCount));
-    if (baseRate <= 0) {
+  function getLostWindSpecialUtrProbability(
+    rodLevel,
+    mapDifficulty,
+    weatherBoostPercent = 0,
+  ) {
+    if (typeof calculateSpecialUtrDropRate === "function") {
+      return calculateSpecialUtrDropRate({
+        rodLevel,
+        mapDifficulty,
+        baseProbabilityPercent: lostWindUtrBaseProbability,
+        leadStepProbabilityPercent: lostWindUtrDeltaStepProbability,
+        weatherBoostPercent,
+      });
+    }
+    return Math.min(
+      100,
+      getLostWindBaseUtrProbability(rodLevel, mapDifficulty) *
+        getBoostedWeatherEffectFactor(weatherBoostPercent),
+    );
+  }
+
+  function isStarryMap(map) {
+    const numericMapId = Number.parseInt(getMapId(map), 10);
+    return numericMapId >= 11 && numericMapId <= 20;
+  }
+
+  function getMapMaxRarity(map) {
+    if (config.rarityOrder.includes(map?.maxRarity)) {
+      return map.maxRarity;
+    }
+    return isStarryMap(map) ? "UTR" : "UR";
+  }
+
+  function getRawProbabilityDistribution(delta) {
+    const distributions = Array.isArray(config.rarityDistribution)
+      ? config.rarityDistribution
+      : [];
+    if (typeof getClampedRarityDistribution !== "function") {
+      return [];
+    }
+    return getClampedRarityDistribution(distributions, delta);
+  }
+
+  function getBaseProbabilityMappingOptions(
+    delta,
+    map,
+    weather,
+    weatherBoostPercent = 0,
+  ) {
+    const hasMeteor =
+      normalizeWeatherType(weather?.type) === "meteor" &&
+      !isWeatherEffectivelyInactive(weather);
+    return {
+      probabilities: getRawProbabilityDistribution(delta),
+      rarityOrder: config.rarityOrder,
+      maxRarity: getMapMaxRarity(map),
+      isStarry: isStarryMap(map),
+      meteorBonusPercent: hasMeteor
+        ? 2 * getBoostedWeatherEffectFactor(weatherBoostPercent)
+        : 0,
+    };
+  }
+
+  function getBaseProbabilityProfile(
+    delta,
+    map,
+    weather,
+    weatherBoostPercent = 0,
+  ) {
+    if (typeof getMappedRarityProfile !== "function") {
+      return {};
+    }
+    return getMappedRarityProfile(
+      getBaseProbabilityMappingOptions(
+        delta,
+        map,
+        weather,
+        weatherBoostPercent,
+      ),
+    );
+  }
+
+  function getBaseRarityEntries(
+    delta,
+    map,
+    weather,
+    weatherBoostPercent = 0,
+  ) {
+    if (typeof getMappedRarityEntries !== "function") {
+      return [];
+    }
+    return getMappedRarityEntries(
+      getBaseProbabilityMappingOptions(
+        delta,
+        map,
+        weather,
+        weatherBoostPercent,
+      ),
+    );
+  }
+
+  function isSpecialUtrActive(map, weather) {
+    if (typeof isSpecialUtrEnabled !== "function") {
+      return false;
+    }
+    return isSpecialUtrEnabled({
+      isStarry: isStarryMap(map),
+      hasAchievement: hasPlayerAchievementForMap(map.id),
+      weatherType: normalizeWeatherType(weather?.type),
+      weatherInactive: isWeatherEffectivelyInactive(weather),
+    });
+  }
+
+  function getSpecialUtrProbabilityForRodLevel(
+    rodLevel,
+    map,
+    weather,
+    effects,
+  ) {
+    if (!isSpecialUtrActive(map, weather)) {
       return 0;
     }
 
-    if (baseRate >= 1) {
-      return 100;
-    }
-
-    const cycleHitProbability = 1 - Math.pow(1 - baseRate, pityCount);
-    if (cycleHitProbability <= 0) {
-      return baseRate * 100;
-    }
-
-    return Math.min(100, (baseRate / cycleHitProbability) * 100);
-  }
-
-  function getCatAdjustedLostWindUtrProbability(rodLevel, mapDifficulty, effects) {
-    const bonusChance =
-      Math.max(0, Math.min(100, parseNumber(effects?.rodLevelBonusChancePercent))) /
-      100;
-    const baseProbability = getLostWindBaseUtrProbability(rodLevel, mapDifficulty);
-    if (bonusChance <= 0) {
-      return getLostWindEffectiveUtrProbability(baseProbability);
-    }
-
-    const bonusProbability = getLostWindBaseUtrProbability(
-      parseNumber(rodLevel) + 1,
-      mapDifficulty,
+    return getLostWindSpecialUtrProbability(
+      rodLevel,
+      map.difficulty,
+      effects?.weatherBoostPercent,
     );
-    return (
-      getLostWindEffectiveUtrProbability(baseProbability) * (1 - bonusChance) +
-      getLostWindEffectiveUtrProbability(bonusProbability) * bonusChance
-    );
-  }
-
-  function getWeatherAdjustedProbabilityProfile(
-    profile,
-    weather,
-    weatherBoostPercent = 0,
-    lostWindUtrProbability = 0,
-  ) {
-    const type = normalizeWeatherType(weather?.type);
-    if (isWeatherEffectivelyInactive(weather)) {
-      return profile;
-    }
-
-    if (type === "meteor") {
-      return adjustMeteorProbabilityProfile(profile, weatherBoostPercent);
-    }
-
-    if (type !== "lost_wind") {
-      return profile;
-    }
-
-    const baseProfile = {};
-    const baseTotal = baseRarityOrder.reduce((total, rarity) => {
-      const probability = parseNumber(profile?.[rarity]);
-      baseProfile[rarity] = probability;
-      return total + probability;
-    }, 0);
-
-    const utrProbability = Math.max(
-      0,
-      Math.min(100, parseNumber(lostWindUtrProbability)),
-    );
-
-    if (baseTotal <= 0) {
-      return config.rarityOrder.reduce((adjustedProfile, rarity) => {
-        adjustedProfile[rarity] = rarity === "UTR" ? utrProbability : 0;
-        return adjustedProfile;
-      }, {});
-    }
-
-    const scale = (100 - utrProbability) / baseTotal;
-    const adjustedProfile = {};
-    baseRarityOrder.forEach((rarity) => {
-      adjustedProfile[rarity] = baseProfile[rarity] * scale;
-    });
-    adjustedProfile.UTR = utrProbability;
-
-    return adjustedProfile;
   }
 
   function getStormRemainingBaitCount(
@@ -1495,6 +1527,31 @@
     );
   }
 
+  function normalizeCatBuildingLevelMap(rawLevels) {
+    const normalized = getOrderedCatParadiseBuildings().reduce(
+      (levels, building) => {
+        levels[building.id] = normalizeCatBuildingLevel(
+          building,
+          rawLevels?.[building.id],
+        );
+        return levels;
+      },
+      {},
+    );
+    if (typeof normalizeCatBuildingLevels !== "function") {
+      return normalized;
+    }
+
+    return normalizeCatBuildingLevels({
+      buildingIds: getOrderedCatParadiseBuildings().map(
+        (building) => building.id,
+      ),
+      levels: normalized,
+      statueId: "legendaryCatStatue",
+      maxLevel: catParadiseMaxOpenLevel,
+    });
+  }
+
   function loadCatBuildingLevels() {
     const raw = getStoredValue(storageKeys.catBuildingLevels);
     let parsed = {};
@@ -1506,13 +1563,11 @@
       }
     }
 
-    return getOrderedCatParadiseBuildings().reduce((normalized, building) => {
-      normalized[building.id] = normalizeCatBuildingLevel(
-        building,
-        parsed?.[building.id],
-      );
-      return normalized;
-    }, {});
+    const normalized = normalizeCatBuildingLevelMap(parsed);
+    if (raw && JSON.stringify(parsed) !== JSON.stringify(normalized)) {
+      setStoredValue(storageKeys.catBuildingLevels, JSON.stringify(normalized));
+    }
+    return normalized;
   }
 
   function persistCatBuildingLevels() {
@@ -1548,7 +1603,7 @@
       return null;
     }
 
-    return getOrderedCatParadiseBuildings().reduce(
+    const levels = getOrderedCatParadiseBuildings().reduce(
       (levels, building, index) => {
         levels[building.id] = normalizeCatBuildingLevel(
           building,
@@ -1558,6 +1613,7 @@
       },
       {},
     );
+    return normalizeCatBuildingLevelMap(levels);
   }
 
   function applyPlayerCatPark(player) {
@@ -2372,27 +2428,6 @@
     );
   }
 
-  function getProbabilityProfile(delta) {
-    const probabilityByDelta = config.probabilityByDelta || {};
-    const deltas = Object.keys(probabilityByDelta)
-      .map((key) => Number.parseInt(key, 10))
-      .filter(Number.isFinite)
-      .sort((left, right) => left - right);
-    if (!deltas.length) {
-      return {};
-    }
-
-    const normalizedDelta = Math.floor(parseNumber(delta));
-    const matchedDelta = deltas.includes(normalizedDelta)
-      ? normalizedDelta
-      : deltas.reduce(
-          (candidate, current) =>
-            current <= normalizedDelta ? current : candidate,
-          deltas[0],
-        );
-    return probabilityByDelta[matchedDelta] || probabilityByDelta[deltas[0]];
-  }
-
   function blendProbabilityProfiles(baseProfile, bonusProfile, chancePercent) {
     const chance = Math.max(0, Math.min(100, parseNumber(chancePercent))) / 100;
     if (chance <= 0) {
@@ -2407,12 +2442,107 @@
     }, {});
   }
 
-  function getCatAdjustedBaseProfile(delta, effects) {
-    return blendProbabilityProfiles(
-      getProbabilityProfile(delta),
-      config.probabilityByDelta[delta + 1] || getProbabilityProfile(delta),
-      effects.rodLevelBonusChancePercent,
+  function blendRarityEntries(baseEntries, bonusEntries, chancePercent) {
+    const chance = Math.max(0, Math.min(100, parseNumber(chancePercent))) / 100;
+    const probabilityByPair = new Map();
+    const addEntries = (entries, weight) => {
+      if (weight <= 0) {
+        return;
+      }
+      entries.forEach((entry) => {
+        const key = `${entry.selectionRarity}:${entry.rarity}`;
+        probabilityByPair.set(
+          key,
+          (probabilityByPair.get(key) || 0) +
+            parseNumber(entry.probability) * weight,
+        );
+      });
+    };
+    addEntries(baseEntries, 1 - chance);
+    addEntries(bonusEntries, chance);
+    return Array.from(probabilityByPair.entries()).map(([key, probability]) => {
+      const [selectionRarity, rarity] = key.split(":");
+      return { selectionRarity, rarity, probability };
+    });
+  }
+
+  function getCatAdjustedBaseDistribution(
+    delta,
+    effectiveRodLevel,
+    effects,
+    map,
+    weather,
+  ) {
+    const baseProfile = getBaseProbabilityProfile(
+      delta,
+      map,
+      weather,
+      effects.weatherBoostPercent,
     );
+    const bonusProfile = getBaseProbabilityProfile(
+      delta + 1,
+      map,
+      weather,
+      effects.weatherBoostPercent,
+    );
+    const baseEntries = getBaseRarityEntries(
+      delta,
+      map,
+      weather,
+      effects.weatherBoostPercent,
+    );
+    const bonusEntries = getBaseRarityEntries(
+      delta + 1,
+      map,
+      weather,
+      effects.weatherBoostPercent,
+    );
+    const castleChance =
+      Math.max(
+        0,
+        Math.min(100, parseNumber(effects.rodLevelBonusChancePercent)),
+      ) / 100;
+    const baseSpecialUtrDropRate = getSpecialUtrProbabilityForRodLevel(
+      effectiveRodLevel,
+      map,
+      weather,
+      effects,
+    );
+    const bonusSpecialUtrDropRate = getSpecialUtrProbabilityForRodLevel(
+      parseNumber(effectiveRodLevel) + 1,
+      map,
+      weather,
+      effects,
+    );
+    return {
+      profile: blendProbabilityProfiles(
+        baseProfile,
+        bonusProfile,
+        effects.rodLevelBonusChancePercent,
+      ),
+      rarityEntries: blendRarityEntries(
+        baseEntries,
+        bonusEntries,
+        effects.rodLevelBonusChancePercent,
+      ),
+      rollBranches: [
+        {
+          probability: 1 - castleChance,
+          profile: baseProfile,
+          rarityEntries: baseEntries,
+          specialUtrDropRate: baseSpecialUtrDropRate,
+        },
+        {
+          probability: castleChance,
+          profile: bonusProfile,
+          rarityEntries: bonusEntries,
+          specialUtrDropRate: bonusSpecialUtrDropRate,
+        },
+      ].filter((branch) => branch.probability > 0),
+      specialUtrDropRate:
+        baseSpecialUtrDropRate * (1 - castleChance) +
+        bonusSpecialUtrDropRate * castleChance,
+    };
   }
 
   function getEffectiveRodLevel(
@@ -2428,14 +2558,25 @@
 
   function getCatAdjustedFishes(fishes, effects) {
     const fishPricePercent = parseNumber(effects.fishPricePercent);
-    if (fishPricePercent === 0) {
-      return fishes;
-    }
-
-    const priceFactor = 1 + fishPricePercent / 100;
     return fishes.map((fish) => ({
       ...fish,
-      nPrice: Math.round(parseNumber(fish.nPrice) * priceFactor),
+      originalNPrice: parseNumber(fish.nPrice),
+      nPrice:
+        typeof calculateFishSalePrice === "function"
+          ? calculateFishSalePrice(fish.nPrice, 1, fishPricePercent)
+          : Math.floor(parseNumber(fish.nPrice) * (1 + fishPricePercent / 100)),
+      rarityPrices: config.rarityOrder.reduce((prices, rarity) => {
+        const multiplier = parseNumber(config.rarityMultipliers[rarity]);
+        prices[rarity] =
+          typeof calculateFishSalePrice === "function"
+            ? calculateFishSalePrice(fish.nPrice, multiplier, fishPricePercent)
+            : Math.floor(
+                parseNumber(fish.nPrice) *
+                  multiplier *
+                  (1 + fishPricePercent / 100),
+              );
+        return prices;
+      }, {}),
     }));
   }
 
@@ -2450,53 +2591,31 @@
     return Math.max(0, parseNumber(effects?.materialValue));
   }
 
-  function calculateMaterialExpectedValue(materialDropRate, materialValue) {
-    return (
-      (getCatMaterialDropRate({ materialDropRatePercent: materialDropRate }) /
-        100) *
-      Math.max(0, parseNumber(materialValue))
-    );
-  }
-
-  function getMaterialAdjustedProbabilityProfile(profile, materialDropRate) {
-    const fishRate = Math.max(0, 1 - getCatMaterialDropRate({
-      materialDropRatePercent: materialDropRate,
-    }) / 100);
-
-    if (fishRate >= 1) {
-      return profile;
-    }
-
-    return config.rarityOrder.reduce((adjustedProfile, rarity) => {
-      adjustedProfile[rarity] = parseNumber(profile?.[rarity]) * fishRate;
-      return adjustedProfile;
-    }, {});
-  }
-
   function isMapDataSelectable(fishes, profile) {
     const hasValidFishPrices =
       fishes.length > 0 && fishes.every((fish) => parseNumber(fish.nPrice) > 0);
-    const hasValidProbability = baseRarityOrder.some(
+    const hasValidProbability = config.rarityOrder.some(
       (rarity) => parseNumber(profile?.[rarity]) > 0,
     );
 
     return hasValidFishPrices && hasValidProbability;
   }
 
-  function calculateExpectedFishPrice(profile, averageNPrice) {
+  function calculateExpectedFishPrice(profile, fishes) {
+    if (!Array.isArray(fishes) || fishes.length === 0) {
+      return 0;
+    }
     return config.rarityOrder.reduce((total, rarity) => {
       const probability = parseNumber(profile[rarity]) / 100;
-      const multiplier = parseNumber(config.rarityMultipliers[rarity]);
-      return total + probability * averageNPrice * multiplier;
+      const averagePrice =
+        fishes.reduce((sum, fish) => {
+          const fallbackPrice =
+            parseNumber(fish.nPrice) *
+            parseNumber(config.rarityMultipliers[rarity]);
+          return sum + parseNumber(fish.rarityPrices?.[rarity] ?? fallbackPrice);
+        }, 0) / fishes.length;
+      return total + probability * averagePrice;
     }, 0);
-  }
-
-  function getFishCatchProbabilityFactor(profile) {
-    const totalProbability = config.rarityOrder.reduce(
-      (total, rarity) => total + parseNumber(profile?.[rarity]),
-      0,
-    );
-    return Math.max(0, Math.min(1, totalProbability / 100));
   }
 
   function getBestBaitRow(baitRows) {
@@ -2530,19 +2649,22 @@
   }
 
   function calculateHighestSameRarityFishPrice(profile, fishes) {
-    const highestNPrice = (Array.isArray(fishes) ? fishes : []).reduce(
-      (highest, fish) => Math.max(highest, parseNumber(fish.nPrice)),
-      0,
-    );
-
-    if (highestNPrice <= 0) {
+    if (!Array.isArray(fishes) || fishes.length === 0) {
       return 0;
     }
 
     return config.rarityOrder.reduce((total, rarity) => {
       const probability = parseNumber(profile?.[rarity]) / 100;
-      const multiplier = parseNumber(config.rarityMultipliers[rarity]);
-      return total + probability * highestNPrice * multiplier;
+      const highestPrice = fishes.reduce((highest, fish) => {
+        const fallbackPrice =
+          parseNumber(fish.nPrice) *
+          parseNumber(config.rarityMultipliers[rarity]);
+        return Math.max(
+          highest,
+          parseNumber(fish.rarityPrices?.[rarity] ?? fallbackPrice),
+        );
+      }, 0);
+      return total + probability * highestPrice;
     }, 0);
   }
 
@@ -2553,10 +2675,7 @@
     mapId,
   ) {
     if (!hasPlayerAchievementForMap(mapId)) {
-      return calculateExpectedFishPrice(
-        profile,
-        calculateAverageNPrice(fishes),
-      );
+      return calculateExpectedFishPrice(profile, fishes);
     }
 
     return calculateHighestSameRarityFishPrice(profile, fishes);
@@ -2570,6 +2689,8 @@
     fishes,
     mapId,
     weatherBoostPercent = 0,
+    catchDistribution = null,
+    lucky = false,
   ) {
     if (!Number.isFinite(expectedFishPrice)) {
       return expectedFishPrice;
@@ -2582,8 +2703,6 @@
       return expectedFishPrice;
     }
 
-    const weatherEffectFactor = getBoostedWeatherEffectFactor(weatherBoostPercent);
-    const fishCatchProbabilityFactor = getFishCatchProbabilityFactor(profile);
     const equippedBaitPrice = getActivePlayerEquippedBaitPrice(fallbackBait);
     const sameRarityRewardPrice = getCatSameRarityRewardPrice(
       expectedFishPrice,
@@ -2591,12 +2710,23 @@
       fishes,
       mapId,
     );
-    const catDelta =
-      expectedFishPrice * (1 - 0.15 + 0.15 * 0.3 * 0.5) +
-      equippedBaitPrice * (fishCatchProbabilityFactor * 0.15 * 0.15 * 3) +
-      sameRarityRewardPrice * (0.15 * 0.1) -
-      expectedFishPrice;
-    return expectedFishPrice + catDelta * weatherEffectFactor;
+    if (typeof calculateCatWeatherExpectedValue !== "function") {
+      return expectedFishPrice;
+    }
+
+    return calculateCatWeatherExpectedValue({
+      fishExpectedValue: expectedFishPrice,
+      originalHalfPriceExpectedValue:
+        catchDistribution?.originalHalfPriceExpectedValue,
+      sameRarityGiftExpectedValue: sameRarityRewardPrice,
+      fishProbability: catchDistribution?.fishProbability,
+      baitPrice: equippedBaitPrice,
+      eatChance:
+        0.15 * getBoostedWeatherEffectFactor(weatherBoostPercent),
+      catFramePityCount: config.catFramePityCount,
+      catFrameValue: config.catFrameValue,
+      lucky,
+    });
   }
 
   function calculateBaitRows(inputs, averageFishPrice, baitBuff) {
@@ -2608,6 +2738,9 @@
       : 1;
     const independentSpeedPercent = parseNumber(inputs.independentSpeedPercent);
     const baitSavingPercent = Math.max(0, parseNumber(inputs.baitSavingPercent));
+    const baitConsumptionFactor = Number.isFinite(inputs.baitConsumptionFactor)
+      ? Math.max(0, inputs.baitConsumptionFactor)
+      : 1;
 
     return config.baitList.map((bait) => {
       const intervalHours = calculateIntervalHours(
@@ -2632,6 +2765,7 @@
         completedCount *
         bait.price *
         baitCostMultiplier *
+        baitConsumptionFactor *
         Math.max(0, 1 - baitSavingPercent / 100);
       const netRevenue = grossRevenue - baitCost;
 
@@ -2644,6 +2778,7 @@
         grossRevenue,
         baitCost,
         baitCostMultiplier,
+        baitConsumptionFactor,
         netRevenue,
       };
     });
@@ -2654,37 +2789,102 @@
       rodLevel,
       inputs.potionConfig,
     );
-    const potionFishCatchMultiplier = Math.max(
+    const potionBaseQuantity = Math.max(
       1,
       parseNumber(inputs.potionConfig?.fishCatchMultiplier),
     );
     return config.maps
-      .filter((map) => map.difficulty <= effectiveRodLevel)
+      .filter((map) =>
+        typeof isMapAccessibleByRod === "function"
+          ? isMapAccessibleByRod(map.difficulty, rodLevel)
+          : map.difficulty <= rodLevel,
+      )
       .map((map) => {
         const catEffects = getCatParadiseEffectsForMap(map);
         const sourceFishes = getMapFishes(map);
-        const fishes = getCatAdjustedFishes(sourceFishes, catEffects);
+        const hasCollectionData = Boolean(
+          activePlayerData && Array.isArray(activePlayerData.collections),
+        );
+        const fishes = getCatAdjustedFishes(sourceFishes, catEffects).map(
+          (fish) => {
+            const fishKey = getFishCollectionKey(map, fish);
+            return {
+              ...fish,
+              collectedByRarity: config.rarityOrder.reduce(
+                (collected, rarity) => {
+                  collected[rarity] = isFishRarityCollected(fishKey, rarity);
+                  return collected;
+                },
+                {},
+              ),
+            };
+          },
+        );
         const averageNPrice = calculateAverageNPrice(fishes);
         const delta = effectiveRodLevel - map.difficulty;
-        const baseProfile = getCatAdjustedBaseProfile(delta, catEffects);
         const weather = getWeatherForMap(map.difficulty, map.id);
-        const lostWindUtrProbability = getCatAdjustedLostWindUtrProbability(
+        const baseDistribution = getCatAdjustedBaseDistribution(
+          delta,
           effectiveRodLevel,
-          map.difficulty,
           catEffects,
-        );
-        const weatherProfile = getWeatherAdjustedProbabilityProfile(
-          baseProfile,
+          map,
           weather,
-          catEffects.weatherBoostPercent,
-          lostWindUtrProbability,
         );
-        let materialDropRate = getCatMaterialDropRate(catEffects);
-        let profile = getMaterialAdjustedProbabilityProfile(
-          weatherProfile,
-          materialDropRate,
-        );
+        const baseProfile = baseDistribution.profile;
+        const specialUtrProbability = baseDistribution.specialUtrDropRate;
         const isSelectable = isMapDataSelectable(fishes, baseProfile);
+        const configuredMaterialDropRate = getCatMaterialDropRate(catEffects);
+        const materialValue = getCatMaterialValue(catEffects);
+        const bestCatchRolls = getPotionBestCatchRolls(inputs.potionConfig);
+        const extraQuantityChance =
+          Math.max(0, parseNumber(catEffects.doubleCatchPercent)) / 100;
+        const catchDistribution =
+          isSelectable && typeof calculateBestCatchDistribution === "function"
+            ? calculateBestCatchDistribution({
+                profile: baseProfile,
+                rarityEntries: baseDistribution.rarityEntries,
+                rollBranches: baseDistribution.rollBranches,
+                rarityOrder: config.rarityOrder,
+                rarityMultipliers: config.rarityMultipliers,
+                fishes,
+                materialDropRate: configuredMaterialDropRate,
+                materialValue,
+                displayFrameDropRate: isStarryMap(map)
+                  ? 0
+                  : config.displayFrameDropRatePercent,
+                displayFramePityCount: isStarryMap(map)
+                  ? 0
+                  : config.displayFramePityCount,
+                displayFrameValue: config.displayFrameValue,
+                specialUtrDropRate: specialUtrProbability,
+                specialUtrPityCount:
+                  specialUtrProbability > 0
+                    ? config.specialUtrPityCount || lostWindUtrPityCount
+                    : 0,
+                rollCount: bestCatchRolls,
+                preferMaterial:
+                  isCatParadiseMap(map) && !areAllCatParadiseBuildingsMaxed(),
+                hasCollectionData,
+                baseQuantity: potionBaseQuantity,
+                extraQuantityChance,
+              })
+            : null;
+        let profile = catchDistribution?.profile || baseProfile;
+        const baseExpectedPrice = isSelectable
+          ? parseNumber(catchDistribution?.fishExpectedValue)
+          : Number.NaN;
+        const materialDropRate = parseNumber(
+          catchDistribution?.materialDropRate,
+        );
+        const materialExpectedValue = isSelectable
+          ? parseNumber(catchDistribution?.materialExpectedValue)
+          : 0;
+        const displayFrameDropRate = parseNumber(
+          catchDistribution?.displayFrameDropRate,
+        );
+        const displayFrameExpectedValue = parseNumber(
+          catchDistribution?.displayFrameExpectedValue,
+        );
         const baitBuff = getBaitBuffForMap(map.id);
         const weatherMultiplier = getWeatherMultiplier(
           weather,
@@ -2694,48 +2894,43 @@
           weather,
           catEffects.weatherBoostPercent,
         );
-        let baseExpectedPrice = isSelectable
-          ? calculateExpectedFishPrice(profile, averageNPrice)
-          : Number.NaN;
-        const materialValue = getCatMaterialValue(catEffects);
-        let materialExpectedValue = isSelectable
-          ? calculateMaterialExpectedValue(materialDropRate, materialValue)
+        const isCatWeatherActive =
+          normalizeWeatherType(weather?.type) === "cat" &&
+          !isWeatherEffectivelyInactive(weather);
+        const catEatChance = isCatWeatherActive
+          ? 0.15 *
+            getBoostedWeatherEffectFactor(catEffects.weatherBoostPercent)
           : 0;
-        const bestCatchRolls = getPotionBestCatchRolls(inputs.potionConfig);
-        if (
-          isSelectable &&
-          bestCatchRolls > 1 &&
-          typeof calculateBestCatchDistribution === "function"
-        ) {
-          const bestCatch = calculateBestCatchDistribution({
-            profile,
-            rarityOrder: config.rarityOrder,
-            rarityMultipliers: config.rarityMultipliers,
-            fishes,
-            materialDropRate,
-            materialValue,
-            rollCount: bestCatchRolls,
-            preferMaterial:
-              isCatParadiseMap(map) && !areAllCatParadiseBuildingsMaxed(),
-          });
-          profile = bestCatch.profile;
-          baseExpectedPrice = bestCatch.fishExpectedValue;
-          materialDropRate = bestCatch.materialDropRate;
-          materialExpectedValue = bestCatch.materialExpectedValue;
-        }
+        const baitConsumptionFactor =
+          isCatWeatherActive &&
+          typeof calculateCatBaitConsumptionFactor === "function"
+            ? calculateCatBaitConsumptionFactor({
+                fishProbability: catchDistribution?.fishProbability,
+                eatChance: catEatChance,
+                baseQuantity: potionBaseQuantity,
+                extraQuantityChance,
+              })
+            : 1;
         const baitRowInputs = {
           ...inputs,
           weatherMultiplier,
           baitCostMultiplier,
           independentSpeedPercent: catEffects.fishingSpeedPercent,
           baitSavingPercent: catEffects.baitSavingPercent,
+          baitConsumptionFactor,
         };
         const fishCatchMultiplier =
-          potionFishCatchMultiplier *
-          (1 + Math.max(0, parseNumber(catEffects.doubleCatchPercent)) / 100);
+          typeof calculateExpectedFishQuantity === "function"
+            ? calculateExpectedFishQuantity({
+                baseQuantity: potionBaseQuantity,
+                extraQuantityChance,
+              })
+            : potionBaseQuantity + extraQuantityChance;
         const getProfitExpectedPrice = (fishExpectedPrice) =>
           Number.isFinite(fishExpectedPrice)
-            ? fishExpectedPrice * fishCatchMultiplier + materialExpectedValue
+            ? fishExpectedPrice * fishCatchMultiplier +
+              materialExpectedValue +
+              displayFrameExpectedValue
             : fishExpectedPrice;
         let fallbackBait = isSelectable
           ? getBestBaitRow(
@@ -2765,6 +2960,8 @@
             fishes,
             map.id,
             catEffects.weatherBoostPercent,
+            catchDistribution,
+            bestCatchRolls > 1,
           );
           profitExpectedPrice = getProfitExpectedPrice(expectedPrice);
           baitRows = calculateBaitRows(
@@ -2783,7 +2980,7 @@
         }
 
         const displayExpectedPrice = Number.isFinite(expectedPrice)
-          ? expectedPrice + materialExpectedValue
+          ? expectedPrice + materialExpectedValue + displayFrameExpectedValue
           : expectedPrice;
 
         return {
@@ -2798,11 +2995,18 @@
           profitExpectedPrice,
           materialDropRate,
           materialExpectedValue,
+          displayFrameDropRate,
+          displayFrameExpectedValue,
+          specialUtrDropRate: parseNumber(
+            catchDistribution?.specialUtrDropRate,
+          ),
+          fishProbability: parseNumber(catchDistribution?.fishProbability),
           catEffects,
           baitBuff,
           weather,
           weatherMultiplier,
           baitCostMultiplier,
+          baitConsumptionFactor,
           baitRows,
           bestBaitRow,
           isSelectable,
@@ -2877,7 +3081,9 @@
         const cells = visibleRarities
           .map((rarity) => {
             const multiplier = parseNumber(config.rarityMultipliers[rarity]);
-            const price = parseNumber(fish.nPrice) * multiplier;
+            const price = parseNumber(
+              fish.rarityPrices?.[rarity] ?? parseNumber(fish.nPrice) * multiplier,
+            );
             const originalPrice = parseNumber(originalFish.nPrice) * multiplier;
             const isMissing =
               shouldMarkMissingPrices &&
@@ -4183,7 +4389,7 @@
             <div class="cat-building-order">${formatNumber(parseNumber(building.order), 0)}</div>
             <div class="cat-building-name">${escapeHtml(building.name)}</div>
             <div class="cat-building-stepper" data-cat-building="${escapeHtml(building.id)}">
-              <button type="button" data-cat-building-step="-1" data-cat-building-id="${escapeHtml(building.id)}" ${level <= 0 ? "disabled" : ""} aria-label="降低${escapeHtml(building.name)}等级">−</button>
+              <button type="button" data-cat-building-step="-1" data-cat-building-id="${escapeHtml(building.id)}" disabled aria-label="${escapeHtml(building.name)}等级不可降低">−</button>
               <span class="cat-building-level">Lv${formatNumber(level, 0)}</span>
               <button type="button" data-cat-building-step="1" data-cat-building-id="${escapeHtml(building.id)}" ${!upgradeAllowed || level >= maxLevel ? "disabled" : ""} aria-label="提升${escapeHtml(building.name)}等级">+</button>
             </div>
@@ -4481,6 +4687,25 @@
     return chips.join("");
   }
 
+  function buildCatchOutcomeSummaryChips(row) {
+    if (!row) {
+      return "";
+    }
+
+    const chips = [];
+    const displayFrameDropRate = Math.max(
+      0,
+      parseNumber(row.displayFrameDropRate),
+    );
+    if (displayFrameDropRate > 0) {
+      chips.push(
+        `<span class="rarity-chip"><span style="color: var(--muted); font-weight: 700;">展示木框</span> <span style="color: var(--text); font-weight: 700; font-size: 1.05em;">${formatNumber(displayFrameDropRate, 2)}%</span></span>`,
+      );
+    }
+    chips.push(buildCatParadiseSummaryChips(row));
+    return chips.join("");
+  }
+
   function formatSignedPercent(value) {
     const numericValue = parseNumber(value);
     return `${numericValue > 0 ? "+" : ""}${formatNumber(numericValue, 2)}%`;
@@ -4564,11 +4789,15 @@
   }
 
   function getCatBuildingPrerequisiteLevel(building) {
-    if (building?.id !== "legendaryCatStatue") {
+    const nextLevel = getCatBuildingNextLevel(building);
+    if (!nextLevel) {
       return null;
     }
-
-    return getCatBuildingNextLevel(building);
+    return building?.id === "legendaryCatStatue"
+      ? nextLevel
+      : nextLevel > 1
+        ? nextLevel - 1
+        : null;
   }
 
   function getCatBuildingPrerequisiteText(building) {
@@ -4577,22 +4806,27 @@
       return "";
     }
 
-    return `需要其他8栋建筑全部达到 Lv${formatNumber(prerequisiteLevel, 0)}`;
+    return building?.id === "legendaryCatStatue"
+      ? `需要其他8栋建筑全部达到 Lv${formatNumber(prerequisiteLevel, 0)}`
+      : `需要先建成传奇猫雕像 Lv${formatNumber(prerequisiteLevel, 0)}`;
+  }
+
+  function getCatBuildingRuleOptions(building, step = 1) {
+    return {
+      buildingId: building?.id,
+      buildingIds: getOrderedCatParadiseBuildings().map((item) => item.id),
+      levels: catBuildingLevels,
+      statueId: "legendaryCatStatue",
+      maxLevel: getCatBuildingMaxLevel(building),
+      step,
+    };
   }
 
   function canUpgradeCatBuilding(building) {
-    const nextLevel = getCatBuildingNextLevel(building);
-    if (!nextLevel) {
-      return false;
-    }
-
-    if (building.id !== "legendaryCatStatue") {
-      return true;
-    }
-
-    return catParadiseBuildings
-      .filter((item) => item.id !== building.id)
-      .every((item) => getCatBuildingLevel(item.id) >= nextLevel);
+    return (
+      typeof canUpgradeCatBuildingLevel === "function" &&
+      canUpgradeCatBuildingLevel(getCatBuildingRuleOptions(building))
+    );
   }
 
   function renderSummary(selectedMapRow, bestBaitRow, inputs) {
@@ -4624,7 +4858,7 @@
               rarity,
             )}; font-weight: 700;">${rarity}</span> <span style="color: var(--text); font-weight: 700; font-size: 1.05em;">${formatNumber(parseNumber(selectedMapRow.profile[rarity]), 2)}%</span></span>`,
         )
-        .concat(buildCatParadiseSummaryChips(selectedMapRow))
+        .concat(buildCatchOutcomeSummaryChips(selectedMapRow))
         .join("");
       elements.selectedMapProbability.className = "small rarity-chips";
       elements.selectedMapProbability.innerHTML = chips;
@@ -5497,13 +5731,12 @@
 
         const step = Number.parseInt(stepButton.dataset.catBuildingStep, 10);
         const currentLevel = getCatBuildingLevel(building.id);
-        const nextLevel = normalizeCatBuildingLevel(
-          building,
-          currentLevel + (Number.isFinite(step) ? step : 0),
-        );
-        if (nextLevel > currentLevel && !canUpgradeCatBuilding(building)) {
-          return;
-        }
+        const nextLevel =
+          typeof getCatBuildingLevelAfterStep === "function"
+            ? getCatBuildingLevelAfterStep(
+                getCatBuildingRuleOptions(building, step),
+              )
+            : currentLevel;
 
         if (nextLevel === currentLevel) {
           return;
