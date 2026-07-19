@@ -1860,6 +1860,223 @@
         line-height: 1.55;
       }
 
+      .starry-expectation {
+        margin-top: 18px;
+        padding: 22px 0 20px;
+      }
+
+      .starry-expectation[hidden] {
+        display: none;
+      }
+
+      .starry-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 0 22px;
+      }
+
+      .starry-title h2 {
+        font-size: 18px;
+        line-height: 1.3;
+      }
+
+      .starry-status {
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .starry-metrics {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        margin-top: 18px;
+        padding: 0 22px;
+      }
+
+      .starry-metric {
+        min-width: 0;
+        padding: 3px 16px;
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .starry-metric:first-child {
+        padding-left: 0;
+        border-left: 0;
+      }
+
+      .starry-metric-label {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .starry-metric-value {
+        margin-top: 6px;
+        color: var(--text);
+        font-size: 21px;
+        font-weight: 800;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .starry-metric-value.is-total {
+        color: var(--good);
+      }
+
+      .starry-pools {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin: 20px 22px 0;
+      }
+
+      .starry-pool-card,
+      .starry-fragment-card {
+        min-width: 0;
+        padding: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-top: 2px solid rgba(125, 211, 252, 0.72);
+        border-radius: 8px;
+        background: rgba(12, 16, 24, 0.92);
+      }
+
+      .starry-pool-card[data-starry-pool="middle"],
+      .starry-fragment-card:nth-child(1) {
+        border-top-color: rgba(126, 224, 129, 0.75);
+      }
+
+      .starry-pool-card[data-starry-pool="high"],
+      .starry-fragment-card:nth-child(2) {
+        border-top-color: rgba(246, 196, 83, 0.8);
+      }
+
+      .starry-pool-card[data-starry-pool="ultimate"],
+      .starry-fragment-card:nth-child(3) {
+        border-top-color: rgba(240, 141, 168, 0.8);
+      }
+
+      .starry-card-head {
+        min-height: 48px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      }
+
+      .starry-card-head h3 {
+        color: var(--text);
+        font-size: 14px;
+        line-height: 1.35;
+      }
+
+      .starry-pool-draws,
+      .starry-fragment-route {
+        display: flex;
+        align-items: baseline;
+        gap: 5px;
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .starry-pool-draws strong,
+      .starry-fragment-route strong {
+        color: var(--text);
+        font-size: 16px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .starry-fragment-title-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .starry-fragment-title-row h3 {
+        min-width: 0;
+      }
+
+      .starry-fragment-cycle {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: baseline;
+        gap: 5px;
+        color: var(--muted);
+        font-size: 11px;
+        white-space: nowrap;
+      }
+
+      .starry-fragment-cycle strong {
+        color: var(--good);
+        font-size: 16px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .starry-distribution {
+        margin: 8px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .starry-distribution li {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        min-height: 30px;
+        padding: 6px 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        font-size: 12px;
+      }
+
+      .starry-distribution li:first-child {
+        border-top: 0;
+      }
+
+      .starry-distribution-name {
+        min-width: 0;
+        color: rgba(237, 242, 255, 0.82);
+        overflow-wrap: anywhere;
+      }
+
+      .starry-distribution-name .starry-distribution-quantity {
+        color: var(--muted);
+        white-space: nowrap;
+      }
+
+      .starry-distribution strong {
+        color: var(--text);
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .starry-distribution-empty {
+        padding-top: 12px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .starry-fragment-section {
+        margin: 20px 22px 0;
+      }
+
+      .starry-fragment-section > h3 {
+        color: var(--text);
+        font-size: 15px;
+        line-height: 1.35;
+      }
+
+      .starry-fragments {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 10px;
+      }
+
       .table-card {
         margin-top: 18px;
         padding: 0;
@@ -2907,6 +3124,37 @@
           align-items: flex-start;
         }
 
+        .starry-head {
+          flex-direction: column;
+          padding: 0 18px;
+        }
+
+        .starry-metrics {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px 0;
+          padding: 0 18px;
+        }
+
+        .starry-metric:nth-child(odd) {
+          padding-left: 0;
+          border-left: 0;
+        }
+
+        .starry-pools {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          margin-right: 18px;
+          margin-left: 18px;
+        }
+
+        .starry-fragment-section {
+          margin-right: 18px;
+          margin-left: 18px;
+        }
+
+        .starry-fragments {
+          grid-template-columns: 1fr;
+        }
+
         .collection-modal {
           padding: 10px;
           align-items: center;
@@ -2984,6 +3232,10 @@
       }
 
       @media (max-width: 520px) {
+        .starry-pools {
+          grid-template-columns: 1fr;
+        }
+
         .player-qq-input-shell {
           gap: 6px;
         }
@@ -3273,6 +3525,49 @@
         </article>
       </section>
 
+      <section class="card starry-expectation" id="starryExpectation" hidden>
+        <div class="starry-head">
+          <div class="starry-title">
+            <h2>24H 星空期望</h2>
+            <div class="starry-status" id="starryExpectationStatus">
+              长期日均 · 数学期望，不计入鱼币净利润
+            </div>
+          </div>
+        </div>
+
+        <div class="starry-metrics">
+          <div class="starry-metric">
+            <div class="starry-metric-label">流星鱼掉率</div>
+            <div class="starry-metric-value" id="starryDropRate">-</div>
+          </div>
+          <div class="starry-metric">
+            <div class="starry-metric-label">流星鱼 / 日</div>
+            <div class="starry-metric-value" id="starryFishCount">-</div>
+          </div>
+          <div class="starry-metric">
+            <div class="starry-metric-label">编号原始分 / 日</div>
+            <div class="starry-metric-value" id="starryRawScore">-</div>
+          </div>
+          <div class="starry-metric">
+            <div class="starry-metric-label">抽奖奖励分 / 日</div>
+            <div class="starry-metric-value" id="starryRewardScore">-</div>
+          </div>
+          <div class="starry-metric">
+            <div class="starry-metric-label">总积分 / 日</div>
+            <div class="starry-metric-value is-total" id="starryTotalScore">
+              -
+            </div>
+          </div>
+        </div>
+
+        <div class="starry-pools" id="starryPoolList"></div>
+
+        <div class="starry-fragment-section">
+          <h3>碎片合成奖池</h3>
+          <div class="starry-fragments" id="starryFragmentList"></div>
+        </div>
+      </section>
+
       <section class="card section table-card">
         <div class="table-head">
           <h2>鱼饵收益对比</h2>
@@ -3462,6 +3757,8 @@
       </div>
     </div>
     <script src="catch-outcome.js"></script>
+    <script src="starry-score-pmf.js"></script>
+    <script src="starry-expectation.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

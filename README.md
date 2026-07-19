@@ -8,6 +8,7 @@
 - 🎣 支持多种鱼钩和鱼竿等级配置
 - 🗺️ 多地图选择和收益分析
 - 💰 24小时收益预测
+- 🌠 图11-20流星鱼积分、奖池与抽奖奖励日均期望
 - 📱 响应式设计，支持移动端
 
 ## 在线访问
@@ -34,13 +35,18 @@
 
 ## 配置说明
 
-所有游戏数据配置都在 `config.js` 文件中，包括：
+基础游戏数据配置集中在 `config.js` 文件中，包括：
 
 - 鱼钩等级和加速效果
 - 鱼饵类型和价格
 - 地图信息和鱼类数据
 - 稀有度概率分布
 - 打窝数据静态源地址 `nestBuffSourceUrl`
+
+流星鱼编号分数分布保存在 `starry-score-pmf.js`，由
+`scripts/generate-starry-score-pmf.js` 通过六位前缀状态聚合、普通域互补对称缩减生成；
+`starry-expectation.js` 使用该聚合分布计算天气、药水、碎片连锁和奖励期望。
+浏览器计算过程中不会枚举六位编号，也不依赖网络请求或随机模拟。
 
 如果你要把定时程序输出到 GitHub Pages 可访问的静态数据源，建议把 `nestBuffSourceUrl` 改成 gh-pages 分支对应的 raw JSON 地址，例如：
 
@@ -57,6 +63,12 @@ nestBuffSourceUrl: "https://raw.githubusercontent.com/luyh7/fishing-profit/gh-pa
 - 纯 HTML + CSS + JavaScript
 - 无需构建工具
 - 无外部依赖
+
+测试使用 Node.js 内置测试运行器：
+
+```bash
+node --test tests/*.test.js
+```
 
 ## License
 

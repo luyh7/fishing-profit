@@ -12,6 +12,9 @@
     ? config.systemBuffs
     : [];
   const potionConfigs = Array.isArray(config.potions) ? config.potions : [];
+  const starryExpectationApi = window.FISH_STARRY_EXPECTATION || {};
+  const calculateDailyStarryExpectation =
+    starryExpectationApi.calculateDailyStarryExpectation;
   const catchOutcomeApi = window.FISH_CATCH_OUTCOME || {};
   const canUpgradeCatBuildingLevel =
     catchOutcomeApi.canUpgradeCatBuildingLevel;
@@ -166,6 +169,17 @@
     selectedMapProbability: document.getElementById("selectedMapProbability"),
     selectedBestBait: document.getElementById("selectedBestBait"),
     selectedBestNet: document.getElementById("selectedBestNet"),
+    starryExpectation: document.getElementById("starryExpectation"),
+    starryExpectationStatus: document.getElementById(
+      "starryExpectationStatus",
+    ),
+    starryDropRate: document.getElementById("starryDropRate"),
+    starryFishCount: document.getElementById("starryFishCount"),
+    starryRawScore: document.getElementById("starryRawScore"),
+    starryRewardScore: document.getElementById("starryRewardScore"),
+    starryTotalScore: document.getElementById("starryTotalScore"),
+    starryPoolList: document.getElementById("starryPoolList"),
+    starryFragmentList: document.getElementById("starryFragmentList"),
     autoNestBuffSwitches: Array.from(
       document.querySelectorAll("[data-auto-nest-buff-switch]"),
     ),
@@ -177,6 +191,29 @@
     resultBody: document.getElementById("resultBody"),
     emptyState: document.getElementById("emptyState"),
   };
+  const starryPoolLabels = {
+    low: "低级池",
+    middle: "中级池",
+    high: "高级池",
+    ultimate: "究极池",
+  };
+  const starryFragmentUpgrades = [
+    {
+      rewardKey: "lottery_fragment_low",
+      label: "中级抽奖碎片",
+      targetPool: "middle",
+    },
+    {
+      rewardKey: "lottery_fragment_mid",
+      label: "高级抽奖碎片",
+      targetPool: "high",
+    },
+    {
+      rewardKey: "lottery_fragment_high",
+      label: "究极抽奖碎片",
+      targetPool: "ultimate",
+    },
+  ];
   let isFishPriceAltPressed = false;
 
   function parseNumber(value) {
@@ -188,6 +225,15 @@
     return Number.isFinite(value)
       ? value.toLocaleString("zh-CN", {
           minimumFractionDigits: 0,
+          maximumFractionDigits: digits,
+        })
+      : "-";
+  }
+
+  function formatFixedNumber(value, digits = 1) {
+    return Number.isFinite(value)
+      ? value.toLocaleString("zh-CN", {
+          minimumFractionDigits: digits,
           maximumFractionDigits: digits,
         })
       : "-";
@@ -474,6 +520,34 @@
       multiplier: 1,
       baitCostMultiplier: 1,
     },
+    chaotic_era: {
+      label: "乱纪元",
+      emoji: "🌫️",
+      effectText: "流星鱼使用普通编号规则",
+      multiplier: 1,
+      baitCostMultiplier: 1,
+    },
+    solar_wind: {
+      label: "太阳风",
+      emoji: "🌬️",
+      effectText: "流星鱼掉率+2.5%",
+      multiplier: 1,
+      baitCostMultiplier: 1,
+    },
+    meteor_shower: {
+      label: "流星雨",
+      emoji: "💫",
+      effectText: "流星鱼编号判定2次并取高分",
+      multiplier: 1,
+      baitCostMultiplier: 1,
+    },
+    hengjiyuan: {
+      label: "恒纪元",
+      emoji: "🏛️",
+      effectText: "流星鱼编号仅使用2-8",
+      multiplier: 1,
+      baitCostMultiplier: 1,
+    },
   };
 
   const lostWindUtrBaseProbability = 0.2;
@@ -484,13 +558,19 @@
     猫: "cat",
   };
 
-  const weatherCycleTypes = [
+  const standardWeatherCycleTypes = [
     "sunny",
     "rain",
     "storm",
     "meteor",
     "lost_wind",
     "cat",
+  ];
+  const starryWeatherCycleTypes = [
+    "chaotic_era",
+    "solar_wind",
+    "meteor_shower",
+    "hengjiyuan",
   ];
 
   function normalizeWeatherType(type) {
@@ -674,6 +754,19 @@
     };
   }
 
+  function normalizeWeatherTypeForMap(type, mapId) {
+    const normalizedType = normalizeWeatherType(type);
+    const numericMapId = Number.parseInt(normalizeMapId(mapId), 10);
+    if (numericMapId >= 11 && numericMapId <= 20) {
+      return starryWeatherCycleTypes.includes(normalizedType)
+        ? normalizedType
+        : "chaotic_era";
+    }
+    return standardWeatherCycleTypes.includes(normalizedType)
+      ? normalizedType
+      : "sunny";
+  }
+
   function buildGatedAchievementLostWindWeather(weather) {
     return {
       ...(weather || {}),
@@ -689,17 +782,27 @@
     const key = normalizeMapId(mapId) || String(mapLevel);
     const overrideType = weatherOverrideByMap[key];
     if (overrideType) {
-      return buildManualWeather(overrideType);
+      return buildManualWeather(normalizeWeatherTypeForMap(overrideType, key));
     }
 
     const sourceKey =
       mapId !== null && mapId !== undefined ? String(mapId) : key;
-    const weather = sourceWeatherByMap[sourceKey] || {
+    let weather = sourceWeatherByMap[sourceKey] || {
       type: "sunny",
       is_active: false,
       start_time: null,
       end_time: null,
     };
+    const normalizedType = normalizeWeatherTypeForMap(weather.type, key);
+    if (normalizedType !== normalizeWeatherType(weather.type)) {
+      weather = {
+        ...weather,
+        type: normalizedType,
+        is_active: true,
+        start_time: null,
+        end_time: null,
+      };
+    }
 
     if (shouldGateLostWindForMap(mapId, weather)) {
       return buildGatedAchievementLostWindWeather(weather);
@@ -780,6 +883,35 @@
   function isStarryMap(map) {
     const numericMapId = Number.parseInt(getMapId(map), 10);
     return numericMapId >= 11 && numericMapId <= 20;
+  }
+
+  function isPlayerBuffActive(type, now = Date.now()) {
+    const normalizedType = normalizePotionType(type);
+    const buffs = Array.isArray(activePlayerData?.buffs)
+      ? activePlayerData.buffs
+      : [];
+    return buffs.some((buff) => {
+      if (
+        normalizePotionType(buff?.type) !== normalizedType ||
+        parseNumber(buff?.value) <= 0
+      ) {
+        return false;
+      }
+      const startTime = parseWeatherTime(buff?.start_time);
+      const endTime = parseWeatherTime(buff?.end_time);
+      return (
+        Number.isFinite(startTime) &&
+        Number.isFinite(endTime) &&
+        startTime <= now &&
+        now < endTime
+      );
+    });
+  }
+
+  function getActiveStarryModifierSignature(now = Date.now()) {
+    return ["gamma_ray_burst", "double_catch"]
+      .map((type) => `${type}:${Number(isPlayerBuffActive(type, now))}`)
+      .join("|");
   }
 
   function getMapMaxRarity(map) {
@@ -1091,6 +1223,13 @@
     }
 
     const now = Date.now();
+    const nextStarryModifierSignature =
+      getActiveStarryModifierSignature(now);
+    if (nextStarryModifierSignature !== activeStarryModifierSignature) {
+      activeStarryModifierSignature = nextStarryModifierSignature;
+      render();
+      return;
+    }
     const nextBuff = getActivePlayerPotionBuff(activePlayerData, now);
     const nextPotionConfig =
       getPotionConfigForBuff(nextBuff) || getPotionConfig("none");
@@ -1254,14 +1393,18 @@
     }
   }
 
-  function getWeatherCycleType(currentType, stepValue) {
+  function getWeatherCycleType(currentType, stepValue, mapId) {
+    const numericMapId = Number.parseInt(normalizeMapId(mapId), 10);
+    const cycleTypes =
+      numericMapId >= 11 && numericMapId <= 20
+        ? starryWeatherCycleTypes
+        : standardWeatherCycleTypes;
     const normalizedType = normalizeWeatherType(currentType);
-    const currentIndex = weatherCycleTypes.indexOf(normalizedType);
+    const currentIndex = cycleTypes.indexOf(normalizedType);
     const safeIndex = currentIndex >= 0 ? currentIndex : 0;
     const nextIndex =
-      (safeIndex + stepValue + weatherCycleTypes.length) %
-      weatherCycleTypes.length;
-    return weatherCycleTypes[nextIndex];
+      (safeIndex + stepValue + cycleTypes.length) % cycleTypes.length;
+    return cycleTypes[nextIndex];
   }
 
   function persistWeatherOverrides() {
@@ -1756,6 +1899,7 @@
   let sourceWeatherByMap = {};
   let activePlayerData = null;
   let activePlayerPotionBuff = null;
+  let activeStarryModifierSignature = "";
   let leaderboardActiveType = leaderboardTypes[0]?.key || "rod";
   let weatherOverrideByMap = loadWeatherOverrideMap();
   let isRefreshingNestBuff = false;
@@ -2988,6 +3132,7 @@
           fishes,
           averageNPrice,
           delta,
+          effectiveRodLevel,
           profile,
           baseExpectedPrice,
           expectedPrice,
@@ -4829,6 +4974,255 @@
     );
   }
 
+  function getActiveStarryWeatherType(weather) {
+    if (isWeatherEffectivelyInactive(weather)) {
+      return "chaotic_era";
+    }
+    const type = normalizeWeatherType(weather?.type);
+    return starryWeatherCycleTypes.includes(type) ? type : "chaotic_era";
+  }
+
+  function getStarryPoolDraws(result) {
+    const root = result?.expectedPoolDraws || {};
+    const candidates = [
+      root.total,
+      root.longRun,
+      result?.totalPoolDraws,
+      root,
+    ];
+    return (
+      candidates.find(
+        (candidate) =>
+          candidate &&
+          typeof candidate === "object" &&
+          Object.keys(starryPoolLabels).some((key) =>
+            Number.isFinite(Number(candidate[key])),
+          ),
+      ) || {}
+    );
+  }
+
+  function getStarryRewards(result) {
+    return Array.isArray(result?.expectedRewards) ? result.expectedRewards : [];
+  }
+
+  function getStarryPoolDistribution(result, poolKey, poolDraws) {
+    const rewards = getStarryRewards(result).filter(
+      (reward) =>
+        String(reward.pool ?? reward.poolKey ?? reward.sourcePool ?? "") ===
+        poolKey,
+    );
+    const drawCount = parseNumber(poolDraws?.[poolKey]);
+    const fallbackProbability = rewards.length > 0 ? 1 / rewards.length : 0;
+
+    return rewards.map((reward) => {
+      const occurrences = parseNumber(
+        reward.expectedOccurrences ??
+          reward.occurrences ??
+          reward.expectedCount,
+      );
+      const countPerOccurrence = Number.isFinite(
+        Number(reward.countPerOccurrence),
+      )
+        ? Math.max(0, Number(reward.countPerOccurrence))
+        : 1;
+      return {
+        key: String(reward.key ?? ""),
+        name: String(reward.name ?? reward.label ?? reward.key ?? "-"),
+        countPerOccurrence,
+        probability:
+          drawCount > 0 ? Math.max(0, occurrences / drawCount) : fallbackProbability,
+      };
+    });
+  }
+
+  function renderStarryDistribution(distribution) {
+    if (!distribution.length) {
+      return '<div class="starry-distribution-empty">暂无奖池内容</div>';
+    }
+
+    return `<ul class="starry-distribution">
+      ${distribution
+        .map(
+          (reward) => `
+            <li>
+              <span class="starry-distribution-name">
+                ${escapeHtml(reward.name)}${
+                  reward.countPerOccurrence > 1
+                    ? `<span class="starry-distribution-quantity"> ×${formatNumber(reward.countPerOccurrence, 0)}</span>`
+                    : ""
+                }
+              </span>
+              <strong>${formatPercent(reward.probability, 2)}</strong>
+            </li>
+          `,
+        )
+        .join("")}
+    </ul>`;
+  }
+
+  function renderStarryPoolDraws(result) {
+    if (!elements.starryPoolList) {
+      return;
+    }
+    const poolDraws = getStarryPoolDraws(result);
+    elements.starryPoolList.innerHTML = Object.entries(starryPoolLabels)
+      .map(
+        ([key, label]) => `
+          <article class="starry-pool-card" data-starry-pool="${key}">
+            <div class="starry-card-head">
+              <h3>${label}</h3>
+              <div class="starry-pool-draws">
+                <strong>${formatNumber(parseNumber(poolDraws[key]), 4)}</strong>
+                <span>次 / 日</span>
+              </div>
+            </div>
+            ${renderStarryDistribution(
+              getStarryPoolDistribution(result, key, poolDraws),
+            )}
+          </article>
+        `,
+      )
+      .join("");
+  }
+
+  function renderStarryFragmentCards(result) {
+    if (!elements.starryFragmentList) {
+      return;
+    }
+    const poolDraws = getStarryPoolDraws(result);
+    const rewardsByKey = new Map(
+      getStarryRewards(result).map((reward) => [String(reward.key ?? ""), reward]),
+    );
+    elements.starryFragmentList.innerHTML = starryFragmentUpgrades
+      .map((fragment) => {
+        const reward = rewardsByKey.get(fragment.rewardKey);
+        const label = String(reward?.name ?? fragment.label);
+        const targetLabel = starryPoolLabels[fragment.targetPool];
+        const fragmentsPerDay = parseNumber(
+          reward?.expectedQuantity ??
+            reward?.quantity ??
+            reward?.expectedOccurrences ??
+            reward?.occurrences,
+        );
+        const daysPerDraw = fragmentsPerDay > 0 ? 5 / fragmentsPerDay : Number.NaN;
+        return `
+          <article class="starry-fragment-card">
+            <div class="starry-card-head">
+              <div class="starry-fragment-title-row">
+                <h3>${escapeHtml(label)}</h3>
+                <div class="starry-fragment-cycle">
+                  ${
+                    Number.isFinite(daysPerDraw)
+                      ? `<span>约</span><strong>${formatFixedNumber(daysPerDraw, 1)}</strong><span>天 / 次</span>`
+                      : "<span>暂无稳定产出</span>"
+                  }
+                </div>
+              </div>
+              <div class="starry-fragment-route">
+                <strong>5 个</strong>
+                <span>合成 1 次${escapeHtml(targetLabel)}</span>
+              </div>
+            </div>
+            ${renderStarryDistribution(
+              getStarryPoolDistribution(result, fragment.targetPool, poolDraws),
+            )}
+          </article>
+        `;
+      })
+      .join("");
+  }
+
+  function renderStarryExpectation(selectedMapRow, bestBaitRow, inputs) {
+    if (!elements.starryExpectation) {
+      return null;
+    }
+    const shouldShow = Boolean(
+      selectedMapRow && isStarryMap(selectedMapRow.map),
+    );
+    elements.starryExpectation.hidden = !shouldShow;
+    if (!shouldShow) {
+      return null;
+    }
+
+    if (
+      typeof calculateDailyStarryExpectation !== "function" ||
+      !bestBaitRow ||
+      !Number.isFinite(bestBaitRow.theoreticalCount)
+    ) {
+      elements.starryExpectationStatus.textContent =
+        "星空期望模块暂不可用，不计入鱼币净利润";
+      return null;
+    }
+
+    const potionType = normalizePotionType(inputs?.potionConfig?.id);
+    const weatherType = getActiveStarryWeatherType(selectedMapRow.weather);
+    const now = Date.now();
+    activeStarryModifierSignature = getActiveStarryModifierSignature(now);
+    const period = {
+      attempts: bestBaitRow.theoreticalCount,
+      effectiveRodLevel: selectedMapRow.effectiveRodLevel,
+      weatherType,
+      modifiers: {
+        duoduo: potionType === "duoduo",
+        lucky: potionType === "lucky_double",
+        gamma: isPlayerBuffActive("gamma_ray_burst", now),
+        doubleCatch: isPlayerBuffActive("double_catch", now),
+      },
+    };
+
+    let result;
+    try {
+      result = calculateDailyStarryExpectation({
+        periods: [period],
+        fragmentMode: "long_run",
+      });
+    } catch (error) {
+      console.error("Failed to calculate starry expectation", error);
+      elements.starryExpectationStatus.textContent =
+        "星空期望计算失败，不计入鱼币净利润";
+      return null;
+    }
+
+    const score = result?.expectedScore || {};
+    elements.starryDropRate.textContent = formatPercent(
+      parseNumber(result?.dropRate),
+      2,
+    );
+    elements.starryFishCount.textContent = formatNumber(
+      parseNumber(result?.expectedFishCount),
+      4,
+    );
+    elements.starryRawScore.textContent = formatNumber(
+      parseNumber(score.raw),
+      4,
+    );
+    elements.starryRewardScore.textContent = formatNumber(
+      parseNumber(score.rewardBonus),
+      4,
+    );
+    elements.starryTotalScore.textContent = formatNumber(
+      parseNumber(score.total),
+      4,
+    );
+    renderStarryPoolDraws(result);
+    renderStarryFragmentCards(result);
+
+    const weatherLabel = getWeatherMeta(weatherType).label;
+    const activeEffects = [
+      weatherLabel,
+      period.modifiers.duoduo ? "多多药水" : "",
+      period.modifiers.lucky ? "幸运药水" : "",
+      period.modifiers.gamma ? "伽马射线暴" : "",
+      period.modifiers.doubleCatch ? "双倍捕获" : "",
+    ].filter(Boolean);
+    elements.starryExpectationStatus.textContent = `${formatNumber(
+      bestBaitRow.theoreticalCount,
+      2,
+    )} 次理论判定 · ${activeEffects.join(" + ")} · 长期日均 · 不计入鱼币净利润`;
+    return result;
+  }
+
   function renderSummary(selectedMapRow, bestBaitRow, inputs) {
     elements.selectedMapName.className = selectedMapRow
       ? "value selected-map-name"
@@ -5262,6 +5656,11 @@
           return left.bait.id - right.bait.id;
         })[0] || null
       : null;
+    const starryExpectation = renderStarryExpectation(
+      selectedMapRow,
+      bestBaitRow,
+      inputs,
+    );
 
     window.FISH_BAIT_CALCULATOR_STATE = {
       completedCount: bestBaitRow ? bestBaitRow.completedCount : 0,
@@ -5274,6 +5673,7 @@
       systemBuff: inputs.systemBuffConfig,
       potion: inputs.potionConfig,
       player: activePlayerData,
+      starryExpectation,
     };
 
     renderSummary(selectedMapRow, bestBaitRow, inputs);
@@ -5373,7 +5773,6 @@
     if (elements.playerQQ) {
       elements.playerQQ.value = storedPlayerQQ;
     }
-
     const persist = () => {
       setStoredValue(storageKeys.hookLevel, elements.hookLevel.value);
       setStoredValue(storageKeys.rodLevel, elements.rodLevel.value);
@@ -5592,7 +5991,11 @@
           const mapId = weatherButton.dataset.weatherMapId;
           const stepValue = parseNumber(weatherButton.dataset.weatherStep);
           const currentWeather = getWeatherForMap(mapLevel, mapId);
-          const nextType = getWeatherCycleType(currentWeather.type, stepValue);
+          const nextType = getWeatherCycleType(
+            currentWeather.type,
+            stepValue,
+            mapId,
+          );
           setWeatherOverrideForMap(mapId, nextType);
           disableAutoNestBuffForManualEdit();
           render({ skipMapCardRebuild: true });
