@@ -215,6 +215,8 @@
     },
   ];
   let isFishPriceAltPressed = false;
+  const numberFormatters = new Map();
+  const fixedNumberFormatters = new Map();
 
   function parseNumber(value) {
     const parsed = Number.parseFloat(value);
@@ -222,21 +224,35 @@
   }
 
   function formatNumber(value, digits = 2) {
-    return Number.isFinite(value)
-      ? value.toLocaleString("zh-CN", {
+    if (!Number.isFinite(value)) {
+      return "-";
+    }
+    if (!numberFormatters.has(digits)) {
+      numberFormatters.set(
+        digits,
+        new Intl.NumberFormat("zh-CN", {
           minimumFractionDigits: 0,
           maximumFractionDigits: digits,
-        })
-      : "-";
+        }),
+      );
+    }
+    return numberFormatters.get(digits).format(value);
   }
 
   function formatFixedNumber(value, digits = 1) {
-    return Number.isFinite(value)
-      ? value.toLocaleString("zh-CN", {
+    if (!Number.isFinite(value)) {
+      return "-";
+    }
+    if (!fixedNumberFormatters.has(digits)) {
+      fixedNumberFormatters.set(
+        digits,
+        new Intl.NumberFormat("zh-CN", {
           minimumFractionDigits: digits,
           maximumFractionDigits: digits,
-        })
-      : "-";
+        }),
+      );
+    }
+    return fixedNumberFormatters.get(digits).format(value);
   }
 
   function formatPercent(value, digits = 2) {
@@ -1559,6 +1575,13 @@
     }
 
     const targetRarity = getMapCardCollectionTargetRarity(row);
+    const currentTargetRarity = cardEl.dataset.mapCollectionRarity || "";
+    if (
+      currentTargetRarity === targetRarity &&
+      cardEl.classList.contains("has-collection-target") === Boolean(targetRarity)
+    ) {
+      return;
+    }
     cardEl.classList.toggle("has-collection-target", Boolean(targetRarity));
     if (!targetRarity) {
       delete cardEl.dataset.mapCollectionRarity;
@@ -5365,24 +5388,43 @@
       return;
     }
     const bestMapId = findBestMapId(mapRows);
+    const cardsByMapId = new Map(
+      Array.from(
+        elements.mapCardList.querySelectorAll(".map-card[data-map-id]"),
+      ).map((card) => [card.dataset.mapId || "", card]),
+    );
     mapRows.forEach((row) => {
-      const cardEl = getMapCardElement(row.map.id);
+      const cardEl = cardsByMapId.get(getMapId(row.map)) || null;
       const isUnavailable = !row.isSelectable;
       if (cardEl) {
-        cardEl.classList.toggle("unavailable", isUnavailable);
-        cardEl.setAttribute("aria-disabled", isUnavailable ? "true" : "false");
-        cardEl.setAttribute("tabindex", isUnavailable ? "-1" : "0");
+        if (cardEl.classList.contains("unavailable") !== isUnavailable) {
+          cardEl.classList.toggle("unavailable", isUnavailable);
+        }
+        const ariaDisabled = isUnavailable ? "true" : "false";
+        const tabIndex = isUnavailable ? "-1" : "0";
+        if (cardEl.getAttribute("aria-disabled") !== ariaDisabled) {
+          cardEl.setAttribute("aria-disabled", ariaDisabled);
+        }
+        if (cardEl.getAttribute("tabindex") !== tabIndex) {
+          cardEl.setAttribute("tabindex", tabIndex);
+        }
         applyMapCardCollectionVisual(cardEl, row);
       }
 
       const unavailableEl = cardEl?.querySelector("[data-map-unavailable]");
-      if (unavailableEl) {
+      if (
+        unavailableEl &&
+        unavailableEl.textContent !== row.unavailableReason
+      ) {
         unavailableEl.textContent = row.unavailableReason;
       }
 
       const priceEl = cardEl?.querySelector("[data-map-price]");
       if (priceEl && row.isSelectable) {
-        priceEl.textContent = ` ¥${formatNumber(row.bestBaitRow?.netRevenue ?? 0, 0)}`;
+        const priceText = ` ¥${formatNumber(row.bestBaitRow?.netRevenue ?? 0, 0)}`;
+        if (priceEl.textContent !== priceText) {
+          priceEl.textContent = priceText;
+        }
       }
       const existingCatBuildingsButton = cardEl?.querySelector(
         "[data-cat-buildings-open]",
@@ -5397,24 +5439,39 @@
       }
       const bestBaitEl = cardEl?.querySelector("[data-map-best-bait]");
       if (bestBaitEl && row.isSelectable) {
-        bestBaitEl.textContent = `最优鱼饵：${row.bestBaitRow ? row.bestBaitRow.bait.name : "-"}`;
+        const bestBaitText = `最优鱼饵：${row.bestBaitRow ? row.bestBaitRow.bait.name : "-"}`;
+        if (bestBaitEl.textContent !== bestBaitText) {
+          bestBaitEl.textContent = bestBaitText;
+        }
       }
       const buffValueEl = cardEl?.querySelector("[data-bait-buff-value]");
       if (buffValueEl && row.isSelectable) {
-        buffValueEl.textContent = formatNumber(row.baitBuff, 0);
+        const buffText = formatNumber(row.baitBuff, 0);
+        if (buffValueEl.textContent !== buffText) {
+          buffValueEl.textContent = buffText;
+        }
       }
       const codeEl = cardEl?.querySelector(".map-card-code");
       if (codeEl) {
-        codeEl.outerHTML = buildMapCardCodeHtml(row.map);
+        const shouldHaveCrown = hasPlayerAchievementForMap(row.map.id);
+        const hasCrown = Boolean(codeEl.querySelector(".map-card-crown"));
+        if (hasCrown !== shouldHaveCrown) {
+          codeEl.outerHTML = buildMapCardCodeHtml(row.map);
+        }
       }
 
       const badgesEl = cardEl?.querySelector("[data-map-badges]");
       const isBest = getMapId(row.map) === bestMapId;
       if (cardEl) {
-        cardEl.classList.toggle("best", isBest);
+        if (cardEl.classList.contains("best") !== isBest) {
+          cardEl.classList.toggle("best", isBest);
+        }
       }
       if (badgesEl) {
-        badgesEl.innerHTML = buildMapCardBadgesHtml(row, isBest);
+        const badgesHtml = buildMapCardBadgesHtml(row, isBest);
+        if (badgesEl.innerHTML !== badgesHtml) {
+          badgesEl.innerHTML = badgesHtml;
+        }
       }
     });
   }
@@ -5433,13 +5490,18 @@
 
     const normalizedSelectedMapId = normalizeMapId(selectedMapId);
     return cards.every((card, index) => {
-      const expectedMapId = getMapId(mapRows[index]?.map);
+      const row = mapRows[index];
+      const expectedMapId = getMapId(row?.map);
       const cardMapId = card.dataset.mapId || "";
       const shouldBeSelected =
         normalizedSelectedMapId !== "" && cardMapId === normalizedSelectedMapId;
+      const isUnavailable = !row?.isSelectable;
+      const hasUnavailableContent =
+        card.querySelector("[data-map-unavailable]") !== null;
       return (
         cardMapId === expectedMapId &&
-        card.classList.contains("selected") === shouldBeSelected
+        card.classList.contains("selected") === shouldBeSelected &&
+        hasUnavailableContent === isUnavailable
       );
     });
   }
@@ -5800,19 +5862,12 @@
     });
 
     [elements.systemBuff, elements.potion].forEach((element) => {
-      element.addEventListener("input", () => {
-        if (isAutoNestBuffEnabled) {
-          disableAutoNestBuffForManualEdit();
-        }
-        persist();
-        render();
-      });
       element.addEventListener("change", () => {
         if (isAutoNestBuffEnabled) {
           disableAutoNestBuffForManualEdit();
         }
         persist();
-        render();
+        render({ skipMapCardRebuild: true });
       });
     });
 

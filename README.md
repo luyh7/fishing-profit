@@ -70,6 +70,12 @@ nestBuffSourceUrl: "https://raw.githubusercontent.com/luyh7/fishing-profit/gh-pa
 node --test tests/*.test.js
 ```
 
+药水切换性能回归需要本机安装 Chromium；脚本会按移动端尺寸和 4 倍 CPU 降速运行，并以 P75 不超过 50ms 为默认门槛：
+
+```bash
+node scripts/benchmark-potion-switch.js --map-id 11
+```
+
 ## License
 
 MIT
