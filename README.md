@@ -19,6 +19,14 @@
 
 直接在浏览器中打开 `index.html` 文件即可使用。
 
+游戏源码通过 `game-source/current` 子模块固定到经过确认的上游 commit。仅使用网页无需初始化子模块；运行完整测试或进行源码分析时，首次克隆请使用：
+
+```bash
+git clone --recurse-submodules <利润网仓库地址>
+```
+
+已有工作区可执行 `git submodule update --init --recursive`。日常更新使用 `git pull --recurse-submodules`，它只同步利润网已固定的游戏版本，不会自动追踪上游最新 `main`。
+
 ## 自动部署
 
 本项目已配置 GitHub Actions，每次推送到 `main` 或 `master` 分支时会自动部署到 GitHub Pages。

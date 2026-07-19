@@ -5,8 +5,9 @@
 
 ## 游戏源码更新契约
 
-- 游戏源码压缩包统一按收到时的原文件名保存在 `game-source/archives/`；不得重命名、覆盖或删除任何已保存的压缩包。
-- `game-source/current/` 是唯一的解压源码目录，只保留最新压缩包的完整源码；不得创建按日期或版本命名的历史解压目录。
-- 收到新的游戏源码压缩包时，必须先将压缩包原样保存到 `game-source/archives/`，再解压到临时目录并确认解压成功，最后用新源码完整替换 `game-source/current/`，不得与旧源码合并。
-- 新源码解压或校验失败时，必须保留现有 `game-source/current/`，不得留下只替换了一部分的源码目录。
-- 如果 `game-source/archives/` 已存在同名压缩包，内容相同则复用已有文件；内容不同则停止操作并向用户报告，不得覆盖已有文件，也不得通过改名规避冲突。
+- `game-source/current/` 是上游仓库 `https://github.com/RShock/zhenxun_plugin_fishing.git` 的 Git 子模块；利润网主仓库只记录经过确认的固定 commit，不归档源码压缩包，也不直接提交上游源码文件。
+- 日常拉取利润网时只能同步主仓库已经记录的子模块 commit，不得自动跟随上游 `main`；禁止把 `git submodule update --remote` 或子模块内的 `git pull` 作为日常更新步骤。
+- 只有用户明确要求分析新版游戏源码时，才可在子模块中执行 `git fetch`。更新前必须记录旧 SHA 和目标 SHA，并先检查 `旧 SHA..目标 SHA` 的源码差异。
+- 新版分析应以游戏实际结算路径为准，同步检查利润网实现、测试和文档；验证完成后才可将子模块以 detached HEAD 固定到目标 SHA，并在主仓库提交新的 gitlink。
+- 不得直接修改或提交子模块内的上游源码。若抓取、分析、检出或验证失败，必须把 `game-source/current/` 恢复到主仓库原先记录的 commit，不得提交半更新的子模块指针。
+- 历史分析必须记录完整的上游 commit SHA，并优先使用带 commit 的固定链接，不得用会随子模块更新而漂移的 `game-source/current/` 路径作为长期证据链接。
