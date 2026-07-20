@@ -426,12 +426,12 @@ test("高渔力差钳制到源码最后一行", () => {
   assert.equal(result.fishExpectedValue, 160);
 });
 
-test("星空图完成场景成就后不依赖迷途风常驻启用特殊 UTR", () => {
+test("星空特殊 UTR 仅在完成场景成就且乱纪元有效时启用", () => {
   assert.equal(
     isSpecialUtrEnabled({
       isStarry: true,
       hasAchievement: true,
-      weatherType: "solar_wind",
+      weatherType: "chaotic_era",
       weatherInactive: false,
     }),
     true,
@@ -439,9 +439,70 @@ test("星空图完成场景成就后不依赖迷途风常驻启用特殊 UTR", (
   assert.equal(
     isSpecialUtrEnabled({
       isStarry: true,
-      hasAchievement: false,
+      hasAchievement: true,
       weatherType: "solar_wind",
       weatherInactive: false,
+    }),
+    false,
+  );
+  assert.equal(
+    isSpecialUtrEnabled({
+      isStarry: true,
+      hasAchievement: true,
+      weatherType: "meteor_shower",
+      weatherInactive: false,
+    }),
+    false,
+  );
+  assert.equal(
+    isSpecialUtrEnabled({
+      isStarry: true,
+      hasAchievement: true,
+      weatherType: "hengjiyuan",
+      weatherInactive: false,
+    }),
+    false,
+  );
+  assert.equal(
+    isSpecialUtrEnabled({
+      isStarry: true,
+      hasAchievement: true,
+      weatherType: "unknown",
+      weatherInactive: false,
+    }),
+    false,
+  );
+  assert.equal(
+    isSpecialUtrEnabled({
+      isStarry: true,
+      hasAchievement: true,
+      weatherType: "chaotic_era",
+      weatherInactive: true,
+    }),
+    false,
+  );
+  assert.equal(
+    isSpecialUtrEnabled({
+      isStarry: true,
+      hasAchievement: false,
+      weatherType: "chaotic_era",
+      weatherInactive: false,
+    }),
+    false,
+  );
+  assert.equal(
+    isSpecialUtrEnabled({
+      isStarry: false,
+      weatherType: "lost_wind",
+      weatherInactive: false,
+    }),
+    true,
+  );
+  assert.equal(
+    isSpecialUtrEnabled({
+      isStarry: false,
+      weatherType: "lost_wind",
+      weatherInactive: true,
     }),
     false,
   );

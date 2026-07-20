@@ -1039,10 +1039,16 @@
   }
 
   function isSpecialUtrEnabled(options = {}) {
-    if (options.isStarry) {
-      return Boolean(options.hasAchievement);
+    if (options.weatherInactive) {
+      return false;
     }
-    return options.weatherType === "lost_wind" && !options.weatherInactive;
+    if (options.isStarry) {
+      return (
+        Boolean(options.hasAchievement) &&
+        options.weatherType === "chaotic_era"
+      );
+    }
+    return options.weatherType === "lost_wind";
   }
 
   return {

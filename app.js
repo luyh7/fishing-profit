@@ -814,7 +814,7 @@
       weather = {
         ...weather,
         type: normalizedType,
-        is_active: true,
+        is_active: false,
         start_time: null,
         end_time: null,
       };

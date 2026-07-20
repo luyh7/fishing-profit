@@ -14,7 +14,7 @@ const OUTPUT_PATH = path.join(REPOSITORY_ROOT, "starry-score-pmf.js");
 
 // Changing the Python rules must force an explicit review of this port.
 const EXPECTED_SOURCE_SHA256 =
-  "37f28df7bcac1acb5e072801fbd8ebae1200539f1d4f3a260685af955fce2e9a";
+  "0d0c39fd2e642653136a623f77141f37ba6bb2c4b7b1705da44cf4ec72dd5592";
 
 const FEATURE_SCORE_MICRO = Object.freeze({
   "3_same_run": 1_432_856,
@@ -89,16 +89,14 @@ function windowStep(digits, start, length) {
 }
 
 function windowSlide(digits, start, length) {
-  let moved = false;
   let nondecreasing = true;
   let nonincreasing = true;
   for (let offset = 1; offset < length; offset += 1) {
     const difference = digits[start + offset] - digits[start + offset - 1];
-    moved ||= difference !== 0;
     nondecreasing &&= difference === 0 || difference === 1;
     nonincreasing &&= difference === 0 || difference === -1;
   }
-  return moved && (nondecreasing || nonincreasing);
+  return nondecreasing || nonincreasing;
 }
 
 function windowSnake(digits, start, length, pure) {
@@ -127,9 +125,6 @@ function windowSnake(digits, start, length, pure) {
 }
 
 function windowPalindrome(digits, start, length) {
-  if (windowSame(digits, start, length)) {
-    return false;
-  }
   for (let offset = 0; offset < Math.floor(length / 2); offset += 1) {
     if (digits[start + offset] !== digits[start + length - 1 - offset]) {
       return false;
