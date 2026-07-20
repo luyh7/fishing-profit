@@ -15,7 +15,7 @@ game-source/
 
 首次公开基准：`18a5c95b929c36a4b255ccc686e6560316cb3765`
 
-当前固定 commit：`56a330a258dfc4ffdd0cd1011ad8898b717cd47b`
+当前固定 commit：`fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583`
 
 主仓库记录的是固定的子模块 commit。普通拉取不会自动跟随上游 `main`；用户要求“分析游戏源码”或提出等价请求时，才启动新版只读分析流程并在验证后推进该指针。
 
@@ -59,5 +59,6 @@ git config submodule.recurse true
 - 新版逻辑同步后复核：[`analysis/20260719_134826-after-sync.md`](analysis/20260719_134826-after-sync.md)
 - 开源子模块基准迁移：[`analysis/20260720-open-source-baseline.md`](analysis/20260720-open-source-baseline.md)
 - 上游 `56a330a` 三类问题报告：[`analysis/20260720-56a330a.md`](analysis/20260720-56a330a.md)
+- 上游 `fbd5567` 三类问题报告：[`analysis/20260720-fbd5567.md`](analysis/20260720-fbd5567.md)
 
 旧版报告保留其生成时的快照口径和结论。旧压缩包及解压源码已经从当前工作树删除，但仍可从利润网历史提交 `267d99c` 找到；新的分析必须改用上游完整 commit SHA。
