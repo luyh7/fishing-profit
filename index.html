@@ -321,8 +321,13 @@
       }
 
       .has-tooltip:hover .tooltip,
-      .has-tooltip:focus-within .tooltip {
+      .has-tooltip:focus-within .tooltip,
+      #fishPriceCard.is-tooltip-pinned .tooltip {
         opacity: 1;
+      }
+
+      #fishPriceCard.is-tooltip-pinned .tooltip {
+        pointer-events: auto;
       }
 
       .tooltip-title {
@@ -3512,7 +3517,12 @@
           <div class="value" id="selectedMapName">-</div>
           <div class="small" id="selectedMapDelta">-</div>
         </article>
-        <article class="summary-card has-tooltip" id="fishPriceCard">
+        <article
+          class="summary-card has-tooltip"
+          id="fishPriceCard"
+          tabindex="0"
+          aria-expanded="false"
+        >
           <div class="label">当前单鱼期望价值</div>
           <div class="value" id="selectedFishPrice">-</div>
           <div class="small" id="selectedMapProbability">-</div>

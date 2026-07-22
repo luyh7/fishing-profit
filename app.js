@@ -185,6 +185,7 @@
     ),
     refreshNestBuffStatus: document.getElementById("refreshNestBuffStatus"),
     refreshNestBuffError: document.getElementById("refreshNestBuffError"),
+    fishPriceCard: document.getElementById("fishPriceCard"),
     fishPriceTooltip: document.getElementById("fishPriceTooltip"),
     bestBaitName: document.getElementById("bestBaitName"),
     bestBaitNet: document.getElementById("bestBaitNet"),
@@ -3206,6 +3207,7 @@
       return;
     }
     if (!selectedMapRow || !visibleRarities.length) {
+      setFishPriceTooltipPinned(false);
       tooltip.hidden = true;
       tooltip.innerHTML = "";
       tooltip.dataset.hasFishPriceBonus = "false";
@@ -3216,6 +3218,7 @@
     const fishes = selectedMapRow.fishes || [];
     const achievementFishes = getMapFishes(selectedMapRow.map);
     if (!fishes.length) {
+      setFishPriceTooltipPinned(false);
       tooltip.hidden = true;
       tooltip.innerHTML = "";
       tooltip.dataset.hasFishPriceBonus = "false";
@@ -3302,6 +3305,23 @@
         <tbody>${rows}${achievementRow}</tbody>
       </table>
     `;
+  }
+
+  function setFishPriceTooltipPinned(isPinned) {
+    const canPin = Boolean(
+      isPinned &&
+        elements.fishPriceTooltip &&
+        !elements.fishPriceTooltip.hidden,
+    );
+    elements.fishPriceCard?.classList.toggle("is-tooltip-pinned", canPin);
+    elements.fishPriceCard?.setAttribute("aria-expanded", String(canPin));
+    if (
+      !canPin &&
+      document.activeElement instanceof HTMLElement &&
+      elements.fishPriceCard?.contains(document.activeElement)
+    ) {
+      document.activeElement.blur();
+    }
   }
 
   function rarityColor(rarity) {
@@ -5987,15 +6007,51 @@
 
     const canUseFishPriceAltShortcut = () => {
       const tooltip = elements.fishPriceTooltip;
-      const fishPriceCard = tooltip?.closest("#fishPriceCard");
+      const fishPriceCard = elements.fishPriceCard;
       return Boolean(
         tooltip &&
           fishPriceCard &&
           !tooltip.hidden &&
           tooltip.dataset.hasFishPriceBonus === "true" &&
-          fishPriceCard.matches(":hover, :focus-within"),
+          fishPriceCard.matches(
+            ":hover, :focus-within, .is-tooltip-pinned",
+          ),
       );
     };
+
+    if (elements.fishPriceCard) {
+      const pinFishPriceTooltip = () => {
+        setFishPriceTooltipPinned(true);
+      };
+
+      elements.fishPriceCard.addEventListener("click", pinFishPriceTooltip);
+      elements.fishPriceCard.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+        event.preventDefault();
+        pinFishPriceTooltip();
+      });
+
+      document.addEventListener("click", (event) => {
+        if (
+          event.target instanceof Node &&
+          elements.fishPriceCard.contains(event.target)
+        ) {
+          return;
+        }
+        setFishPriceTooltipPinned(false);
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (
+          event.key === "Escape" &&
+          elements.fishPriceCard.classList.contains("is-tooltip-pinned")
+        ) {
+          setFishPriceTooltipPinned(false);
+        }
+      });
+    }
 
     window.addEventListener(
       "keydown",
