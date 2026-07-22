@@ -629,6 +629,10 @@
     );
   }
 
+  function getPotionAutoSyncPriority(buff) {
+    return parseNumber(getPotionConfigForBuff(buff)?.autoSyncPriority);
+  }
+
   function getActivePlayerPotionBuff(player, now = Date.now()) {
     const buffs = Array.isArray(player?.buffs) ? player.buffs : [];
     return (
@@ -648,6 +652,13 @@
           );
         })
         .sort((left, right) => {
+          // Gamma affects only starry rolls and can coexist with a primary potion.
+          const priorityDelta =
+            getPotionAutoSyncPriority(right) -
+            getPotionAutoSyncPriority(left);
+          if (priorityDelta !== 0) {
+            return priorityDelta;
+          }
           const endDelta =
             parseWeatherTime(right?.end_time) -
             parseWeatherTime(left?.end_time);
@@ -5209,7 +5220,9 @@
       modifiers: {
         duoduo: potionType === "duoduo",
         lucky: potionType === "lucky_double",
-        gamma: isPlayerBuffActive("gamma_ray_burst", now),
+        gamma:
+          potionType === "gamma_ray_burst" ||
+          isPlayerBuffActive("gamma_ray_burst", now),
         doubleCatch: isPlayerBuffActive("double_catch", now),
       },
     };

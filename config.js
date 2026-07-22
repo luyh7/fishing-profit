@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.2",
-  gitCommitCount: 114,
+  gitCommitCount: 115,
   nestBuffSourceUrl:
     "https://fishing-profit-nest-buff.470103427.workers.dev/nest-buff.json",
   baseIntervalHours: 1,
@@ -58,6 +58,7 @@ window.FISH_FISHING_CONFIG = {
       effectText: "鱼竿等级-1，鱼获数量翻倍",
       rodLevelPenalty: 1,
       fishCatchMultiplier: 2,
+      autoSyncPriority: 1,
     },
     {
       id: "lucky_double",
@@ -66,6 +67,15 @@ window.FISH_FISHING_CONFIG = {
       rodLevelPenalty: 0,
       fishCatchMultiplier: 1,
       bestCatchRolls: 2,
+      autoSyncPriority: 1,
+    },
+    {
+      id: "gamma_ray_burst",
+      name: "闪光药水",
+      effectText: "仅星空图：视为太阳风、流星雨和恒纪元",
+      rodLevelPenalty: 0,
+      fishCatchMultiplier: 1,
+      autoSyncPriority: 0,
     },
   ],
   catParadise: {

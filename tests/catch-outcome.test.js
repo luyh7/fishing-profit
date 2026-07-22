@@ -41,20 +41,25 @@ const catBuildingIds = [
 ];
 const catStatueId = "legendaryCatStatue";
 
-test("配置包含幸运药水和猫框15次保底", () => {
+test("配置包含幸运药水、闪光药水和猫框15次保底", () => {
   const previousWindow = global.window;
   global.window = {};
   delete require.cache[require.resolve("../config.js")];
   require("../config.js");
   const config = global.window.FISH_FISHING_CONFIG;
-  const potion = config.potions.find(
+  const luckyPotion = config.potions.find(
     (item) => item.id === "lucky_double",
+  );
+  const flashPotion = config.potions.find(
+    (item) => item.id === "gamma_ray_burst",
   );
   global.window = previousWindow;
 
-  assert.equal(potion?.bestCatchRolls, 2);
-  assert.equal(potion?.rodLevelPenalty, 0);
-  assert.equal(potion?.fishCatchMultiplier, 1);
+  assert.equal(luckyPotion?.bestCatchRolls, 2);
+  assert.equal(luckyPotion?.rodLevelPenalty, 0);
+  assert.equal(luckyPotion?.fishCatchMultiplier, 1);
+  assert.equal(flashPotion?.name, "闪光药水");
+  assert.equal(flashPotion?.autoSyncPriority, 0);
   assert.equal(config.catFramePityCount, 15);
 });
 

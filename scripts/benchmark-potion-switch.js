@@ -239,7 +239,7 @@ async function main() {
 
     const result = await client.evaluate(`(() => {
       const select = document.querySelector("#potion");
-      const values = ["duoduo", "lucky_double"];
+      const values = ["duoduo", "lucky_double", "gamma_ray_burst"];
       const durations = [];
       const integerFormatter = new Intl.NumberFormat("zh-CN", {
         minimumFractionDigits: 0,
@@ -282,6 +282,12 @@ async function main() {
           localStorage.getItem("fish_calculator_potion") !== nextValue
         ) {
           throw new Error("potion state did not update to " + nextValue);
+        }
+        if (
+          nextValue === "gamma_ray_burst" &&
+          !state?.starryExpectation?.periods?.[0]?.modifiers?.gamma
+        ) {
+          throw new Error("flash potion did not enable the gamma modifier");
         }
         const expectedNet = "¥" + integerFormatter.format(state.bestRow.netRevenue);
         const bestBaitNet = document.querySelector("#bestBaitNet")?.textContent.trim();
