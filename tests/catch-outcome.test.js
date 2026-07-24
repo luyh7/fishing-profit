@@ -83,6 +83,40 @@ test("配置覆盖初始鱼钩 Lv.0 和有效鱼竿 Lv.21", () => {
   );
 });
 
+test("14/15 图换位后保持鱼种与基础鱼价配对", () => {
+  const previousWindow = global.window;
+  global.window = {};
+  delete require.cache[require.resolve("../config.js")];
+  require("../config.js");
+  const config = global.window.FISH_FISHING_CONFIG;
+  global.window = previousWindow;
+
+  assert.deepEqual(config.maps.find((map) => map.id === 14), {
+    id: 14,
+    difficulty: 13,
+    name: "云鲸庭",
+    fishes: [
+      { name: "云须鲸鱼", nPrice: 253 },
+      { name: "鲸歌鲤", nPrice: 275 },
+      { name: "浮庭鲫", nPrice: 264 },
+      { name: "天羽鳐", nPrice: 259 },
+      { name: "雾铃鳕", nPrice: 269 },
+    ],
+  });
+  assert.deepEqual(config.maps.find((map) => map.id === 15), {
+    id: 15,
+    difficulty: 14,
+    name: "星砂漠",
+    fishes: [
+      { name: "沙星魟", nPrice: 290 },
+      { name: "琉璃沙鳗", nPrice: 314 },
+      { name: "星蝎鲶", nPrice: 301 },
+      { name: "金尘鲷", nPrice: 296 },
+      { name: "海市蜃鱼", nPrice: 308 },
+    ],
+  });
+});
+
 test("幸运药水同稀有度不按鱼价取优", () => {
   const result = calculateBestCatchDistribution({
     ...baseOptions,

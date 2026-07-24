@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.2",
-  gitCommitCount: 115,
+  gitCommitCount: 116,
   nestBuffSourceUrl:
     "https://fishing-profit-nest-buff.470103427.workers.dev/nest-buff.json",
   baseIntervalHours: 1,
@@ -417,25 +417,25 @@ window.FISH_FISHING_CONFIG = {
     {
       id: 14,
       difficulty: 13,
-      name: "星砂漠",
+      name: "云鲸庭",
       fishes: [
-        { name: "沙星魟", nPrice: 253 },
-        { name: "琉璃沙鳗", nPrice: 275 },
-        { name: "星蝎鲶", nPrice: 264 },
-        { name: "金尘鲷", nPrice: 259 },
-        { name: "海市蜃鱼", nPrice: 269 },
+        { name: "云须鲸鱼", nPrice: 253 },
+        { name: "鲸歌鲤", nPrice: 275 },
+        { name: "浮庭鲫", nPrice: 264 },
+        { name: "天羽鳐", nPrice: 259 },
+        { name: "雾铃鳕", nPrice: 269 },
       ],
     },
     {
       id: 15,
       difficulty: 14,
-      name: "云鲸庭",
+      name: "星砂漠",
       fishes: [
-        { name: "云须鲸鱼", nPrice: 290 },
-        { name: "鲸歌鲤", nPrice: 314 },
-        { name: "浮庭鲫", nPrice: 301 },
-        { name: "天羽鳐", nPrice: 296 },
-        { name: "雾铃鳕", nPrice: 308 },
+        { name: "沙星魟", nPrice: 290 },
+        { name: "琉璃沙鳗", nPrice: 314 },
+        { name: "星蝎鲶", nPrice: 301 },
+        { name: "金尘鲷", nPrice: 296 },
+        { name: "海市蜃鱼", nPrice: 308 },
       ],
     },
     {
