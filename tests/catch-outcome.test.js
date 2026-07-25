@@ -804,3 +804,37 @@ test("自动打窝同步把 cat_nest 与 nest/frame/starry_bonus 一并计入", 
   const prd = fs.readFileSync(path.resolve(__dirname, "../PRD.MD"), "utf8");
   assert.match(prd, /cat_nest\) \* 5/);
 });
+
+
+test("双保底耦合稳态冷路径应在可接受时间内完成", () => {
+  const samples = [];
+  for (let index = 0; index < 6; index += 1) {
+    const startedAt = process.hrtime.bigint();
+    calculateBestCatchDistribution({
+      rarityOrder: ["N", "R", "SR", "SSR", "UR", "UTR"],
+      rarityMultipliers: { N: 1, R: 2, SR: 4, SSR: 8, UR: 16, UTR: 32 },
+      profile: { N: 40, R: 25, SR: 15, SSR: 10, UR: 8, UTR: 2 },
+      fishes: [
+        { nPrice: 10 },
+        { nPrice: 11 },
+        { nPrice: 12 },
+        { nPrice: 9 },
+        { nPrice: 11 },
+      ],
+      displayFrameDropRate: 0.7,
+      displayFramePityCount: 150,
+      specialUtrDropRate: 0.5 + index * 0.3,
+      specialUtrPityCount: 150,
+      materialDropRate: index === 0 ? 50 : 5,
+      materialValue: 100,
+      rollCount: 2,
+    });
+    samples.push(Number(process.hrtime.bigint() - startedAt) / 1e6);
+  }
+  samples.sort((left, right) => left - right);
+  const medianMs = samples[Math.floor(samples.length / 2)];
+  const maxMs = samples[samples.length - 1];
+  // Pre-fix cold path was ~1000ms+ per map; keep a generous CI budget.
+  assert.ok(medianMs < 80, `median cold coupled path too slow: ${medianMs}ms`);
+  assert.ok(maxMs < 150, `max cold coupled path too slow: ${maxMs}ms`);
+});

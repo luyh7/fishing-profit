@@ -538,35 +538,49 @@
     groupProbability,
     quantityDistribution,
   ) {
-    const states = [];
-    for (let specialCount = 0; specialCount < specialThreshold; specialCount += 1) {
-      states.push({ frameCount: 0, specialCount });
+    const stateCount = Math.max(0, specialThreshold) + Math.max(0, frameThreshold - 1);
+    if (stateCount <= 0) {
+      return { randomMass: 1, hardFrameMass: 0, hardSpecialMass: 0 };
     }
-    for (let frameCount = 1; frameCount < frameThreshold; frameCount += 1) {
-      states.push({ frameCount, specialCount: 0 });
+
+    const frameProb = Math.max(0, toFiniteNumber(groupProbability.frame));
+    const specialProb = Math.max(0, toFiniteNumber(groupProbability.special));
+    const materialProb = Math.max(0, toFiniteNumber(groupProbability.material));
+    const fishProb = Math.max(0, toFiniteNumber(groupProbability.fish));
+    const quantityEntries = Array.isArray(quantityDistribution)
+      ? quantityDistribution
+      : [];
+    let maxQuantity = 1;
+    for (let index = 0; index < quantityEntries.length; index += 1) {
+      maxQuantity = Math.max(
+        maxQuantity,
+        toFiniteNumber(quantityEntries[index]?.quantity) || 1,
+      );
     }
 
     const getEmbeddedStateIndex = (frameCount, specialCount) => {
       if (frameCount <= 0) {
         return Math.min(specialThreshold - 1, specialCount);
       }
-      return (
-        specialThreshold + Math.min(frameThreshold - 1, frameCount) - 1
-      );
+      return specialThreshold + Math.min(frameThreshold - 1, frameCount) - 1;
     };
-    const transitionRows = [];
-    const segmentLengths = new Float64Array(states.length);
-    const hardFrameProbabilities = new Float64Array(states.length);
-    const hardSpecialProbabilities = new Float64Array(states.length);
-    const maxQuantity = quantityDistribution.reduce(
-      (maximum, entry) => Math.max(maximum, entry.quantity),
-      1,
-    );
 
-    states.forEach((startState, stateIndex) => {
+    const segmentLengths = new Float64Array(stateCount);
+    const hardFrameProbabilities = new Float64Array(stateCount);
+    const hardSpecialProbabilities = new Float64Array(stateCount);
+    // Sparse transition matrix in CSR form built from per-row maps.
+    const rowOffsets = new Int32Array(stateCount + 1);
+    const edgeIndices = [];
+    const edgeValues = [];
+
+    for (let stateIndex = 0; stateIndex < stateCount; stateIndex += 1) {
+      const startFrameCount =
+        stateIndex < specialThreshold ? 0 : stateIndex - specialThreshold + 1;
+      const startSpecialCount =
+        stateIndex < specialThreshold ? stateIndex : 0;
       const remainingUntilHard = Math.min(
-        frameThreshold - 1 - startState.frameCount,
-        specialThreshold - 1 - startState.specialCount,
+        frameThreshold - 1 - startFrameCount,
+        specialThreshold - 1 - startSpecialCount,
       );
       const reachProbability = new Float64Array(
         Math.max(1, remainingUntilHard + maxQuantity + 1),
@@ -591,11 +605,11 @@
         if (reach <= 0) continue;
         const frameCount = Math.min(
           frameThreshold - 1,
-          startState.frameCount + incrementTotal,
+          startFrameCount + incrementTotal,
         );
         const specialCount = Math.min(
           specialThreshold - 1,
-          startState.specialCount + incrementTotal,
+          startSpecialCount + incrementTotal,
         );
         segmentLengths[stateIndex] += reach;
 
@@ -606,76 +620,89 @@
         }
         if (specialCount >= specialThreshold - 1) {
           hardSpecialProbabilities[stateIndex] += reach;
-          quantityDistribution.forEach((entry) => {
+          for (let entryIndex = 0; entryIndex < quantityEntries.length; entryIndex += 1) {
+            const entry = quantityEntries[entryIndex];
             addEmbeddedState(
               frameCount + entry.quantity,
               0,
               reach * entry.probability,
             );
-          });
+          }
           continue;
         }
 
-        addEmbeddedState(
-          0,
-          specialCount + 1,
-          reach * groupProbability.frame,
-        );
-        quantityDistribution.forEach((entry) => {
+        addEmbeddedState(0, specialCount + 1, reach * frameProb);
+        for (let entryIndex = 0; entryIndex < quantityEntries.length; entryIndex += 1) {
+          const entry = quantityEntries[entryIndex];
           addEmbeddedState(
             frameCount + entry.quantity,
             0,
-            reach * groupProbability.special * entry.probability,
+            reach * specialProb * entry.probability,
           );
-        });
+        }
 
         const materialNext = incrementTotal + 1;
         if (materialNext < reachProbability.length) {
-          reachProbability[materialNext] +=
-            reach * groupProbability.material;
+          reachProbability[materialNext] += reach * materialProb;
         }
-        quantityDistribution.forEach((entry) => {
+        for (let entryIndex = 0; entryIndex < quantityEntries.length; entryIndex += 1) {
+          const entry = quantityEntries[entryIndex];
           const fishNext = incrementTotal + entry.quantity;
           if (fishNext < reachProbability.length) {
             reachProbability[fishNext] +=
-              reach * groupProbability.fish * entry.probability;
+              reach * fishProb * entry.probability;
           }
-        });
+        }
       }
 
-      transitionRows[stateIndex] = Array.from(nextStateProbability.entries());
-    });
-
-    let stationary = new Float64Array(states.length);
-    let nextStationary = new Float64Array(states.length);
-    stationary.fill(1 / states.length);
-    for (let iteration = 0; iteration < 10000; iteration += 1) {
-      nextStationary.fill(0);
-      transitionRows.forEach((row, stateIndex) => {
-        const stateProbability = stationary[stateIndex];
-        if (stateProbability <= 0) return;
-        row.forEach(([nextIndex, probability]) => {
-          nextStationary[nextIndex] += stateProbability * probability;
-        });
+      rowOffsets[stateIndex] = edgeIndices.length;
+      nextStateProbability.forEach((probability, nextIndex) => {
+        edgeIndices.push(nextIndex);
+        edgeValues.push(probability);
       });
+    }
+    rowOffsets[stateCount] = edgeIndices.length;
+
+    const transitionIndices = Int32Array.from(edgeIndices);
+    const transitionValues = Float64Array.from(edgeValues);
+    let stationary = new Float64Array(stateCount);
+    let nextStationary = new Float64Array(stateCount);
+    const initialMass = 1 / stateCount;
+    stationary.fill(initialMass);
+
+    // L1 threshold stays well above float noise for ~300 states, while remaining
+    // tighter than the 1e-9 assertions used by catch-distribution tests.
+    const convergenceThreshold = 1e-12;
+    const maxIterations = 512;
+    for (let iteration = 0; iteration < maxIterations; iteration += 1) {
+      nextStationary.fill(0);
+      for (let stateIndex = 0; stateIndex < stateCount; stateIndex += 1) {
+        const stateProbability = stationary[stateIndex];
+        if (stateProbability <= 0) continue;
+        const rowStart = rowOffsets[stateIndex];
+        const rowEnd = rowOffsets[stateIndex + 1];
+        for (let edge = rowStart; edge < rowEnd; edge += 1) {
+          nextStationary[transitionIndices[edge]] +=
+            stateProbability * transitionValues[edge];
+        }
+      }
 
       let difference = 0;
-      for (let index = 0; index < stationary.length; index += 1) {
+      for (let index = 0; index < stateCount; index += 1) {
         difference += Math.abs(nextStationary[index] - stationary[index]);
       }
       const previous = stationary;
       stationary = nextStationary;
       nextStationary = previous;
-      if (difference < 1e-14) break;
+      if (difference < convergenceThreshold) break;
     }
 
     let averageSegmentLength = 0;
     let hardFramePerSegment = 0;
     let hardSpecialPerSegment = 0;
-    for (let index = 0; index < stationary.length; index += 1) {
+    for (let index = 0; index < stateCount; index += 1) {
       averageSegmentLength += stationary[index] * segmentLengths[index];
-      hardFramePerSegment +=
-        stationary[index] * hardFrameProbabilities[index];
+      hardFramePerSegment += stationary[index] * hardFrameProbabilities[index];
       hardSpecialPerSegment +=
         stationary[index] * hardSpecialProbabilities[index];
     }

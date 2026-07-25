@@ -25,18 +25,42 @@ function parseArguments(arguments_) {
   const cpuSlowdown =
     slowdownIndex >= 0 ? Number(arguments_[slowdownIndex + 1]) : 4;
   const mapId = valueFor("--map-id", "11");
+  const nestBuffFixture = valueFor(
+    "--nest-buff-fixture",
+    path.join("scripts", "fixtures", "nest-buff-lost-wind.json"),
+  );
+  const skipNestBuff = arguments_.includes("--skip-nest-buff");
   if (!Number.isFinite(limitMs) || limitMs <= 0) {
     throw new TypeError("--limit-ms must be a positive number");
   }
   if (!Number.isFinite(cpuSlowdown) || cpuSlowdown < 1) {
     throw new TypeError("--cpu-slowdown must be at least 1");
   }
-  return { limitMs, cpuSlowdown, mapId };
+  return { limitMs, cpuSlowdown, mapId, nestBuffFixture, skipNestBuff };
 }
 
-function createStaticServer() {
+function createStaticServer(options = {}) {
+  const nestBuffFixturePath = options.nestBuffFixturePath
+    ? path.resolve(ROOT, options.nestBuffFixturePath)
+    : null;
+  let nestBuffFixtureData = null;
+  if (nestBuffFixturePath) {
+    nestBuffFixtureData = fs.readFileSync(nestBuffFixturePath);
+  }
   return http.createServer((request, response) => {
     const pathname = new URL(request.url || "/", "http://localhost").pathname;
+    if (
+      nestBuffFixtureData &&
+      (pathname === "/nest-buff-fixture.json" ||
+        pathname.endsWith("/nest-buff.json"))
+    ) {
+      response.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Access-Control-Allow-Origin": "*",
+      });
+      response.end(nestBuffFixtureData);
+      return;
+    }
     const relativePath = pathname === "/" ? "index.html" : pathname.slice(1);
     const filePath = path.resolve(ROOT, relativePath);
     if (!filePath.startsWith(`${ROOT}${path.sep}`)) {
@@ -171,30 +195,51 @@ async function waitForCondition(client, expression, label) {
 }
 
 async function main() {
-  const { limitMs, cpuSlowdown, mapId } =
+  const { limitMs, cpuSlowdown, mapId, nestBuffFixture, skipNestBuff } =
     parseArguments(process.argv.slice(2));
-  const server = createStaticServer();
+  const nestBuffFixturePath = skipNestBuff ? null : nestBuffFixture;
+  const server = createStaticServer({ nestBuffFixturePath });
   const port = await listen(server);
   const targetUrl = `http://127.0.0.1:${port}/index.html`;
+  const fixtureUrl = `http://127.0.0.1:${port}/nest-buff-fixture.json`;
   const profileDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), "fishing-profit-benchmark-"),
   );
-  const chromium = spawn(process.env.CHROMIUM_BIN || "chromium", [
-    "--headless=new",
-    "--no-sandbox",
-    "--disable-gpu",
-    "--disable-dev-shm-usage",
-    "--disable-extensions",
-    "--remote-debugging-port=0",
-    `--user-data-dir=${profileDirectory}`,
-    targetUrl,
-  ]);
+  const chromiumBinaryCandidates = [
+    process.env.CHROMIUM_BIN,
+    "chromium",
+    "chromium-browser",
+    "google-chrome",
+    "google-chrome-stable",
+  ].filter(Boolean);
+  let chromium;
+  let lastSpawnError;
+  for (const binary of chromiumBinaryCandidates) {
+    try {
+      chromium = spawn(binary, [
+        "--headless=new",
+        "--no-sandbox",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--disable-extensions",
+        "--remote-debugging-port=0",
+        `--user-data-dir=${profileDirectory}`,
+        "about:blank",
+      ]);
+      break;
+    } catch (error) {
+      lastSpawnError = error;
+    }
+  }
+  if (!chromium) {
+    throw lastSpawnError || new Error("Unable to spawn Chromium");
+  }
   let client;
 
   try {
     const browserUrl = await waitForDevToolsUrl(chromium);
     const debugPort = Number(new URL(browserUrl).port);
-    const pageUrl = await waitForPage(debugPort, targetUrl);
+    const pageUrl = await waitForPage(debugPort, "about:blank");
     client = new CdpClient(pageUrl);
     await client.open();
     await client.call("Page.enable");
@@ -211,7 +256,7 @@ async function main() {
     await client.call("Page.navigate", { url: targetUrl });
     await waitForCondition(
       client,
-      `location.href === ${JSON.stringify(targetUrl)} && document.readyState === "complete"`,
+      `location.href.startsWith(${JSON.stringify(targetUrl)}) && document.readyState === "complete"`,
       "calculator navigation",
     );
     await client.evaluate(`(() => {
@@ -222,7 +267,9 @@ async function main() {
         "fish_calculator_map_level",
         ${JSON.stringify(mapId === "11" ? "10" : "0")},
       );
-      localStorage.setItem("fish_calculator_potion", "lucky_double");
+      localStorage.setItem("fish_calculator_potion", "none");
+      localStorage.setItem("fish_calculator_auto_nest_buff", "false");
+      localStorage.setItem("fish_calculator_player_qq", "9000001");
       setTimeout(() => location.reload(), 0);
       return true;
     })()`);
@@ -231,16 +278,53 @@ async function main() {
       `Boolean(
         document.querySelector("#potion") &&
         String(window.FISH_BAIT_CALCULATOR_STATE?.selectedMapRow?.map?.id) ===
-          ${JSON.stringify(mapId)} &&
-        window.FISH_BAIT_CALCULATOR_STATE?.potion?.id === "lucky_double"
+          ${JSON.stringify(mapId)}
       )`,
       "calculator readiness",
     );
 
+    if (nestBuffFixturePath) {
+      await client.evaluate(`(() => {
+        const originalFetch = window.fetch.bind(window);
+        const fixtureUrl = ${JSON.stringify(fixtureUrl)};
+        window.fetch = (input, init) => {
+          const url = String(input);
+          if (url.includes("nest-buff") || url.includes("workers.dev")) {
+            return originalFetch(fixtureUrl, init);
+          }
+          return originalFetch(input, init);
+        };
+        return true;
+      })()`);
+      await client.evaluate(`(async () => {
+        const switchEl = document.querySelector("[data-auto-nest-buff-switch]");
+        if (!switchEl) {
+          throw new Error("auto nest buff switch not found");
+        }
+        if (!switchEl.checked) {
+          switchEl.click();
+        }
+        const deadline = Date.now() + 10000;
+        while (Date.now() < deadline) {
+          const loading = document.querySelector(
+            ".auto-nest-buff-switch.is-loading",
+          );
+          const hasLostWind = (window.FISH_BAIT_CALCULATOR_STATE?.mapRows || [])
+            .some((row) => row?.weather?.type === "lost_wind");
+          if (!loading && hasLostWind) {
+            return true;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+        throw new Error("nest buff fixture weather did not apply");
+      })()`);
+    }
+
     const result = await client.evaluate(`(() => {
       const select = document.querySelector("#potion");
-      const values = ["duoduo", "lucky_double", "gamma_ray_burst"];
+      const values = ["duoduo", "lucky_double", "gamma_ray_burst", "none"];
       const durations = [];
+      let coldLuckyMs = null;
       const integerFormatter = new Intl.NumberFormat("zh-CN", {
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
@@ -265,17 +349,7 @@ async function main() {
         select.dispatchEvent(new Event("input", { bubbles: true }));
         select.dispatchEvent(new Event("change", { bubbles: true }));
       };
-      dispatchSelection(values[0]);
-      dispatchSelection(values[1]);
-      for (let index = 0; index < 10; index += 1) {
-        const nextValue = values[index % values.length];
-        const commitCountBeforeSelection = stateCommitCount;
-        const startedAt = performance.now();
-        dispatchSelection(nextValue);
-        durations.push(performance.now() - startedAt);
-        if (stateCommitCount - commitCountBeforeSelection !== 1) {
-          throw new Error("potion selection must render exactly once");
-        }
+      const assertSelection = (nextValue) => {
         const state = window.FISH_BAIT_CALCULATOR_STATE;
         if (
           state?.potion?.id !== nextValue ||
@@ -311,28 +385,58 @@ async function main() {
             throw new Error("starry score display did not update to " + expectedScore);
           }
         }
+      };
+      // Reset to none so the first lucky switch exercises a cold pity-cache path.
+      dispatchSelection("none");
+      {
+        const commitCountBeforeSelection = stateCommitCount;
+        const startedAt = performance.now();
+        dispatchSelection("lucky_double");
+        coldLuckyMs = performance.now() - startedAt;
+        durations.push(coldLuckyMs);
+        if (stateCommitCount - commitCountBeforeSelection !== 1) {
+          throw new Error("potion selection must render exactly once");
+        }
+        assertSelection("lucky_double");
       }
-      return durations;
+      for (let index = 0; index < 9; index += 1) {
+        const nextValue = values[index % values.length];
+        const commitCountBeforeSelection = stateCommitCount;
+        const startedAt = performance.now();
+        dispatchSelection(nextValue);
+        durations.push(performance.now() - startedAt);
+        if (stateCommitCount - commitCountBeforeSelection !== 1) {
+          throw new Error("potion selection must render exactly once");
+        }
+        assertSelection(nextValue);
+      }
+      return { durations, coldLuckyMs };
     })()`);
-    const measurements = result;
+    const measurements = result.durations;
     const sorted = measurements.slice().sort((left, right) => left - right);
     const medianMs = sorted[Math.floor(sorted.length / 2)];
     const p75Ms = sorted[Math.ceil(sorted.length * 0.75) - 1];
     const maxObservedMs = Math.max(...measurements);
+    const coldLuckyMs = result.coldLuckyMs;
+    // Scale with CPU throttling; unthrottled budget stays near one frame budget.
+    const coldLuckyLimitMs = Math.max(limitMs, 50) * cpuSlowdown;
     const report = {
       measurements,
       medianMs,
       p75Ms,
       maxObservedMs,
+      coldLuckyMs,
       p75LimitMs: limitMs,
+      coldLuckyLimitMs,
       cpuSlowdown,
       mapId,
+      nestBuffFixture: nestBuffFixturePath,
       eventSequence: ["input", "change"],
     };
     process.stdout.write(
       `${JSON.stringify(report, null, 2)}\n`,
     );
-    if (p75Ms > limitMs) {
+    if (p75Ms > limitMs || coldLuckyMs > coldLuckyLimitMs) {
       process.exitCode = 1;
     }
   } finally {

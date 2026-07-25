@@ -78,11 +78,13 @@ nestBuffSourceUrl: "https://raw.githubusercontent.com/luyh7/fishing-profit/gh-pa
 node --test tests/*.test.js
 ```
 
-药水切换性能回归需要本机安装 Chromium；脚本会按移动端尺寸和 4 倍 CPU 降速运行，并以 P75 不超过 50ms 为默认门槛：
+药水切换性能回归需要本机安装 Chromium；脚本默认加载含迷失之风天气的 nest-buff fixture，按移动端尺寸和 4 倍 CPU 降速运行，并以 P75 不超过 50ms、首次切幸运药水不超过 `50ms × CPU降速` 为默认门槛：
 
 ```bash
 node scripts/benchmark-potion-switch.js --map-id 11
 ```
+
+如需跳过实时天气路径，可加 `--skip-nest-buff`。
 
 ## License
 
