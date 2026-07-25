@@ -2450,7 +2450,8 @@
       const nestValue =
         (parseNumber(location?.buffs?.nest) +
           parseNumber(location?.buffs?.frame) +
-          parseNumber(location?.buffs?.starry_bonus)) *
+          parseNumber(location?.buffs?.starry_bonus) +
+          parseNumber(location?.buffs?.cat_nest)) *
         5;
       if (nestValue > 0) {
         nextBaitBuffByMap[mapId] = String(nestValue);

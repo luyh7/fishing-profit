@@ -296,10 +296,13 @@
     const duplicateCount = duoduo ? 2 : 1;
     const catchesPerAttempt = doubleCatch ? 2 : 1;
     const baseCatchCount = attempts * catchesPerAttempt;
-    const dropRate = Math.min(
-      1,
-      0.05 + Math.max(0, effectiveRodLevel - 10) * 0.005 + (solarWind ? 0.025 : 0),
-    );
+    let dropRate =
+      0.05 + Math.max(0, effectiveRodLevel - 10) * 0.005 + (solarWind ? 0.025 : 0);
+    // 闪光药水/伽马射线暴：在基础+竿+太阳风合计后最终掉率翻倍并封顶。
+    if (gamma) {
+      dropRate *= 2;
+    }
+    dropRate = Math.min(1, dropRate);
     const scoreDistribution = selectedScoreDistribution(
       hengjiyuan ? "hengjiyuan" : "normal",
       selectionCount,

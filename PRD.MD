@@ -10,7 +10,7 @@
 - 页面直接读取鱼钩等级、鱼竿等级、鱼饵列表、周末buff、药水列表、地图列表、稀有度倍数和概率表；当前配置包含普通地图 1-20 和猫猫乐园 `S1`。
 - 每张地图内配置自己的 `id`、`difficulty`、鱼种列表及每种鱼的 N 级基础价格；`id` 可为数字或字符串，页面展示、地图选择、打窝同步和成就匹配均按 `id` 识别。
 - 用户输入与选择会通过 `localStorage` 持久化，包括鱼钩等级、鱼竿等级、周末buff、药水、当前地图、每张地图的打窝 buff、自动更新打窝 buff 开关状态，以及已查看的版本更新记录。
-- 地图打窝 buff 支持通过配置中的静态 JSON 地址刷新，地址由 `config.js` 中的 `nestBuffSourceUrl` 提供，推荐指向 Cloudflare Worker 的 `/nest-buff.json`，返回的 `locations[].buffs.nest`、`locations[].buffs.frame` 和 `locations[].buffs.starry_bonus` 会按 `(nest + frame + starry_bonus) * 5` 转换为最终打窝 buff。
+- 地图打窝 buff 支持通过配置中的静态 JSON 地址刷新，地址由 `config.js` 中的 `nestBuffSourceUrl` 提供，推荐指向 Cloudflare Worker 的 `/nest-buff.json`，返回的 `locations[].buffs.nest`、`locations[].buffs.frame`、`locations[].buffs.starry_bonus` 和 `locations[].buffs.cat_nest` 会按 `(nest + frame + starry_bonus + cat_nest) * 5` 转换为最终打窝 buff。
 - 静态 JSON 的 `players` 数据用于 QQ 号匹配；匹配成功后可同步玩家昵称、鱼竿等级、鱼钩等级、药水、猫猫乐园建筑等级、当前位置、当前鱼饵及数量和 `collect_scene_*` 场景成就。
 - 静态 JSON 的 `players[].buffs` 用于自动药水识别。当前识别 `type` 为 `duoduo` 或 `lucky_double`、`value` 大于 0 且满足 `start_time <= 当前时间 < end_time` 的药水；多个有效条目取结束时间最晚的一条，未知类型、非法时间、未开始和已结束条目均不生效。
 - 静态 JSON 的 `players[].collections` 用于图鉴读取；普通地图 1-20 按页面地图顺序读取，猫猫乐园固定读取数组下标 20。数组中每个字符串对应一个地图的鱼收集位图，当前使用 6-bit 可打印字符编码：每个字符的 `charCode - 32` 表示 6 个低位优先的 bit 分块。解码后的位图按鱼种顺序分组、每组 6 位，位序从低到高依次为 N、R、SR、SSR、UR、UTR，`bit0` 表示 N，`bit5` 表示 UTR。旧版十进制数字字符串仍兼容读取。
@@ -70,7 +70,7 @@
 单次基础捕获的流星鱼掉率为：
 
 ```text
-掉率 = min(100%, 5% + max(0, 有效鱼竿等级 - 10) × 0.5% + 太阳风加成2.5%)
+掉率 = min(100%, (5% + max(0, 有效鱼竿等级 - 10) × 0.5% + 太阳风加成2.5%) × (伽马射线暴 ? 2 : 1))
 ```
 
 - 乱纪元不改变编号和掉率；天气尚未开始、已经结束或类型不属于星空天气时按乱纪元计算。
@@ -80,7 +80,7 @@
 - 幸运药水额外增加 1 个候选编号；流星雨与幸运同时生效时共取 3 个候选的最高原始分。
 - 多多药水的有效鱼竿等级惩罚沿用普通收益计算，并令每次流星鱼成功掉落获得 2 条。
 - 有效的 `double_catch` buff 令每次理论判定包含 2 次基础捕获。
-- 有效的 `gamma_ray_burst` buff 同时启用太阳风、流星雨和恒纪元效果；与幸运药水同时生效时仍为 3 个候选。
+- 有效的 `gamma_ray_burst` buff 同时启用太阳风、流星雨和恒纪元效果，并在上述掉率合计后再将最终掉率翻倍（封顶 100%）；与幸运药水同时生效时仍为 3 个候选。
 
 编号原始分的精确 PMF 由六位前缀状态聚合和普通域互补对称缩减离线生成并随页面发布，普通编号域的总权重为
 `10^6`，恒纪元编号域的总权重为 `7^6`。浏览器使用 PMF 的 CDF 计算多个候选最大值分布，不运行六位编号枚举或蒙特卡洛模拟。

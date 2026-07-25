@@ -2,6 +2,8 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const {
   canUpgradeCatBuildingLevel,
   calculateCatBaitConsumptionFactor,
@@ -791,4 +793,14 @@ test("旧的非法猫建筑状态向下收敛为最大合法状态", () => {
     }),
     normalized,
   );
+});
+
+test("自动打窝同步把 cat_nest 与 nest/frame/starry_bonus 一并计入", () => {
+  const appSource = fs.readFileSync(path.resolve(__dirname, "../app.js"), "utf8");
+  assert.match(
+    appSource,
+    /buffs\?\.nest\) \+[\s\S]*buffs\?\.frame\) \+[\s\S]*buffs\?\.starry_bonus\) \+[\s\S]*buffs\?\.cat_nest\)/,
+  );
+  const prd = fs.readFileSync(path.resolve(__dirname, "../PRD.MD"), "utf8");
+  assert.match(prd, /cat_nest\) \* 5/);
 });

@@ -1,11 +1,16 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.2",
-  gitCommitCount: 119,
+  gitCommitCount: 120,
   changelog: [
+    {
+      version: "1.2.120",
+      date: "2026-07-25",
+      summary: "同步星空评分、闪光药水掉率与猫框打窝",
+    },
     {
       version: "1.2.118",
       date: "2026-07-25",
-      summary: "版本徽标支持更新记录、未读黄点与新标签",
+      summary: "版本徽标支持更新记录、未读黄点",
     },
     {
       version: "1.2.117",

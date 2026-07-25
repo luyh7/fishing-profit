@@ -14,7 +14,7 @@ const OUTPUT_PATH = path.join(REPOSITORY_ROOT, "starry-score-pmf.js");
 
 // Changing the Python rules must force an explicit review of this port.
 const EXPECTED_SOURCE_SHA256 =
-  "0d0c39fd2e642653136a623f77141f37ba6bb2c4b7b1705da44cf4ec72dd5592";
+  "a104528321eea38c8708c3f73ad29a8ae7291dabd811b1b145e67eca356fef45";
 
 const FEATURE_SCORE_MICRO = Object.freeze({
   "3_same_run": 1_432_856,
@@ -43,12 +43,16 @@ const FEATURE_SCORE_MICRO = Object.freeze({
   "6_palindrome": 3_004_365,
   "6_all_small_0_4": 1_806_180,
   "6_all_big_5_9": 1_806_180,
+  "6_all_odd": 1_806_180,
+  "6_all_even": 1_806_180,
   ABAB: 1_598_599,
   ABCABC: 3_142_668,
   star_airplane: 1_899_285,
-  two_pair: 1_359_121,
+  two_pair: 1_595_508,
   three_pair: 3_091_515,
   full_house: 2_454_693,
+  chunk_sequence: 2_658_763,
+  pihu: 802_444,
 });
 
 const DOMAIN_DEFINITIONS = Object.freeze({
@@ -173,18 +177,63 @@ function starAirplane(digits) {
   return true;
 }
 
-function exactPairRunCount(digits) {
-  let count = 0;
+function detectPairType(digits) {
+  // Port of starry_system._detect_pairs: 3=three_pair, 2=two_pair, 0=none.
+  const runDigit = [];
+  const runLen = [];
   let index = 0;
   while (index < digits.length) {
     let end = index + 1;
     while (end < digits.length && digits[end] === digits[index]) {
       end += 1;
     }
-    count += Number(end - index === 2);
+    runDigit.push(digits[index]);
+    runLen.push(end - index);
     index = end;
   }
-  return count;
+
+  const runCount = runDigit.length;
+  if (
+    runCount === 3 &&
+    runLen[0] === 2 &&
+    runLen[1] === 2 &&
+    runLen[2] === 2 &&
+    runDigit[1] !== runDigit[0] &&
+    runDigit[1] !== runDigit[2]
+  ) {
+    return 3;
+  }
+
+  for (let i = 0; i < runCount - 1; i += 1) {
+    if (
+      runLen[i] >= 2 &&
+      runLen[i + 1] >= 2 &&
+      runDigit[i] !== runDigit[i + 1]
+    ) {
+      return 2;
+    }
+  }
+  return 0;
+}
+
+function hasChunkSequence(digits) {
+  // Port of starry_system._chunk_sequence_mode.
+  const twoDigit = [
+    digits[0] * 10 + digits[1],
+    digits[2] * 10 + digits[3],
+    digits[4] * 10 + digits[5],
+  ];
+  if (
+    twoDigit[1] - twoDigit[0] === twoDigit[2] - twoDigit[1] &&
+    Math.abs(twoDigit[1] - twoDigit[0]) === 1
+  ) {
+    return true;
+  }
+  const threeDigit = [
+    digits[0] * 100 + digits[1] * 10 + digits[2],
+    digits[3] * 100 + digits[4] * 10 + digits[5],
+  ];
+  return Math.abs(threeDigit[1] - threeDigit[0]) === 1;
 }
 
 function windowFullHouse(digits, start) {
@@ -212,14 +261,26 @@ function scoreDigitsMicro(digits) {
   }
 
   let score = 0;
+  let hasFeature = false;
+  const addFeature = (amount) => {
+    score += amount;
+    hasFeature = true;
+  };
+
   if (digits.every((digit) => digit >= 0 && digit <= 4)) {
-    score += FEATURE_SCORE_MICRO["6_all_small_0_4"];
+    addFeature(FEATURE_SCORE_MICRO["6_all_small_0_4"]);
   }
   if (digits.every((digit) => digit >= 5 && digit <= 9)) {
-    score += FEATURE_SCORE_MICRO["6_all_big_5_9"];
+    addFeature(FEATURE_SCORE_MICRO["6_all_big_5_9"]);
+  }
+  if (digits.every((digit) => digit % 2 === 1)) {
+    addFeature(FEATURE_SCORE_MICRO["6_all_odd"]);
+  }
+  if (digits.every((digit) => digit % 2 === 0)) {
+    addFeature(FEATURE_SCORE_MICRO["6_all_even"]);
   }
   if (starAirplane(digits)) {
-    score += FEATURE_SCORE_MICRO.star_airplane;
+    addFeature(FEATURE_SCORE_MICRO.star_airplane);
   }
 
   const sameMatches = buildWindowMatches(digits, windowSame);
@@ -239,23 +300,27 @@ function scoreDigitsMicro(digits) {
     for (let start = 0; start <= DIGIT_COUNT - length; start += 1) {
       const key = `${start}:${length}`;
       if (sameMatches.get(key) && !containedInLarger(sameMatches, start, length)) {
-        score += FEATURE_SCORE_MICRO[`${length}_same_run`];
+        addFeature(FEATURE_SCORE_MICRO[`${length}_same_run`]);
       }
       if (slideMatches.get(key) && !containedInLarger(slideMatches, start, length)) {
-        score += stepMatches.get(key)
-          ? FEATURE_SCORE_MICRO[`${length}_step_high`]
-          : FEATURE_SCORE_MICRO[`${length}_slide`];
+        addFeature(
+          stepMatches.get(key)
+            ? FEATURE_SCORE_MICRO[`${length}_step_high`]
+            : FEATURE_SCORE_MICRO[`${length}_slide`],
+        );
       }
       if (snakeMatches.get(key) && !containedInLarger(snakeMatches, start, length)) {
-        score += pureSnakeMatches.get(key)
-          ? FEATURE_SCORE_MICRO[`${length}_pure_snake`]
-          : FEATURE_SCORE_MICRO[`${length}_snake`];
+        addFeature(
+          pureSnakeMatches.get(key)
+            ? FEATURE_SCORE_MICRO[`${length}_pure_snake`]
+            : FEATURE_SCORE_MICRO[`${length}_snake`],
+        );
       }
       if (
         palindromeMatches.get(key) &&
         !containedInLarger(palindromeMatches, start, length)
       ) {
-        score += FEATURE_SCORE_MICRO[`${length}_palindrome`];
+        addFeature(FEATURE_SCORE_MICRO[`${length}_palindrome`]);
       }
     }
   }
@@ -266,7 +331,7 @@ function scoreDigitsMicro(digits) {
       digits[start + 1] === digits[start + 3] &&
       digits[start] !== digits[start + 1]
     ) {
-      score += FEATURE_SCORE_MICRO.ABAB;
+      addFeature(FEATURE_SCORE_MICRO.ABAB);
     }
   }
 
@@ -277,18 +342,37 @@ function scoreDigitsMicro(digits) {
     c === digits[5] &&
     new Set([a, b, c]).size === 3
   ) {
-    score += FEATURE_SCORE_MICRO.ABCABC;
+    addFeature(FEATURE_SCORE_MICRO.ABCABC);
   }
 
-  const pairCount = exactPairRunCount(digits);
-  if (pairCount >= 3) {
-    score += FEATURE_SCORE_MICRO.three_pair;
-  } else if (pairCount >= 2) {
-    score += FEATURE_SCORE_MICRO.two_pair;
+  const pairType = detectPairType(digits);
+  if (pairType >= 3) {
+    addFeature(FEATURE_SCORE_MICRO.three_pair);
+  } else if (pairType >= 2) {
+    addFeature(FEATURE_SCORE_MICRO.two_pair);
   }
 
   if (windowFullHouse(digits, 0) || windowFullHouse(digits, 1)) {
-    score += FEATURE_SCORE_MICRO.full_house;
+    addFeature(FEATURE_SCORE_MICRO.full_house);
+  }
+
+  if (hasChunkSequence(digits)) {
+    addFeature(FEATURE_SCORE_MICRO.chunk_sequence);
+  }
+
+  // 屁胡是严格兜底：仅当没有任何其他番型时才计分。
+  if (!hasFeature) {
+    const counts = new Map();
+    for (const digit of digits) {
+      counts.set(digit, (counts.get(digit) || 0) + 1);
+    }
+    let maxCount = 0;
+    for (const count of counts.values()) {
+      maxCount = Math.max(maxCount, count);
+    }
+    if (maxCount >= 3) {
+      score += FEATURE_SCORE_MICRO.pihu;
+    }
   }
 
   return score;

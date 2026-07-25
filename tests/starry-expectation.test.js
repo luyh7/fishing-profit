@@ -53,16 +53,16 @@ test("普通天气的24H积分与直接奖池匹配精确基准", () => {
   assertClose(result.expectedFishCount, 5);
   assert.equal(result.periods[0].selectionCount, 1);
   assert.equal(result.periods[0].duplicateCount, 1);
-  assertClose(result.periods[0].meanRawScore, 0.8402781015560007);
-  assertClose(result.score.raw, 4.201390507780004);
-  assertClose(result.score.rewardBonus, 0.24685625000000003);
-  assertClose(result.score.total, 4.448246757780004);
+  assertClose(result.periods[0].meanRawScore, 0.9008114119900005);
+  assertClose(result.score.raw, 4.504057059950003);
+  assertClose(result.score.rewardBonus, 0.25891125);
+  assertClose(result.score.total, 4.762968309950002);
 
-  assertClose(result.poolDraws.direct.none, 2.44552);
-  assertClose(result.poolDraws.direct.low, 1.9748500000000002);
-  assertClose(result.poolDraws.direct.middle, 0.49765999999999977);
-  assertClose(result.poolDraws.direct.high, 0.07775000000000032);
-  assertClose(result.poolDraws.direct.ultimate, 0.0042199999999997795);
+  assertClose(result.poolDraws.direct.none, 2.33042);
+  assertClose(result.poolDraws.direct.low, 2.07129);
+  assertClose(result.poolDraws.direct.middle, 0.5108400000000002);
+  assertClose(result.poolDraws.direct.high, 0.0790200000000002);
+  assertClose(result.poolDraws.direct.ultimate, 0.008429999999999827);
   assert.equal(result.expectedScore, result.score);
   assert.equal(result.expectedPoolDraws, result.poolDraws);
   assert.equal(result.expectedRewards, result.rewards);
@@ -78,18 +78,18 @@ test("太阳风、流星雨、恒纪元和药水组合遵循源码规则", () =>
 
   const meteor = calculate({ attempts: 1, weatherType: "meteor_shower" });
   assert.equal(meteor.periods[0].selectionCount, 2);
-  assertClose(meteor.periods[0].meanRawScore, 1.4414374499158429);
+  assertClose(meteor.periods[0].meanRawScore, 1.5373187414247214);
 
   const hengjiyuan = calculate({ attempts: 1, weatherType: "hengjiyuan" });
   assert.equal(hengjiyuan.periods[0].hengjiyuan, true);
-  assertClose(hengjiyuan.periods[0].meanRawScore, 1.5149011100476832);
+  assertClose(hengjiyuan.periods[0].meanRawScore, 1.5972588788854978);
 
   const gammaLucky = calculate({
     attempts: 10,
     weatherType: "chaotic_era",
     modifiers: { gamma: true, lucky: true },
   });
-  assertClose(gammaLucky.dropRate, 0.075);
+  assertClose(gammaLucky.dropRate, 0.15);
   assert.equal(gammaLucky.periods[0].solarWind, true);
   assert.equal(gammaLucky.periods[0].meteorShower, true);
   assert.equal(gammaLucky.periods[0].hengjiyuan, true);
@@ -122,6 +122,10 @@ test("期望公式依赖的 Python 源码规则没有漂移", () => {
   assert.match(constants, /STARRY_FISH_ROD_BONUS_THRESHOLD = 10/);
   assert.match(constants, /STARRY_FISH_ROD_BONUS_PER_LEVEL = 0\.005/);
   assert.match(constants, /STARRY_FISH_SOLAR_WIND_BONUS = 0\.025/);
+  assert.match(
+    readGameSource("core/starry_system.py"),
+    /if gamma_ray_burst:\r?\n\s+drop_rate \*= 2/,
+  );
   assert.match(
     engine,
     /base_catch_count = 2 if effects\["double_catch"\] else 1/,
@@ -194,9 +198,9 @@ test("当前碎片模式从零余数开始时单次判定不会提前合成", ()
   for (const pool of ["none", "low", "middle", "high", "ultimate"]) {
     assertClose(result.poolDraws.current[pool], result.poolDraws.direct[pool]);
   }
-  assertClose(result.fragments.expectedFinalRemainders.low, 0.0049371250000000005);
-  assertClose(result.fragments.expectedFinalRemainders.middle, 0.0009953199999999996);
-  assertClose(result.fragments.expectedFinalRemainders.high, 0.0001943750000000008);
+  assertClose(result.fragments.expectedFinalRemainders.low, 0.005178225);
+  assertClose(result.fragments.expectedFinalRemainders.middle, 0.0010216800000000005);
+  assertClose(result.fragments.expectedFinalRemainders.high, 0.00019755000000000052);
   assertClose(result.fragments.finalProbabilityMass, 1);
 });
 
@@ -312,10 +316,10 @@ test("多多同编号复制与双倍捕获的独立编号保持不同相关性",
 
   assertClose(duoduo.expectedFishCount, doubleCatch.expectedFishCount);
   assertClose(duoduo.score.raw, doubleCatch.score.raw);
-  assertClose(duoduo.poolDraws.current.middle, 0.011187481249999996);
-  assertClose(doubleCatch.poolDraws.current.middle, 0.00997757520326562);
-  assertClose(duoduo.poolDraws.current.high, 0.0035934322500000056);
-  assertClose(doubleCatch.poolDraws.current.high, 0.0035495243787507305);
+  assertClose(duoduo.poolDraws.current.middle, 0.011511356250000005);
+  assertClose(doubleCatch.poolDraws.current.middle, 0.01024361401415063);
+  assertClose(duoduo.poolDraws.current.high, 0.0036783352500000055);
+  assertClose(doubleCatch.poolDraws.current.high, 0.0036280789728077305);
   assert.notEqual(
     duoduo.poolDraws.current.ultimate,
     doubleCatch.poolDraws.current.ultimate,
