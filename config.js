@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.2",
-  gitCommitCount: 118,
+  gitCommitCount: 119,
   changelog: [
     {
       version: "1.2.118",
