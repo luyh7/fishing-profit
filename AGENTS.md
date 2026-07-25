@@ -3,6 +3,11 @@
 - 每次完成代码或文档改动后，在最终回复中提供一条可直接使用的 git commit message。
 - 尽量使用 Conventional Commit 风格，类型前缀可保留英文，描述尽量使用中文，例如 `fix: 调整成就榜标签浮窗位置`。
 
+## 提交前 Changelog 入口
+
+- 准备 commit 前，必须判断是否写入 `config.js` 的 `changelog`，并完整遵守 [`CHANGELOG_CONTRACT.md`](CHANGELOG_CONTRACT.md)。
+- `docs` / `chore` / `merge` 跳过；其余用户可见或影响收益的提交必须追加一条，版本号用 `versionPrefix.(HEAD+1)`。
+
 ## 游戏源码分析入口
 
 - `game-source/current/` 是固定上游 commit 的 Git 子模块；日常操作不得使用 `git submodule update --remote` 或在子模块内执行 `git pull` 来自动跟随上游。

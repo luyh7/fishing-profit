@@ -76,6 +76,7 @@
     baitReminderEnabled: "fish_calculator_bait_reminder_enabled",
     baitReminderThreshold: "fish_calculator_bait_reminder_threshold",
     baitReminderLastShownAt: "fish_calculator_bait_reminder_last_shown_at",
+    viewedChangelog: "fish_calculator_viewed_changelog",
   };
 
   const leaderboardTypes = [
@@ -216,6 +217,8 @@
     },
   ];
   let isFishPriceAltPressed = false;
+  let currentVersionText = "";
+  let versionBadgeEventsBound = false;
   const numberFormatters = new Map();
   const fixedNumberFormatters = new Map();
 
@@ -5790,15 +5793,347 @@
     renderTable(selectedMapRow ? selectedMapRow.baitRows : [], bestBaitRow);
   }
 
+
+  function compareVersionLabels(left, right) {
+    const leftParts = String(left || "")
+      .replace(/^v/i, "")
+      .split(".")
+      .map((part) => Number.parseInt(part, 10));
+    const rightParts = String(right || "")
+      .replace(/^v/i, "")
+      .split(".")
+      .map((part) => Number.parseInt(part, 10));
+    const maxLength = Math.max(leftParts.length, rightParts.length);
+
+    for (let index = 0; index < maxLength; index += 1) {
+      const leftValue = Number.isFinite(leftParts[index]) ? leftParts[index] : 0;
+      const rightValue = Number.isFinite(rightParts[index])
+        ? rightParts[index]
+        : 0;
+      if (leftValue !== rightValue) {
+        return leftValue - rightValue;
+      }
+    }
+
+    return String(left || "").localeCompare(String(right || ""), "en");
+  }
+
+  function getChangelogCommitSummaries(entry) {
+    if (typeof entry?.summary === "string" && entry.summary.trim()) {
+      return [entry.summary.trim()];
+    }
+
+    if (!Array.isArray(entry?.items)) {
+      return [];
+    }
+
+    return entry.items.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+
+  function normalizeChangelogEntries(changelog) {
+    const source = Array.isArray(changelog) ? changelog : [];
+    const grouped = new Map();
+
+    source.forEach((entry, index) => {
+      const date = String(entry?.date || "").trim();
+      const version = String(entry?.version || "").trim();
+      const summaries = getChangelogCommitSummaries(entry);
+      if (summaries.length === 0) {
+        return;
+      }
+
+      const groupKey = date || `__undated_${index}`;
+      const current = grouped.get(groupKey);
+      const commits = summaries.map((summary, summaryIndex) => ({
+        version,
+        date,
+        summary,
+        order: index * 1000 + summaryIndex,
+      }));
+
+      if (!current) {
+        grouped.set(groupKey, {
+          version,
+          date,
+          commits: [...commits],
+          order: index,
+        });
+        return;
+      }
+
+      if (compareVersionLabels(version, current.version) > 0) {
+        current.version = version;
+      }
+      current.commits.push(...commits);
+      current.order = Math.min(current.order, index);
+    });
+
+    return Array.from(grouped.values())
+      .map((entry) => {
+        const seen = new Set();
+        const commits = [];
+        entry.commits
+          .slice()
+          .sort((left, right) => left.order - right.order)
+          .forEach((commit) => {
+            const commitId = getChangelogCommitId(commit);
+            if (seen.has(commitId)) {
+              return;
+            }
+            seen.add(commitId);
+            commits.push(commit);
+          });
+        return {
+          version: entry.version,
+          date: entry.date,
+          commits,
+          order: entry.order,
+        };
+      })
+      .filter((entry) => entry.commits.length > 0)
+      .sort((left, right) => {
+        if (left.date && right.date && left.date !== right.date) {
+          return right.date.localeCompare(left.date);
+        }
+        if (left.date && !right.date) {
+          return -1;
+        }
+        if (!left.date && right.date) {
+          return 1;
+        }
+        const versionDiff = compareVersionLabels(right.version, left.version);
+        if (versionDiff !== 0) {
+          return versionDiff;
+        }
+        return left.order - right.order;
+      });
+  }
+
+  function getChangelogCommitId(commit) {
+    return [commit?.date || "", commit?.version || "", commit?.summary || ""].join(
+      "\u0001",
+    );
+  }
+
+  function flattenChangelogCommits(entries) {
+    return (Array.isArray(entries) ? entries : []).flatMap((entry) =>
+      Array.isArray(entry?.commits) ? entry.commits : [],
+    );
+  }
+
+  function getViewedChangelogIds() {
+    const raw = getStoredValue(storageKeys.viewedChangelog);
+    if (!raw) {
+      return new Set();
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        return new Set();
+      }
+      return new Set(parsed.map((item) => String(item)));
+    } catch (error) {
+      return new Set();
+    }
+  }
+
+  function markChangelogCommitsViewed(commits) {
+    if (!Array.isArray(commits) || commits.length === 0) {
+      return false;
+    }
+
+    const viewedIds = getViewedChangelogIds();
+    let changed = false;
+    commits.forEach((commit) => {
+      const commitId = getChangelogCommitId(commit);
+      if (!commitId || viewedIds.has(commitId)) {
+        return;
+      }
+      viewedIds.add(commitId);
+      changed = true;
+    });
+
+    if (changed) {
+      setStoredValue(
+        storageKeys.viewedChangelog,
+        JSON.stringify(Array.from(viewedIds)),
+      );
+    }
+
+    return changed;
+  }
+
+  function isVersionTooltipVisible(badge = elements.versionBadge) {
+    return Boolean(
+      badge &&
+        badge.matches(":hover, :focus-within, .is-tooltip-pinned"),
+    );
+  }
+
+  function setVersionTooltipPinned(isPinned) {
+    const badge = elements.versionBadge;
+    if (!badge) {
+      return;
+    }
+
+    const shouldPin = Boolean(isPinned);
+    badge.classList.toggle("is-tooltip-pinned", shouldPin);
+    badge.setAttribute("aria-expanded", String(shouldPin));
+
+    if (!shouldPin) {
+      markChangelogViewedAfterHide();
+    }
+  }
+
+  function markChangelogViewedAfterHide() {
+    const badge = elements.versionBadge;
+    if (!badge || badge.dataset.changelogUnread !== "true") {
+      return;
+    }
+
+    if (isVersionTooltipVisible(badge)) {
+      return;
+    }
+
+    const changelog = normalizeChangelogEntries(config.changelog);
+    const changed = markChangelogCommitsViewed(flattenChangelogCommits(changelog));
+    badge.dataset.changelogUnread = "false";
+    if (changed || badge.classList.contains("has-unread")) {
+      renderVersionBadge(currentVersionText || badge.textContent.trim());
+    }
+  }
+
+  function bindVersionBadgeEvents() {
+    const badge = elements.versionBadge;
+    if (!badge || versionBadgeEventsBound) {
+      return;
+    }
+
+    versionBadgeEventsBound = true;
+
+    badge.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setVersionTooltipPinned(!badge.classList.contains("is-tooltip-pinned"));
+    });
+
+    badge.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+      event.preventDefault();
+      setVersionTooltipPinned(!badge.classList.contains("is-tooltip-pinned"));
+    });
+
+    badge.addEventListener("mouseleave", () => {
+      if (badge.classList.contains("is-tooltip-pinned")) {
+        return;
+      }
+      markChangelogViewedAfterHide();
+    });
+
+    badge.addEventListener("focusout", (event) => {
+      if (
+        badge.classList.contains("is-tooltip-pinned") ||
+        badge.contains(event.relatedTarget)
+      ) {
+        return;
+      }
+      markChangelogViewedAfterHide();
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!(event.target instanceof Node) || badge.contains(event.target)) {
+        return;
+      }
+      if (!badge.classList.contains("is-tooltip-pinned")) {
+        return;
+      }
+      setVersionTooltipPinned(false);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (
+        event.key === "Escape" &&
+        badge.classList.contains("is-tooltip-pinned")
+      ) {
+        setVersionTooltipPinned(false);
+      }
+    });
+  }
+
+  function renderVersionBadge(versionText) {
+    const badge = elements.versionBadge;
+    if (!badge) {
+      return;
+    }
+
+    const wasPinned = badge.classList.contains("is-tooltip-pinned");
+    currentVersionText = versionText;
+    const changelog = normalizeChangelogEntries(config.changelog);
+    const viewedIds = getViewedChangelogIds();
+    const commits = flattenChangelogCommits(changelog);
+    const hasUnread = commits.some(
+      (commit) => !viewedIds.has(getChangelogCommitId(commit)),
+    );
+    const entriesHtml = changelog.length
+      ? changelog
+          .map((entry) => {
+            const version = escapeHtml(entry?.version || "");
+            const date = escapeHtml(entry?.date || "");
+            const commitItems = Array.isArray(entry?.commits) ? entry.commits : [];
+            const itemsHtml = commitItems.length
+              ? `<ul class="version-changelog-items">${commitItems
+                  .map((commit) => {
+                    const isUnread = !viewedIds.has(getChangelogCommitId(commit));
+                    const newBadge = isUnread
+                      ? `<span class="version-changelog-new">新</span>`
+                      : "";
+                    return `<li class="${
+                      isUnread ? "is-unread" : ""
+                    }"><span class="version-changelog-item-text">${escapeHtml(
+                      commit.summary || "",
+                    )}</span>${newBadge}</li>`;
+                  })
+                  .join("")}</ul>`
+              : "";
+            return `<div class="version-changelog-entry"><div class="version-changelog-meta"><span class="version-changelog-version">${
+              version || "未命名版本"
+            }</span>${
+              date
+                ? `<span class="version-changelog-date">${date}</span>`
+                : ""
+            }</div>${itemsHtml}</div>`;
+          })
+          .join("")
+      : `<div class="version-changelog-empty">暂无更新记录</div>`;
+
+    badge.classList.add("has-tooltip");
+    badge.classList.toggle("has-unread", hasUnread);
+    badge.classList.toggle("is-tooltip-pinned", wasPinned);
+    badge.dataset.changelogUnread = hasUnread ? "true" : "false";
+    badge.setAttribute("tabindex", "0");
+    badge.setAttribute("aria-expanded", String(wasPinned));
+    badge.setAttribute(
+      "aria-label",
+      hasUnread
+        ? `${versionText}，有未读更新记录，悬停或点击查看`
+        : `${versionText}，悬停或点击查看更新记录`,
+    );
+    badge.innerHTML = `<span class="version-badge-text">${escapeHtml(
+      versionText,
+    )}</span><div class="tooltip version-changelog-tooltip" role="tooltip"><div class="version-changelog-title">更新记录</div><div class="version-changelog-list">${entriesHtml}</div></div>`;
+    bindVersionBadgeEvents();
+  }
+
   function initialize() {
     const versionPrefix = config.versionPrefix || "0.0";
     const gitCommitCount = Number.parseInt(config.gitCommitCount, 10);
     const versionSuffix = Number.isFinite(gitCommitCount) ? gitCommitCount : 0;
     const versionText = `v${versionPrefix}.${versionSuffix}`;
 
-    if (elements.versionBadge) {
-      elements.versionBadge.textContent = versionText;
-    }
+    renderVersionBadge(versionText);
     document.title = `钓鱼收益计算器 ${versionText}`;
 
     buildOption(

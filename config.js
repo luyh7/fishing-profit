@@ -1,6 +1,63 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.2",
-  gitCommitCount: 117,
+  gitCommitCount: 118,
+  changelog: [
+    {
+      version: "1.2.118",
+      date: "2026-07-25",
+      summary: "版本徽标支持更新记录、未读黄点与新标签",
+    },
+    {
+      version: "1.2.117",
+      date: "2026-07-25",
+      summary: "同步接口地图 11-20 鱼价",
+    },
+    {
+      version: "1.2.116",
+      date: "2026-07-24",
+      summary: "同步 14/15 图鱼种与鱼价映射",
+    },
+    {
+      version: "1.2.115",
+      date: "2026-07-22",
+      summary: "闪光药水接入收益计算下拉框",
+    },
+    {
+      version: "1.2.114",
+      date: "2026-07-22",
+      summary: "点击单鱼价格卡片后保持弹窗显示",
+    },
+    {
+      version: "1.2.113",
+      date: "2026-07-20",
+      summary: "修正星空评分与特殊 UTR 规则",
+    },
+    {
+      version: "1.2.107",
+      date: "2026-07-19",
+      summary: "优化药水切换的计算与渲染性能",
+    },
+    {
+      version: "1.2.106",
+      date: "2026-07-19",
+      summary: "增加星空期望与奖池展示",
+    },
+    {
+      version: "1.1.101",
+      date: "2026-07-12",
+      summary: "支持按住 Alt 查看鱼价加成前原价",
+    },
+    {
+      version: "1.1.97",
+      date: "2026-07-11",
+      summary: "新增幸运药水双次鱼获择优效果",
+    },
+    {
+      version: "1.1.94",
+      date: "2026-07-11",
+      summary: "新增多多药水自动同步与收益计算",
+    },
+  ],
   nestBuffSourceUrl:
     "https://fishing-profit-nest-buff.470103427.workers.dev/nest-buff.json",
   baseIntervalHours: 1,
