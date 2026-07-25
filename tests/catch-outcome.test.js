@@ -83,7 +83,7 @@ test("配置覆盖初始鱼钩 Lv.0 和有效鱼竿 Lv.21", () => {
   );
 });
 
-test("14/15 图换位后保持鱼种与基础鱼价配对", () => {
+test("接口同步地图 11-20 基础鱼价", () => {
   const previousWindow = global.window;
   global.window = {};
   delete require.cache[require.resolve("../config.js")];
@@ -91,30 +91,30 @@ test("14/15 图换位后保持鱼种与基础鱼价配对", () => {
   const config = global.window.FISH_FISHING_CONFIG;
   global.window = previousWindow;
 
-  assert.deepEqual(config.maps.find((map) => map.id === 14), {
-    id: 14,
-    difficulty: 13,
-    name: "云鲸庭",
-    fishes: [
-      { name: "云须鲸鱼", nPrice: 253 },
-      { name: "鲸歌鲤", nPrice: 275 },
-      { name: "浮庭鲫", nPrice: 264 },
-      { name: "天羽鳐", nPrice: 259 },
-      { name: "雾铃鳕", nPrice: 269 },
-    ],
-  });
-  assert.deepEqual(config.maps.find((map) => map.id === 15), {
-    id: 15,
-    difficulty: 14,
-    name: "星砂漠",
-    fishes: [
-      { name: "沙星魟", nPrice: 290 },
-      { name: "琉璃沙鳗", nPrice: 314 },
-      { name: "星蝎鲶", nPrice: 301 },
-      { name: "金尘鲷", nPrice: 296 },
-      { name: "海市蜃鱼", nPrice: 308 },
-    ],
-  });
+  const expectedPrices = {
+    11: [160, 190, 180, 160, 190],
+    12: [210, 250, 230, 210, 240],
+    13: [270, 330, 300, 280, 310],
+    14: [370, 440, 400, 380, 430],
+    15: [470, 580, 530, 490, 560],
+    16: [620, 750, 680, 640, 730],
+    17: [820, 1000, 920, 860, 970],
+    18: [1100, 1300, 1200, 1100, 1300],
+    19: [1400, 1700, 1600, 1500, 1600],
+    20: [1900, 2300, 2100, 1900, 2200],
+  };
+
+  for (const [mapId, prices] of Object.entries(expectedPrices)) {
+    assert.deepEqual(
+      config.maps.find((map) => String(map.id) === mapId)?.fishes.map(
+        (fish) => fish.nPrice,
+      ),
+      prices,
+      `地图 ${mapId} 鱼价未同步`,
+    );
+  }
+  assert.equal(config.maps.find((map) => map.id === 14)?.name, "云鲸庭");
+  assert.equal(config.maps.find((map) => map.id === 15)?.name, "星砂漠");
 });
 
 test("幸运药水同稀有度不按鱼价取优", () => {
