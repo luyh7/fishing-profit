@@ -26,6 +26,8 @@
       body {
         margin: 0;
         min-height: 100%;
+        /* 防止 absolute 装饰元素（如 tooltip）在移动端撑出横向滚动 */
+        overflow-x: clip;
         background:
           radial-gradient(
             circle at top left,
@@ -147,12 +149,31 @@
         top: calc(100% + 8px);
         z-index: 200;
         width: min(320px, calc(100vw - 24px));
+        max-width: calc(100vw - 24px);
         max-height: min(360px, 50vh);
         overflow-x: hidden;
         overflow-y: auto;
         white-space: normal;
+        visibility: hidden;
         background: #101521;
         backdrop-filter: none;
+      }
+
+      .version-badge.has-tooltip:hover .tooltip,
+      .version-badge.has-tooltip:focus-within .tooltip,
+      .version-badge.is-tooltip-pinned .tooltip {
+        visibility: visible;
+      }
+
+      @media (max-width: 520px) {
+        /* 窄屏下脱离徽标包含块，相对视口水平居中，避免更新记录框两侧溢出 */
+        .version-badge .tooltip {
+          position: fixed;
+          left: 50%;
+          right: auto;
+          top: 96px;
+          transform: translateX(-50%);
+        }
       }
 
       .version-badge.has-tooltip:hover .tooltip,
@@ -3244,6 +3265,11 @@
           grid-template-columns: 1fr;
         }
 
+        /* 三列汇总卡在窄屏挤成一列时文字会逐字竖排，改为单列展示 */
+        .summary {
+          grid-template-columns: 1fr;
+        }
+
         .page {
           width: min(100vw - 20px, 1320px);
           padding-top: 16px;
@@ -3259,6 +3285,37 @@
           padding: 18px 18px 12px;
           flex-direction: column;
           align-items: flex-start;
+        }
+
+        /* 移动端表格更紧凑，并用右侧渐变提示可横向滑动 */
+        .table-wrap {
+          position: relative;
+          -webkit-overflow-scrolling: touch;
+          /* 右缘渐隐遮罩，暗示还有更多列 */
+          mask-image: linear-gradient(
+            to right,
+            #000 calc(100% - 28px),
+            rgba(0, 0, 0, 0.35)
+          );
+          -webkit-mask-image: linear-gradient(
+            to right,
+            #000 calc(100% - 28px),
+            rgba(0, 0, 0, 0.35)
+          );
+        }
+
+        table {
+          min-width: 760px;
+        }
+
+        thead th {
+          padding: 12px 10px;
+          font-size: 11px;
+        }
+
+        tbody td {
+          padding: 12px 10px;
+          font-size: 13px;
         }
 
         .starry-head {

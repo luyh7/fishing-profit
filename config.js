@@ -1,7 +1,12 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.2",
-  gitCommitCount: 122,
+  gitCommitCount: 123,
   changelog: [
+    {
+      version: "1.2.123",
+      date: "2026-07-26",
+      summary: "优化手机端页面布局与表格浏览",
+    },
     {
       version: "1.2.122",
       date: "2026-07-26",
