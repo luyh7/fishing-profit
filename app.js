@@ -5106,7 +5106,7 @@
             <li>
               <span class="starry-distribution-name">
                 ${escapeHtml(reward.name)}${
-                  reward.countPerOccurrence > 1
+                  reward.countPerOccurrence > 0
                     ? `<span class="starry-distribution-quantity"> ×${formatNumber(reward.countPerOccurrence, 0)}</span>`
                     : ""
                 }

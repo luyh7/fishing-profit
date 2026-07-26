@@ -72,7 +72,7 @@
       pool: "middle",
       count: 1,
     },
-    { key: "cat_frame", name: "猫猫框", pool: "middle", count: 1 },
+    { key: "cat_frame", name: "猫猫框", pool: "middle", count: 3 },
     {
       key: "lottery_fragment_mid",
       name: "高级抽奖碎片",

@@ -1,7 +1,12 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.2",
-  gitCommitCount: 121,
+  gitCommitCount: 122,
   changelog: [
+    {
+      version: "1.2.122",
+      date: "2026-07-26",
+      summary: "流星鱼奖池展示奖励数量，猫猫框修正为 3 个",
+    },
     {
       version: "1.2.121",
       date: "2026-07-25",
