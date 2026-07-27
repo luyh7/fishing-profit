@@ -191,6 +191,7 @@
     bestBaitName: document.getElementById("bestBaitName"),
     bestBaitNet: document.getElementById("bestBaitNet"),
     resultBody: document.getElementById("resultBody"),
+    lostWindCountHeader: document.getElementById("lostWindCountHeader"),
     emptyState: document.getElementById("emptyState"),
   };
   const starryPoolLabels = {
@@ -3184,6 +3185,9 @@
           specialUtrDropRate: parseNumber(
             catchDistribution?.specialUtrDropRate,
           ),
+          specialUtrPityIncrementExpectedValue: parseNumber(
+            catchDistribution?.specialUtrPityIncrementExpectedValue,
+          ),
           fishProbability: parseNumber(catchDistribution?.fishProbability),
           catEffects,
           baitBuff,
@@ -5543,11 +5547,16 @@
     });
   }
 
-  function renderTable(rows, bestRow) {
+  function renderTable(rows, bestRow, selectedMapRow) {
     elements.bestBaitName.textContent = bestRow ? bestRow.bait.name : "-";
     elements.bestBaitNet.textContent = bestRow
       ? `¥${formatNumber(bestRow.netRevenue, 0)}`
       : "-";
+    const showLostWindCount =
+      normalizeWeatherType(selectedMapRow?.weather?.type) === "lost_wind";
+    if (elements.lostWindCountHeader) {
+      elements.lostWindCountHeader.hidden = !showLostWindCount;
+    }
 
     if (!rows.length) {
       elements.emptyState.hidden = false;
@@ -5567,6 +5576,11 @@
         const theoreticalCountText = Number.isFinite(row.theoreticalCount)
           ? formatNumber(row.theoreticalCount, 2)
           : "-";
+        const lostWindCount =
+          row.completedCount *
+          parseNumber(
+            selectedMapRow?.specialUtrPityIncrementExpectedValue,
+          );
         const hourlyTheoreticalRevenueText = Number.isFinite(
           row.hourlyTheoreticalRevenue,
         )
@@ -5583,6 +5597,7 @@
             <td>${formatPercent(row.bait.speed, 2)}</td>
             <td>${intervalText}</td>
             <td>${theoreticalCountText}</td>
+            ${showLostWindCount ? `<td>${formatNumber(lostWindCount, 2)}</td>` : ""}
             <td>${hourlyTheoreticalRevenueText}</td>
             <td>¥${formatNumber(row.grossRevenue, 0)}</td>
             <td>¥${formatNumber(row.baitCost, 2)}</td>
@@ -5791,7 +5806,11 @@
     } else {
       renderMapCards(mapRows, activeMapId);
     }
-    renderTable(selectedMapRow ? selectedMapRow.baitRows : [], bestBaitRow);
+    renderTable(
+      selectedMapRow ? selectedMapRow.baitRows : [],
+      bestBaitRow,
+      selectedMapRow,
+    );
   }
 
 

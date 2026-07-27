@@ -562,6 +562,31 @@ test("幸运先合并两次随机 UTR，再应用共享 150 次保底", () => {
 
   assert.ok(Math.abs(result.specialUtrDropRate - expectedRate) < 1e-8);
   assert.ok(Math.abs(result.specialUtrDropRate - 0.885) < 0.001);
+  assert.ok(
+    Math.abs(
+      result.specialUtrPityIncrementExpectedValue -
+        (1 - result.specialUtrDropRate / 100),
+    ) < 1e-10,
+  );
+});
+
+test("迷途风保底按普通鱼最终数量累计，特殊 UTR 本次重置", () => {
+  const result = calculateBestCatchDistribution({
+    ...baseOptions,
+    fishes: [{ nPrice: 10 }],
+    specialUtrDropRate: 0.2,
+    specialUtrPityCount: 150,
+    baseQuantity: 2,
+    extraQuantityChance: 0.5,
+  });
+  const expectedIncrement =
+    (1 - result.specialUtrDropRate / 100) * 2.5;
+
+  assert.ok(
+    Math.abs(
+      result.specialUtrPityIncrementExpectedValue - expectedIncrement,
+    ) < 1e-10,
+  );
 });
 
 test("展示木框与特殊 UTR 共用源码保底执行顺序", () => {

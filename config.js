@@ -1,7 +1,12 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.2",
-  gitCommitCount: 124,
+  gitCommitCount: 125,
   changelog: [
+    {
+      version: "1.2.125",
+      date: "2026-07-27",
+      summary: "迷途风地图收益列表增加 24H 保底累计次数",
+    },
     {
       version: "1.2.123",
       date: "2026-07-26",

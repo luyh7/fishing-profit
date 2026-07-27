@@ -876,6 +876,7 @@
       displayFrameDropRate: 0,
       displayFrameExpectedValue: 0,
       specialUtrDropRate: 0,
+      specialUtrPityIncrementExpectedValue: 0,
     };
   }
 
@@ -889,16 +890,19 @@
     }
     const finalDistribution = applyPitySelection(selectedDistribution, options);
     const result = emptyCatchResult(rarityOrder);
+    const expectedFishQuantity = calculateExpectedFishQuantity(options);
 
     finalDistribution.forEach(({ outcome, probability }) => {
       if (outcome.kind === "material") {
         result.materialDropRate += probability * 100;
         result.materialExpectedValue += probability * outcome.price;
+        result.specialUtrPityIncrementExpectedValue += probability;
         return;
       }
       if (outcome.kind === "display-frame") {
         result.displayFrameDropRate += probability * 100;
         result.displayFrameExpectedValue += probability * outcome.price;
+        result.specialUtrPityIncrementExpectedValue += probability;
         return;
       }
 
@@ -910,6 +914,9 @@
       result.fishProbability += probability;
       if (outcome.kind === "special-utr") {
         result.specialUtrDropRate += probability * 100;
+      } else {
+        result.specialUtrPityIncrementExpectedValue +=
+          probability * expectedFishQuantity;
       }
     });
     return result;
