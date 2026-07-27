@@ -1,7 +1,12 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.2",
-  gitCommitCount: 125,
+  gitCommitCount: 126,
   changelog: [
+    {
+      version: "1.2.126",
+      date: "2026-07-28",
+      summary: "完善地图天气与单鱼价格提示浮窗",
+    },
     {
       version: "1.2.125",
       date: "2026-07-27",

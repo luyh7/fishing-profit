@@ -43,8 +43,12 @@
     (rarity) => rarity !== "UTR",
   );
   const collectionRarities = [...baseRarityOrder].reverse().concat("UTR");
+  const achievementRaritiesUpToUr = collectionRarities.filter(
+    (rarity) => rarity !== "UTR",
+  );
   const nestBuffSourceUrl = config.nestBuffSourceUrl || "./nest-buff.json";
   const nestBuffAutoRefreshIntervalMs = 1 * 60 * 1000;
+  const weatherPlayerScrollPixelsPerSecond = 18;
   const collectionLongPressMs = 280;
   const catParadiseConfig = config.catParadise || {};
   const catParadiseMapId = normalizeMapId(catParadiseConfig.mapId || "S1");
@@ -1128,12 +1132,88 @@
     return `<div class="weather-tooltip-bait" data-storm-bait-line><div>预计还需<span data-storm-bait-count data-weather-end-time="${endTime}" data-weather-interval-hours="${intervalHours}" data-weather-bait-cost-multiplier="${baitCostMultiplier}">${formatNumber(baitCount, 0)}</span>个${escapeHtml(baitName)}</div><div>消耗速率${formatNumber(consumptionRate, 2)}个/h</div></div>`;
   }
 
+  function getWeatherTooltipPlayerLineHtml(mapId) {
+    if (!isAutoNestBuffEffectivelyEnabled()) {
+      return "";
+    }
+
+    const normalizedMapId = normalizeMapId(mapId);
+    if (!normalizedMapId) {
+      return "";
+    }
+
+    const players = Array.isArray(latestNestBuffPayload?.players)
+      ? latestNestBuffPayload.players
+      : [];
+    const playerNames = players
+      .filter(
+        (player) =>
+          normalizeMapId(player?.location_id) === normalizedMapId &&
+          String(player?.nickname ?? "").trim(),
+      )
+      .map((player) => String(player.nickname).trim());
+
+    if (!playerNames.length) {
+      return "";
+    }
+
+    return `<div class="weather-tooltip-players" data-weather-players><div class="weather-tooltip-player-count">共${playerNames.length}人</div><div class="weather-tooltip-player-viewport" data-weather-player-viewport><div class="weather-tooltip-player-track" data-weather-player-track>${playerNames
+      .map(
+        (name) =>
+          `<div class="weather-tooltip-player" title="${escapeHtml(name)}">${escapeHtml(name)}</div>`,
+      )
+      .join("")}</div></div></div>`;
+  }
+
+  function updateWeatherTooltipPlayerAnimations() {
+    if (!elements.mapCardList) {
+      return;
+    }
+
+    elements.mapCardList
+      .querySelectorAll("[data-weather-players]")
+      .forEach((playersEl) => {
+        const viewportEl = playersEl.querySelector(
+          "[data-weather-player-viewport]",
+        );
+        if (!viewportEl) {
+          return;
+        }
+
+        const scrollDistance = Math.max(
+          0,
+          viewportEl.scrollHeight - viewportEl.clientHeight,
+        );
+        if (scrollDistance <= 1) {
+          playersEl.classList.remove("is-auto-scrolling");
+          playersEl.style.removeProperty("--weather-player-scroll-distance");
+          playersEl.style.removeProperty("--weather-player-scroll-duration");
+          return;
+        }
+
+        const scrollDuration = Math.max(
+          8,
+          (scrollDistance / weatherPlayerScrollPixelsPerSecond) * 2,
+        );
+        playersEl.style.setProperty(
+          "--weather-player-scroll-distance",
+          `${scrollDistance}px`,
+        );
+        playersEl.style.setProperty(
+          "--weather-player-scroll-duration",
+          `${scrollDuration.toFixed(2)}s`,
+        );
+        playersEl.classList.add("is-auto-scrolling");
+      });
+  }
+
   function getWeatherTooltipContent(weather, row = null) {
     const type = normalizeWeatherType(weather?.type);
     const meta = getWeatherMeta(type);
+    const playerLineHtml = getWeatherTooltipPlayerLineHtml(row?.map?.id);
 
     if (type === "sunny") {
-      return "晴天";
+      return `晴天${playerLineHtml}`;
     }
 
     const lines = [
@@ -1179,6 +1259,9 @@
     );
     if (stormBaitLine) {
       lines.push(stormBaitLine);
+    }
+    if (playerLineHtml) {
+      lines.push(playerLineHtml);
     }
 
     return lines.join("");
@@ -3230,6 +3313,7 @@
       tooltip.hidden = true;
       tooltip.innerHTML = "";
       tooltip.dataset.hasFishPriceBonus = "false";
+      tooltip.classList.remove("has-achievement-column");
       tooltip.classList.remove("is-showing-original-price");
       return;
     }
@@ -3241,9 +3325,21 @@
       tooltip.hidden = true;
       tooltip.innerHTML = "";
       tooltip.dataset.hasFishPriceBonus = "false";
+      tooltip.classList.remove("has-achievement-column");
       tooltip.classList.remove("is-showing-original-price");
       return;
     }
+
+    const achievementRarities = visibleRarities.includes("UTR")
+      ? collectionRarities
+      : visibleRarities.includes("UR")
+        ? achievementRaritiesUpToUr
+        : [];
+    const hasAchievementColumn = achievementRarities.length > 0;
+    tooltip.classList.toggle(
+      "has-achievement-column",
+      hasAchievementColumn,
+    );
 
     const originalFishByKey = new Map(
       achievementFishes.map((fish) => [
@@ -3292,7 +3388,16 @@
             );
           })
           .join("");
-        return `<tr><td>${fish.name}</td>${cells}</tr>`;
+        const fishAchievementTotal =
+          achievementRarities.reduce((sum, rarity) => {
+            const multiplier = parseNumber(config.rarityMultipliers[rarity]);
+            return sum + parseNumber(originalFish.nPrice) * multiplier;
+          }, 0) * 3;
+        const fishAchievementCell =
+          hasAchievementColumn
+            ? `<td class="tooltip-achievement-column">¥${formatNumber(fishAchievementTotal, 0)}</td>`
+            : "";
+        return `<tr><td>${fish.name}</td>${cells}${fishAchievementCell}</tr>`;
       })
       .join("");
     const achievementCells = visibleRarities
@@ -3306,7 +3411,27 @@
         return `<td>¥${formatNumber(totalPrice, 0)}</td>`;
       })
       .join("");
-    const achievementRow = `<tr class="tooltip-achievement-row"><td>成就</td>${achievementCells}</tr>`;
+    const sceneAchievementTotal = achievementFishes.reduce(
+      (sum, fish) =>
+        sum +
+        achievementRarities.reduce(
+          (fishSum, rarity) =>
+            fishSum +
+            parseNumber(fish.nPrice) *
+              parseNumber(config.rarityMultipliers[rarity]),
+          0,
+        ),
+      0,
+    );
+    const sceneAchievementCell = hasAchievementColumn
+      ? `<td class="tooltip-achievement-column" aria-label="${
+          achievementRarities.includes("UTR") ? "真全收集" : "全收集"
+        }奖励">¥${formatNumber(sceneAchievementTotal, 0)}</td>`
+      : "";
+    const achievementRow =
+      `<tr class="tooltip-achievement-row"><td>成就</td>${achievementCells}` +
+      sceneAchievementCell +
+      `</tr>`;
     const title = hasFishPriceBonus
       ? `<div class="tooltip-title fish-price-tooltip-title"><span><span class="fish-price-current-label">各稀有度单鱼价格（已含建筑鱼价）</span><span class="fish-price-original-label">各稀有度单鱼价格（原价）</span></span><span class="fish-price-shortcut-hint"><kbd>Alt</kbd><span class="fish-price-shortcut-view">查看原价</span><span class="fish-price-shortcut-release">松开恢复加成价</span></span></div>`
       : `<div class="tooltip-title">各稀有度单鱼价格</div>`;
@@ -3320,7 +3445,11 @@
     tooltip.innerHTML = `
       ${title}
       <table class="tooltip-table">
-        <thead><tr><th>鱼种</th>${headerCells}</tr></thead>
+        <thead><tr><th>鱼种</th>${headerCells}${
+          hasAchievementColumn
+            ? '<th class="tooltip-achievement-column">成就奖励</th>'
+            : ""
+        }</tr></thead>
         <tbody>${rows}${achievementRow}</tbody>
       </table>
     `;
@@ -5422,6 +5551,7 @@
         `;
       })
       .join("");
+    updateWeatherTooltipPlayerAnimations();
   }
 
   function updateMapCardValues(mapRows) {
@@ -5515,6 +5645,7 @@
         }
       }
     });
+    updateWeatherTooltipPlayerAnimations();
   }
 
   function canUpdateMapCardsInPlace(mapRows, selectedMapId) {
@@ -6732,6 +6863,8 @@
 
       window.addEventListener("resize", requestAchTooltipPosition);
     }
+
+    window.addEventListener("resize", updateWeatherTooltipPlayerAnimations);
 
     if (elements.collectionModal) {
       elements.collectionModal.addEventListener("click", (event) => {

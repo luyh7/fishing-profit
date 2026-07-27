@@ -469,6 +469,14 @@
         bottom: calc(100% + 8px);
       }
 
+      #fishPriceTooltip.has-achievement-column {
+        left: 50%;
+        right: auto;
+        width: max-content;
+        max-width: none;
+        transform: translateX(-50%);
+      }
+
       .tooltip[hidden] {
         display: none;
       }
@@ -583,6 +591,21 @@
         background: rgba(125, 211, 252, 0.08);
       }
 
+      .tooltip-table .tooltip-achievement-column {
+        background: rgba(125, 211, 252, 0.08);
+        white-space: nowrap;
+      }
+
+      #fishPriceTooltip.has-achievement-column .tooltip-table {
+        width: max-content;
+        min-width: 0;
+      }
+
+      #fishPriceTooltip.has-achievement-column .tooltip-table th:not(:first-child),
+      #fishPriceTooltip.has-achievement-column .tooltip-table td:not(:first-child) {
+        min-width: 72px;
+      }
+
       .tooltip-price {
         display: inline-flex;
         align-items: center;
@@ -629,6 +652,11 @@
       .map-card:hover {
         transform: translateY(-1px);
         border-color: rgba(125, 211, 252, 0.4);
+      }
+
+      .map-card:hover,
+      .map-card:focus-within {
+        z-index: 5;
       }
 
       .map-card.has-collection-target:not(.selected) {
@@ -802,6 +830,83 @@
         color: var(--text);
         font-weight: 700;
         line-height: 1.45;
+      }
+
+      .weather-tooltip-players {
+        position: relative;
+        display: block;
+        min-width: 0;
+        margin-top: 8px;
+        padding-top: 14px;
+      }
+
+      .weather-tooltip-players::before {
+        content: "";
+        position: absolute;
+        top: 7px;
+        right: 0;
+        left: 0;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .weather-tooltip-player-count {
+        position: absolute;
+        top: 7px;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 0 8px;
+        background: rgba(15, 18, 26, 0.96);
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .weather-tooltip-player-viewport {
+        min-width: 0;
+        max-height: min(280px, 45vh);
+        overflow: hidden;
+      }
+
+      .weather-tooltip-player-track {
+        display: grid;
+        gap: 2px;
+        min-width: 0;
+      }
+
+      .weather-tooltip-players.is-auto-scrolling
+        .weather-tooltip-player-track {
+        animation: weather-tooltip-player-scroll
+          var(--weather-player-scroll-duration) ease-in-out infinite alternate;
+        animation-play-state: paused;
+        will-change: transform;
+      }
+
+      .map-card-weather:hover .weather-tooltip-players.is-auto-scrolling
+        .weather-tooltip-player-track,
+      .map-card-weather:focus-within .weather-tooltip-players.is-auto-scrolling
+        .weather-tooltip-player-track {
+        animation-play-state: running;
+      }
+
+      .weather-tooltip-player {
+        min-width: 0;
+        overflow: hidden;
+        color: var(--text);
+        line-height: 1.45;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      @keyframes weather-tooltip-player-scroll {
+        from {
+          transform: translateY(0);
+        }
+
+        to {
+          transform: translateY(calc(var(--weather-player-scroll-distance) * -1));
+        }
       }
 
       .weather-tooltip-warning {
@@ -3426,6 +3531,13 @@
       }
 
       @media (max-width: 520px) {
+        #fishPriceTooltip.has-achievement-column
+          .tooltip-table th:not(:first-child),
+        #fishPriceTooltip.has-achievement-column
+          .tooltip-table td:not(:first-child) {
+          min-width: 56px;
+        }
+
         .starry-pools {
           grid-template-columns: 1fr;
         }
