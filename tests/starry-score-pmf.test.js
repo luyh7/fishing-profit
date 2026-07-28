@@ -82,9 +82,9 @@ test("产物使用整数微分值且每个数字域权重完整", () => {
 
 test("两套完整 PMF 与当前 Python 评分器的精确基准一致", () => {
   const expectedHashes = {
-    normal: "15a506f0b572947121e8d13ba3c145237b014e673560101487cc93e1a03d2fd8",
+    normal: "772ec67eccfe128aff32dff7b103766480f4e97a73aa7ab4cf63c0e855f1c452",
     hengjiyuan:
-      "0640b746696d32297ec02014e4f1217694690d74aec8868c2f8988e6329595a1",
+      "d130ba462830253fcc9b878579b29c5c831605953e0285c027ff9990116f57f0",
   };
 
   for (const [name, domain] of Object.entries(distribution.domains)) {
@@ -100,51 +100,55 @@ test("JavaScript 评分移植覆盖源码中的典型组合规则", () => {
   const score = (text) => scoreDigitsMicro([...text].map(Number));
 
   assert.equal(score("011110"), 16_838_223);
-  assert.equal(score("001011"), 8_770_222);
-  assert.equal(score("001122"), 10_134_222);
-  assert.equal(score("000011"), 15_215_836);
-  assert.equal(score("000112"), 13_031_568);
-  assert.equal(score("001112"), 13_031_568);
-  assert.equal(score("000111"), 14_970_228);
+  assert.equal(score("001011"), 11_066_931);
+  assert.equal(score("001122"), 12_430_931);
+  assert.equal(score("000011"), 13_620_328);
+  assert.equal(score("000112"), 11_436_060);
+  assert.equal(score("001112"), 11_436_060);
+  assert.equal(score("000111"), 15_671_429);
   assert.equal(score("000001"), 15_128_029);
-  assert.equal(score("000000"), 16_853_252);
-  assert.equal(score("777777"), 16_853_252);
+  assert.equal(score("000000"), 19_149_961);
+  assert.equal(score("777777"), 19_149_961);
   assert.equal(score("002150"), 802_444);
   assert.equal(score("135791"), 1_806_180);
   assert.equal(score("121314"), 6_656_968);
+  assert.equal(score("423156"), 2_443_697);
+  assert.equal(score("252525"), 9_753_092);
+  assert.equal(score("112112"), 13_197_680);
+  assert.equal(score("135789"), 4_603_975);
 });
 
 test("普通域单候选的均值和奖池概率匹配精确基准", () => {
   const summary = summarize(distribution.domains.normal);
 
-  assertClose(summary.meanRawScore, 0.9008114119900005);
-  assertClose(summary.poolProbabilities.none, 0.466084);
-  assertClose(summary.poolProbabilities.low, 0.41425799999999996);
-  assertClose(summary.poolProbabilities.middle, 0.10216800000000004);
-  assertClose(summary.poolProbabilities.high, 0.01580400000000004);
-  assertClose(summary.poolProbabilities.ultimate, 0.0016859999999999653);
+  assertClose(summary.meanRawScore, 0.9972034318899996);
+  assertClose(summary.poolProbabilities.none, 0.438976);
+  assertClose(summary.poolProbabilities.low, 0.423476);
+  assertClose(summary.poolProbabilities.middle, 0.116672);
+  assertClose(summary.poolProbabilities.high, 0.019394000000000022);
+  assertClose(summary.poolProbabilities.ultimate, 0.0014819999999999833);
 });
 
 test("恒纪元域单候选的均值和奖池概率匹配精确基准", () => {
   const summary = summarize(distribution.domains.hengjiyuan);
 
-  assertClose(summary.meanRawScore, 1.5972588788854978);
-  assertClose(summary.poolProbabilities.none, 0.27648343802327263);
-  assertClose(summary.poolProbabilities.low, 0.4876539537097638);
-  assertClose(summary.poolProbabilities.middle, 0.18524594344193324);
-  assertClose(summary.poolProbabilities.high, 0.04421627043153786);
-  assertClose(summary.poolProbabilities.ultimate, 0.006400394393492492);
+  assertClose(summary.meanRawScore, 1.830068480250578);
+  assertClose(summary.poolProbabilities.none, 0.22480429072920297);
+  assertClose(summary.poolProbabilities.low, 0.4936548546948975);
+  assertClose(summary.poolProbabilities.middle, 0.22228833224251798);
+  assertClose(summary.poolProbabilities.high, 0.053209122049486246);
+  assertClose(summary.poolProbabilities.ultimate, 0.006043400283895273);
 });
 
 test("普通域双候选择优使用 PMF 的精确 CDF", () => {
   const summary = summarize(distribution.domains.normal, 2);
 
-  assertClose(summary.meanRawScore, 1.5373187414247214);
-  assertClose(summary.poolProbabilities.none, 0.217234295056);
-  assertClose(summary.poolProbabilities.low, 0.5577677419079999);
-  assertClose(summary.poolProbabilities.middle, 0.19032386313600003);
-  assertClose(summary.poolProbabilities.high, 0.03130494249600013);
-  assertClose(summary.poolProbabilities.ultimate, 0.0033691574039999006);
+  assertClose(summary.meanRawScore, 1.684043948229076);
+  assertClose(summary.poolProbabilities.none, 0.192699928576);
+  assertClose(summary.poolProbabilities.low, 0.5511235237280001);
+  assertClose(summary.poolProbabilities.middle, 0.21486035507199996);
+  assertClose(summary.poolProbabilities.high, 0.03835438894800003);
+  assertClose(summary.poolProbabilities.ultimate, 0.0029618036759999633);
 });
 
 test("生成器可重复生成当前检入产物", { timeout: 20_000 }, () => {

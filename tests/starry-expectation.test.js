@@ -53,16 +53,16 @@ test("普通天气的24H积分与直接奖池匹配精确基准", () => {
   assertClose(result.expectedFishCount, 5);
   assert.equal(result.periods[0].selectionCount, 1);
   assert.equal(result.periods[0].duplicateCount, 1);
-  assertClose(result.periods[0].meanRawScore, 0.9008114119900005);
-  assertClose(result.score.raw, 4.504057059950003);
-  assertClose(result.score.rewardBonus, 0.25891125);
-  assertClose(result.score.total, 4.762968309950002);
+  assertClose(result.periods[0].meanRawScore, 0.9972034318899996);
+  assertClose(result.score.raw, 4.9860171594499985);
+  assertClose(result.score.rewardBonus, 0.26467250000000003);
+  assertClose(result.score.total, 5.250689659449998);
 
-  assertClose(result.poolDraws.direct.none, 2.33042);
-  assertClose(result.poolDraws.direct.low, 2.07129);
-  assertClose(result.poolDraws.direct.middle, 0.5108400000000002);
-  assertClose(result.poolDraws.direct.high, 0.0790200000000002);
-  assertClose(result.poolDraws.direct.ultimate, 0.008429999999999827);
+  assertClose(result.poolDraws.direct.none, 2.19488);
+  assertClose(result.poolDraws.direct.low, 2.1173800000000003);
+  assertClose(result.poolDraws.direct.middle, 0.58336);
+  assertClose(result.poolDraws.direct.high, 0.09697000000000011);
+  assertClose(result.poolDraws.direct.ultimate, 0.007409999999999917);
   assert.equal(result.expectedScore, result.score);
   assert.equal(result.expectedPoolDraws, result.poolDraws);
   assert.equal(result.expectedRewards, result.rewards);
@@ -78,11 +78,11 @@ test("太阳风、流星雨、恒纪元和药水组合遵循源码规则", () =>
 
   const meteor = calculate({ attempts: 1, weatherType: "meteor_shower" });
   assert.equal(meteor.periods[0].selectionCount, 2);
-  assertClose(meteor.periods[0].meanRawScore, 1.5373187414247214);
+  assertClose(meteor.periods[0].meanRawScore, 1.684043948229076);
 
   const hengjiyuan = calculate({ attempts: 1, weatherType: "hengjiyuan" });
   assert.equal(hengjiyuan.periods[0].hengjiyuan, true);
-  assertClose(hengjiyuan.periods[0].meanRawScore, 1.5972588788854978);
+  assertClose(hengjiyuan.periods[0].meanRawScore, 1.830068480250578);
 
   const gammaLucky = calculate({
     attempts: 10,
@@ -198,9 +198,9 @@ test("当前碎片模式从零余数开始时单次判定不会提前合成", ()
   for (const pool of ["none", "low", "middle", "high", "ultimate"]) {
     assertClose(result.poolDraws.current[pool], result.poolDraws.direct[pool]);
   }
-  assertClose(result.fragments.expectedFinalRemainders.low, 0.005178225);
-  assertClose(result.fragments.expectedFinalRemainders.middle, 0.0010216800000000005);
-  assertClose(result.fragments.expectedFinalRemainders.high, 0.00019755000000000052);
+  assertClose(result.fragments.expectedFinalRemainders.low, 0.005293450000000001);
+  assertClose(result.fragments.expectedFinalRemainders.middle, 0.0011667200000000002);
+  assertClose(result.fragments.expectedFinalRemainders.high, 0.0002424250000000003);
   assertClose(result.fragments.finalProbabilityMass, 1);
 });
 
@@ -316,10 +316,10 @@ test("多多同编号复制与双倍捕获的独立编号保持不同相关性",
 
   assertClose(duoduo.expectedFishCount, doubleCatch.expectedFishCount);
   assertClose(duoduo.score.raw, doubleCatch.score.raw);
-  assertClose(duoduo.poolDraws.current.middle, 0.011511356250000005);
-  assertClose(doubleCatch.poolDraws.current.middle, 0.01024361401415063);
-  assertClose(duoduo.poolDraws.current.high, 0.0036783352500000055);
-  assertClose(doubleCatch.poolDraws.current.high, 0.0036280789728077305);
+  assertClose(duoduo.poolDraws.current.middle, 0.012990562500000002);
+  assertClose(doubleCatch.poolDraws.current.middle, 0.0116952206129025);
+  assertClose(duoduo.poolDraws.current.high, 0.004304168500000003);
+  assertClose(doubleCatch.poolDraws.current.high, 0.004277082887022103);
   assert.notEqual(
     duoduo.poolDraws.current.ultimate,
     doubleCatch.poolDraws.current.ultimate,

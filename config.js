@@ -1,7 +1,12 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.2",
-  gitCommitCount: 126,
+  gitCommitCount: 127,
   changelog: [
+    {
+      version: "1.2.127",
+      date: "2026-07-28",
+      summary: "修正星空评分规则",
+    },
     {
       version: "1.2.126",
       date: "2026-07-28",

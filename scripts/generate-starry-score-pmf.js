@@ -14,7 +14,7 @@ const OUTPUT_PATH = path.join(REPOSITORY_ROOT, "starry-score-pmf.js");
 
 // Changing the Python rules must force an explicit review of this port.
 const EXPECTED_SOURCE_SHA256 =
-  "a104528321eea38c8708c3f73ad29a8ae7291dabd811b1b145e67eca356fef45";
+  "e724ebf6afc7833dbf2546dafcc525787af554602a82b2b2f0cecd1c14010b80";
 
 const FEATURE_SCORE_MICRO = Object.freeze({
   "3_same_run": 1_432_856,
@@ -46,8 +46,14 @@ const FEATURE_SCORE_MICRO = Object.freeze({
   "6_all_odd": 1_806_180,
   "6_all_even": 1_806_180,
   ABAB: 1_598_599,
-  ABCABC: 3_142_668,
+  ABABAB: 4_045_757,
+  ABCABC: 3_004_365,
   star_airplane: 1_899_285,
+  "4_permutation": 1_444_857,
+  "5_permutation": 1_947_691,
+  "6_permutation": 2_443_697,
+  frog_jump_6: 3_376_751,
+  mirror_sum: 2_296_709,
   two_pair: 1_595_508,
   three_pair: 3_091_515,
   full_house: 2_454_693,
@@ -137,6 +143,14 @@ function windowPalindrome(digits, start, length) {
   return true;
 }
 
+function windowPermutation(digits, start, length) {
+  const window = digits.slice(start, start + length);
+  return (
+    new Set(window).size === length &&
+    Math.max(...window) - Math.min(...window) === length - 1
+  );
+}
+
 function buildWindowMatches(digits, predicate) {
   const matches = new Map();
   for (let length = 3; length <= DIGIT_COUNT; length += 1) {
@@ -175,6 +189,30 @@ function starAirplane(digits) {
     }
   }
   return true;
+}
+
+function motifAbabab(digits) {
+  return (
+    digits.every((digit, index) => index < 2 || digit === digits[index % 2]) &&
+    digits[0] !== digits[1]
+  );
+}
+
+function frogJump6(digits) {
+  let increasing = true;
+  let decreasing = true;
+  for (let index = 1; index < DIGIT_COUNT; index += 1) {
+    increasing &&= digits[index] > digits[index - 1];
+    decreasing &&= digits[index] < digits[index - 1];
+  }
+  return increasing || decreasing;
+}
+
+function mirrorSum(digits) {
+  return (
+    digits[0] + digits[5] === digits[1] + digits[4] &&
+    digits[1] + digits[4] === digits[2] + digits[3]
+  );
 }
 
 function detectPairType(digits) {
@@ -282,6 +320,12 @@ function scoreDigitsMicro(digits) {
   if (starAirplane(digits)) {
     addFeature(FEATURE_SCORE_MICRO.star_airplane);
   }
+  if (frogJump6(digits)) {
+    addFeature(FEATURE_SCORE_MICRO.frog_jump_6);
+  }
+  if (mirrorSum(digits)) {
+    addFeature(FEATURE_SCORE_MICRO.mirror_sum);
+  }
 
   const sameMatches = buildWindowMatches(digits, windowSame);
   const stepMatches = buildWindowMatches(digits, windowStep);
@@ -295,6 +339,7 @@ function scoreDigitsMicro(digits) {
     (values, start, length) => windowSnake(values, start, length, false),
   );
   const palindromeMatches = buildWindowMatches(digits, windowPalindrome);
+  const permutationMatches = buildWindowMatches(digits, windowPermutation);
 
   for (let length = 3; length <= DIGIT_COUNT; length += 1) {
     for (let start = 0; start <= DIGIT_COUNT - length; start += 1) {
@@ -318,20 +363,32 @@ function scoreDigitsMicro(digits) {
       }
       if (
         palindromeMatches.get(key) &&
-        !containedInLarger(palindromeMatches, start, length)
+        !containedInLarger(palindromeMatches, start, length) &&
+        !containedInLarger(sameMatches, start, length)
       ) {
         addFeature(FEATURE_SCORE_MICRO[`${length}_palindrome`]);
+      }
+      if (
+        length >= 4 &&
+        permutationMatches.get(key) &&
+        !containedInLarger(permutationMatches, start, length)
+      ) {
+        addFeature(FEATURE_SCORE_MICRO[`${length}_permutation`]);
       }
     }
   }
 
-  for (let start = 0; start <= DIGIT_COUNT - 4; start += 1) {
-    if (
-      digits[start] === digits[start + 2] &&
-      digits[start + 1] === digits[start + 3] &&
-      digits[start] !== digits[start + 1]
-    ) {
-      addFeature(FEATURE_SCORE_MICRO.ABAB);
+  if (motifAbabab(digits)) {
+    addFeature(FEATURE_SCORE_MICRO.ABABAB);
+  } else {
+    for (let start = 0; start <= DIGIT_COUNT - 4; start += 1) {
+      if (
+        digits[start] === digits[start + 2] &&
+        digits[start + 1] === digits[start + 3] &&
+        digits[start] !== digits[start + 1]
+      ) {
+        addFeature(FEATURE_SCORE_MICRO.ABAB);
+      }
     }
   }
 
@@ -340,19 +397,21 @@ function scoreDigitsMicro(digits) {
     a === digits[3] &&
     b === digits[4] &&
     c === digits[5] &&
-    new Set([a, b, c]).size === 3
+    !(a === b && b === c)
   ) {
     addFeature(FEATURE_SCORE_MICRO.ABCABC);
   }
 
+  const hasFullHouse =
+    windowFullHouse(digits, 0) || windowFullHouse(digits, 1);
   const pairType = detectPairType(digits);
   if (pairType >= 3) {
     addFeature(FEATURE_SCORE_MICRO.three_pair);
-  } else if (pairType >= 2) {
+  } else if (pairType >= 2 && !hasFullHouse) {
     addFeature(FEATURE_SCORE_MICRO.two_pair);
   }
 
-  if (windowFullHouse(digits, 0) || windowFullHouse(digits, 1)) {
+  if (hasFullHouse) {
     addFeature(FEATURE_SCORE_MICRO.full_house);
   }
 
