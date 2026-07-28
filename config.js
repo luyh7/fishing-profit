@@ -1,7 +1,15 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.2",
-  gitCommitCount: 128,
+  gitCommitCount: 129,
+  versionManifestUrl: "./version.json",
+  versionCheckIntervalMs: 10 * 60 * 1000,
+  versionIdleReloadMs: 5 * 60 * 1000,
   changelog: [
+    {
+      version: "1.2.129",
+      date: "2026-07-28",
+      summary: "新版本可自动检测并提示刷新",
+    },
     {
       version: "1.2.128",
       date: "2026-07-28",

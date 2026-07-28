@@ -50,6 +50,9 @@ git clone --recurse-submodules <利润网仓库地址>
 - 地图信息和鱼类数据
 - 稀有度概率分布
 - 打窝数据静态源地址 `nestBuffSourceUrl`
+- 新版本检测地址与轮询、空闲刷新间隔
+
+根目录的 `version.json` 会随 GitHub Pages 一起公开部署。页面启动时会检查一次，之后每 10 分钟检查新版本；提交钩子会让它与 `config.js` 中显示的版本保持一致。
 
 流星鱼编号分数分布保存在 `starry-score-pmf.js`，由
 `scripts/generate-starry-score-pmf.js` 通过六位前缀状态聚合、普通域互补对称缩减生成；

@@ -3,14 +3,16 @@ set -eu
 
 repo_root=$(git rev-parse --show-toplevel)
 config_file="$repo_root/config.js"
+version_file="$repo_root/version.json"
 
-REPO_ROOT="$repo_root" CONFIG_FILE="$config_file" node <<'NODE'
+REPO_ROOT="$repo_root" CONFIG_FILE="$config_file" VERSION_FILE="$version_file" node <<'NODE'
 const fs = require('fs');
 const { execSync } = require('child_process');
 
 const repoRoot = process.env.REPO_ROOT;
-const path = process.env.CONFIG_FILE;
-const source = fs.readFileSync(path, 'utf8');
+const configPath = process.env.CONFIG_FILE;
+const versionPath = process.env.VERSION_FILE;
+const source = fs.readFileSync(configPath, 'utf8');
 const gitCommitCount = Number(
   execSync('git rev-list --count HEAD', { cwd: repoRoot, encoding: 'utf8' }).trim(),
 );
@@ -24,7 +26,17 @@ if (updated === source) {
   throw new Error('gitCommitCount not found in config.js');
 }
 
-fs.writeFileSync(path, updated, 'utf8');
+const versionPrefix = updated.match(/versionPrefix:\s*["']([^"']+)["']/)?.[1];
+if (!versionPrefix) {
+  throw new Error('versionPrefix not found in config.js');
+}
+
+fs.writeFileSync(configPath, updated, 'utf8');
+fs.writeFileSync(
+  versionPath,
+  `${JSON.stringify({ version: `${versionPrefix}.${nextCommitCount}` }, null, 2)}\n`,
+  'utf8',
+);
 NODE
 
-git add "$config_file"
+git add "$config_file" "$version_file"

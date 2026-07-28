@@ -7,6 +7,8 @@
     return;
   }
 
+  const versionMonitorApi = window.FISH_VERSION_MONITOR || {};
+  const createVersionMonitor = versionMonitorApi.createVersionMonitor;
   const statisticsHours = config.statisticsHours ?? 24;
   const systemBuffs = Array.isArray(config.systemBuffs)
     ? config.systemBuffs
@@ -169,6 +171,9 @@
     catBuildingsSummary: document.getElementById("catBuildingsSummary"),
     catBuildingsList: document.getElementById("catBuildingsList"),
     versionBadge: document.getElementById("versionBadge"),
+    versionUpdateNotice: document.getElementById("versionUpdateNotice"),
+    versionUpdateMessage: document.getElementById("versionUpdateMessage"),
+    versionUpdateButton: document.getElementById("versionUpdateButton"),
     mapCardList: document.getElementById("mapCardList"),
     selectedMapName: document.getElementById("selectedMapName"),
     selectedMapDelta: document.getElementById("selectedMapDelta"),
@@ -226,6 +231,7 @@
   let isFishPriceAltPressed = false;
   let currentVersionText = "";
   let versionBadgeEventsBound = false;
+  let versionUpdateMonitor = null;
   const numberFormatters = new Map();
   const fixedNumberFormatters = new Map();
 
@@ -6221,6 +6227,57 @@
     });
   }
 
+  function showVersionUpdateNotice(latestVersion) {
+    const normalizedVersion = String(latestVersion || "")
+      .trim()
+      .replace(/^v/i, "");
+    const latestVersionText = normalizedVersion
+      ? `v${normalizedVersion}`
+      : "新版本";
+
+    if (elements.versionUpdateMessage) {
+      elements.versionUpdateMessage.textContent = `发现新版本 ${latestVersionText}`;
+    }
+    if (elements.versionUpdateButton) {
+      elements.versionUpdateButton.setAttribute(
+        "aria-label",
+        `刷新到 ${latestVersionText}`,
+      );
+    }
+    if (elements.versionUpdateNotice) {
+      elements.versionUpdateNotice.hidden = false;
+    }
+  }
+
+  function startVersionUpdateMonitor(versionText) {
+    if (typeof createVersionMonitor !== "function") {
+      return;
+    }
+
+    elements.versionUpdateButton?.addEventListener("click", () => {
+      window.location.reload();
+    });
+
+    versionUpdateMonitor = createVersionMonitor({
+      currentVersion: versionText,
+      manifestUrl: config.versionManifestUrl || "./version.json",
+      intervalMs: config.versionCheckIntervalMs,
+      idleThresholdMs: config.versionIdleReloadMs,
+      onUpdateAvailable: ({ latestVersion }) => {
+        showVersionUpdateNotice(latestVersion);
+      },
+    });
+    versionUpdateMonitor.start();
+
+    window.addEventListener(
+      "pagehide",
+      () => {
+        versionUpdateMonitor?.stop();
+      },
+      { once: true },
+    );
+  }
+
   function renderVersionBadge(versionText) {
     const badge = elements.versionBadge;
     if (!badge) {
@@ -6292,6 +6349,7 @@
     const versionText = `v${versionPrefix}.${versionSuffix}`;
 
     renderVersionBadge(versionText);
+    startVersionUpdateMonitor(versionText);
     document.title = `钓鱼收益计算器 ${versionText}`;
 
     buildOption(

@@ -100,12 +100,20 @@
       .eyebrow {
         display: inline-flex;
         align-items: center;
+        flex-wrap: wrap;
         gap: 8px;
         color: var(--accent);
         font-size: 13px;
         letter-spacing: 0.08em;
         text-transform: uppercase;
         margin-bottom: 14px;
+      }
+
+      .version-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
       }
 
       .version-badge {
@@ -121,6 +129,53 @@
         letter-spacing: 0;
         text-transform: none;
         cursor: help;
+      }
+
+      .version-update-notice {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 3px 2px 8px;
+        border: 1px solid rgba(251, 191, 36, 0.42);
+        border-radius: 6px;
+        background: rgba(251, 191, 36, 0.12);
+        color: #fde68a;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.5;
+        letter-spacing: 0;
+        text-transform: none;
+      }
+
+      .version-update-notice[hidden] {
+        display: none;
+      }
+
+      .version-update-message {
+        white-space: nowrap;
+      }
+
+      .version-update-button {
+        min-height: 24px;
+        padding: 2px 8px;
+        border: 1px solid rgba(251, 191, 36, 0.55);
+        border-radius: 4px;
+        background: rgba(251, 191, 36, 0.18);
+        color: #fef3c7;
+        font: inherit;
+        line-height: 1.2;
+        letter-spacing: 0;
+        cursor: pointer;
+      }
+
+      .version-update-button:hover {
+        border-color: rgba(251, 191, 36, 0.85);
+        background: rgba(251, 191, 36, 0.28);
+      }
+
+      .version-update-button:focus-visible {
+        outline: 2px solid rgba(251, 191, 36, 0.7);
+        outline-offset: 2px;
       }
 
       .version-badge:focus-visible {
@@ -3586,13 +3641,32 @@
         <article class="card hero-copy">
           <div class="eyebrow">
             Fishing Calculator
-            <span
-              class="version-badge has-tooltip"
-              id="versionBadge"
-              tabindex="0"
-              aria-label="版本信息，悬停查看更新记录"
-              >v1.2.117</span
-            >
+            <span class="version-status">
+              <span
+                class="version-badge has-tooltip"
+                id="versionBadge"
+                tabindex="0"
+                aria-label="版本信息，悬停查看更新记录"
+                >v1.2.128</span>
+              <span
+                class="version-update-notice"
+                id="versionUpdateNotice"
+                role="status"
+                hidden
+              >
+                <span
+                  class="version-update-message"
+                  id="versionUpdateMessage"
+                ></span>
+                <button
+                  type="button"
+                  class="version-update-button"
+                  id="versionUpdateButton"
+                >
+                  刷新
+                </button>
+              </span>
+            </span>
           </div>
           <h1>钓鱼收益计算器</h1>
 
@@ -4052,6 +4126,7 @@
     </div>
 
     <script src="config.js"></script>
+    <script src="version-monitor.js"></script>
     <div
       class="bait-reminder-notice"
       id="baitReminderNotice"
