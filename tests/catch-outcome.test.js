@@ -9,6 +9,7 @@ const {
   calculateCatBaitConsumptionFactor,
   calculateCatWeatherExpectedValue,
   calculateBestCatchDistribution,
+  calculateEffectiveRodLevel,
   calculateExpectedFishQuantity,
   calculateFishSalePrice,
   calculateSpecialUtrDropRate,
@@ -634,6 +635,73 @@ test("猫咖按鱼种和稀有度完成乘法后向下取整", () => {
 test("多多地图准入使用原始鱼竿等级", () => {
   assert.equal(isMapAccessibleByRod(6, 6), true);
   assert.equal(isMapAccessibleByRod(6, 5), false);
+});
+
+test("多多门槛地图使用源码负一级差概率", () => {
+  const previousWindow = global.window;
+  global.window = {};
+  delete require.cache[require.resolve("../config.js")];
+  require("../config.js");
+  const config = global.window.FISH_FISHING_CONFIG;
+  global.window = previousWindow;
+
+  assert.deepEqual(config.rarityDistributionNeg1, [
+    0.928, 0.072, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  ]);
+  assert.equal(calculateEffectiveRodLevel(0, 1), -1);
+  assert.equal(calculateEffectiveRodLevel(14, 1), 13);
+
+  const negativeProfile = getMappedRarityProfile({
+    probabilities: getClampedRarityDistribution(
+      config.rarityDistribution,
+      -1,
+      config.rarityDistributionNeg1,
+    ),
+    maxRarity: "UR",
+  });
+  const zeroProfile = getMappedRarityProfile({
+    probabilities: getClampedRarityDistribution(
+      config.rarityDistribution,
+      0,
+      config.rarityDistributionNeg1,
+    ),
+    maxRarity: "UR",
+  });
+
+  assert.deepEqual(negativeProfile, {
+    UTR: 0,
+    UR: 0,
+    SSR: 0,
+    SR: 0,
+    R: 7.2,
+    N: 92.8,
+  });
+  assert.equal(zeroProfile.R, 33.45);
+  assert.notDeepEqual(negativeProfile, zeroProfile);
+});
+
+test("页面计算链消费负一级差概率并保持闪光药水互斥", () => {
+  const appSource = fs.readFileSync(path.resolve(__dirname, "../app.js"), "utf8");
+  const prd = fs.readFileSync(path.resolve(__dirname, "../PRD.MD"), "utf8");
+
+  assert.match(
+    appSource,
+    /getClampedRarityDistribution\(\s*distributions,\s*delta,\s*config\.rarityDistributionNeg1,\s*\)/,
+  );
+  assert.match(
+    appSource,
+    /return calculateEffectiveRodLevel\(\s*rodLevel,\s*potionPenalty,\s*\)/,
+  );
+  assert.match(
+    appSource,
+    /gamma:\s*potionType === "gamma_ray_burst",/,
+  );
+  assert.doesNotMatch(
+    appSource,
+    /gamma:\s*[\s\S]{0,120}isPlayerBuffActive\("gamma_ray_burst"/,
+  );
+  assert.match(prd, /多多药水、幸运药水和闪光药水互斥/);
+  assert.doesNotMatch(prd, /可与多多或幸运并存|与幸运药水同时生效/);
 });
 
 test("多多药水与旋转逗猫棒按数量加概率组合", () => {

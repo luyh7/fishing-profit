@@ -71,16 +71,26 @@
     return result;
   }
 
-  function getClampedRarityDistribution(distributions, delta) {
+  function calculateEffectiveRodLevel(rodLevel, rodLevelPenalty = 0) {
+    const penalty = Math.max(0, Math.floor(toFiniteNumber(rodLevelPenalty)));
+    return Math.max(-1, toFiniteNumber(rodLevel) - penalty);
+  }
+
+  function getClampedRarityDistribution(
+    distributions,
+    delta,
+    negativeDistribution,
+  ) {
     if (!Array.isArray(distributions) || distributions.length === 0) {
       return [];
     }
+    const normalizedDelta = Math.floor(toFiniteNumber(delta));
+    if (normalizedDelta < 0 && Array.isArray(negativeDistribution)) {
+      return negativeDistribution;
+    }
     const index = Math.max(
       0,
-      Math.min(
-        distributions.length - 1,
-        Math.floor(toFiniteNumber(delta)),
-      ),
+      Math.min(distributions.length - 1, normalizedDelta),
     );
     return distributions[index];
   }
@@ -1090,6 +1100,7 @@
     calculateBestCatchDistribution,
     calculateCatBaitConsumptionFactor,
     calculateCatWeatherExpectedValue,
+    calculateEffectiveRodLevel,
     calculateExpectedFishQuantity,
     calculateFishSalePrice,
     calculateSpecialUtrDropRate,

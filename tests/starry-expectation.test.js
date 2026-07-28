@@ -84,16 +84,16 @@ test("太阳风、流星雨、恒纪元和药水组合遵循源码规则", () =>
   assert.equal(hengjiyuan.periods[0].hengjiyuan, true);
   assertClose(hengjiyuan.periods[0].meanRawScore, 1.830068480250578);
 
-  const gammaLucky = calculate({
+  const gamma = calculate({
     attempts: 10,
     weatherType: "chaotic_era",
-    modifiers: { gamma: true, lucky: true },
+    modifiers: { gamma: true },
   });
-  assertClose(gammaLucky.dropRate, 0.15);
-  assert.equal(gammaLucky.periods[0].solarWind, true);
-  assert.equal(gammaLucky.periods[0].meteorShower, true);
-  assert.equal(gammaLucky.periods[0].hengjiyuan, true);
-  assert.equal(gammaLucky.periods[0].selectionCount, 3);
+  assertClose(gamma.dropRate, 0.15);
+  assert.equal(gamma.periods[0].solarWind, true);
+  assert.equal(gamma.periods[0].meteorShower, true);
+  assert.equal(gamma.periods[0].hengjiyuan, true);
+  assert.equal(gamma.periods[0].selectionCount, 2);
 
   const duoduo = calculate({
     attempts: 10,

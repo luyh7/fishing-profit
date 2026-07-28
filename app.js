@@ -24,6 +24,8 @@
     catchOutcomeApi.calculateCatBaitConsumptionFactor;
   const calculateCatWeatherExpectedValue =
     catchOutcomeApi.calculateCatWeatherExpectedValue;
+  const calculateEffectiveRodLevel =
+    catchOutcomeApi.calculateEffectiveRodLevel;
   const calculateExpectedFishQuantity =
     catchOutcomeApi.calculateExpectedFishQuantity;
   const calculateFishSalePrice = catchOutcomeApi.calculateFishSalePrice;
@@ -660,7 +662,7 @@
           );
         })
         .sort((left, right) => {
-          // Gamma affects only starry rolls and can coexist with a primary potion.
+          // Invalid multi-potion snapshots resolve deterministically.
           const priorityDelta =
             getPotionAutoSyncPriority(right) -
             getPotionAutoSyncPriority(left);
@@ -945,7 +947,7 @@
   }
 
   function getActiveStarryModifierSignature(now = Date.now()) {
-    return ["gamma_ray_burst", "double_catch"]
+    return ["double_catch"]
       .map((type) => `${type}:${Number(isPlayerBuffActive(type, now))}`)
       .join("|");
   }
@@ -964,7 +966,11 @@
     if (typeof getClampedRarityDistribution !== "function") {
       return [];
     }
-    return getClampedRarityDistribution(distributions, delta);
+    return getClampedRarityDistribution(
+      distributions,
+      delta,
+      config.rarityDistributionNeg1,
+    );
   }
 
   function getBaseProbabilityMappingOptions(
@@ -2820,7 +2826,10 @@
       0,
       Math.floor(parseNumber(potionConfig?.rodLevelPenalty)),
     );
-    return Math.max(0, parseNumber(rodLevel) - potionPenalty);
+    return calculateEffectiveRodLevel(
+      rodLevel,
+      potionPenalty,
+    );
   }
 
   function getCatAdjustedFishes(fishes, effects) {
@@ -5357,9 +5366,7 @@
       modifiers: {
         duoduo: potionType === "duoduo",
         lucky: potionType === "lucky_double",
-        gamma:
-          potionType === "gamma_ray_burst" ||
-          isPlayerBuffActive("gamma_ray_burst", now),
+        gamma: potionType === "gamma_ray_burst",
         doubleCatch: isPlayerBuffActive("double_catch", now),
       },
     };

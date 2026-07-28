@@ -1,7 +1,12 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.2",
-  gitCommitCount: 127,
+  gitCommitCount: 128,
   changelog: [
+    {
+      version: "1.2.128",
+      date: "2026-07-28",
+      summary: "修正多多药水门槛收益与药水互斥规则",
+    },
     {
       version: "1.2.127",
       date: "2026-07-28",
@@ -632,6 +637,9 @@ window.FISH_FISHING_CONFIG = {
     { level: 19, name: "鱼竿 Lv.19" },
     { level: 20, name: "鱼竿 Lv.20" },
     { level: 21, name: "鱼竿 Lv.21" },
+  ],
+  rarityDistributionNeg1: [
+    0.928, 0.072, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   ],
   rarityDistribution: [
     [0.6655, 0.3345, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
