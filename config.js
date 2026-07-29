@@ -1,10 +1,15 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.2",
-  gitCommitCount: 129,
+  gitCommitCount: 130,
   versionManifestUrl: "./version.json",
   versionCheckIntervalMs: 10 * 60 * 1000,
   versionIdleReloadMs: 5 * 60 * 1000,
   changelog: [
+    {
+      version: "1.2.130",
+      date: "2026-07-29",
+      summary: "同步地图 15、17-20 名称",
+    },
     {
       version: "1.2.129",
       date: "2026-07-28",
@@ -534,7 +539,7 @@ window.FISH_FISHING_CONFIG = {
     {
       id: 15,
       difficulty: 14,
-      name: "星砂漠",
+      name: "镜砂海",
       fishes: [
         { name: "沙星魟", nPrice: 470 },
         { name: "琉璃沙鳗", nPrice: 580 },
@@ -558,7 +563,7 @@ window.FISH_FISHING_CONFIG = {
     {
       id: 17,
       difficulty: 16,
-      name: "黑洞涡",
+      name: "坠星渊",
       fishes: [
         { name: "引力鲶", nPrice: 820 },
         { name: "暗环魟", nPrice: 1000 },
@@ -570,7 +575,7 @@ window.FISH_FISHING_CONFIG = {
     {
       id: 18,
       difficulty: 17,
-      name: "水晶星冠",
+      name: "晶冕礁",
       fishes: [
         { name: "晶冠鲷", nPrice: 1100 },
         { name: "棱镜鲫", nPrice: 1300 },
@@ -582,7 +587,7 @@ window.FISH_FISHING_CONFIG = {
     {
       id: 19,
       difficulty: 18,
-      name: "时钟星湖",
+      name: "停时湖",
       fishes: [
         { name: "秒针鲑", nPrice: 1400 },
         { name: "回环鳗", nPrice: 1700 },
@@ -594,7 +599,7 @@ window.FISH_FISHING_CONFIG = {
     {
       id: 20,
       difficulty: 19,
-      name: "奇迹彼岸",
+      name: "愿星岸",
       fishes: [
         { name: "奇迹锦鲤", nPrice: 1900 },
         { name: "终星鳐", nPrice: 2300 },

@@ -66,5 +66,6 @@ git config submodule.recurse true
 - 上游 `afb892f` 三类问题报告：[`analysis/20260726-afb892f.md`](analysis/20260726-afb892f.md)
 - 上游 `e6a2161` 三类问题报告：[`analysis/20260728-e6a2161.md`](analysis/20260728-e6a2161.md)
 - 上游 `e6a2161` 同 SHA 闭环复核：[`analysis/20260728-e6a2161-same-sha.md`](analysis/20260728-e6a2161-same-sha.md)
+- 上游 `e6a2161` 地图配置同 SHA 闭环复核：[`analysis/20260729-e6a2161-same-sha.md`](analysis/20260729-e6a2161-same-sha.md)
 
 旧版报告保留其生成时的快照口径和结论。旧压缩包及解压源码已经从当前工作树删除，但仍可从利润网历史提交 `267d99c` 找到；新的分析必须改用上游完整 commit SHA。

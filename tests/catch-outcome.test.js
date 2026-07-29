@@ -116,8 +116,33 @@ test("接口同步地图 11-20 基础鱼价", () => {
       `地图 ${mapId} 鱼价未同步`,
     );
   }
-  assert.equal(config.maps.find((map) => map.id === 14)?.name, "云鲸庭");
-  assert.equal(config.maps.find((map) => map.id === 15)?.name, "星砂漠");
+});
+
+test("地图名称与固定游戏源码一致", () => {
+  const previousWindow = global.window;
+  global.window = {};
+  delete require.cache[require.resolve("../config.js")];
+  require("../config.js");
+  const config = global.window.FISH_FISHING_CONFIG;
+  global.window = previousWindow;
+
+  const sourceLocations = JSON.parse(
+    fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../game-source/current/config/locations.json",
+      ),
+      "utf8",
+    ),
+  ).locations;
+  const sourceNames = Object.fromEntries(
+    sourceLocations.map((location) => [location.id, location.name]),
+  );
+  const configuredNames = Object.fromEntries(
+    config.maps.map((map) => [String(map.id), map.name]),
+  );
+
+  assert.deepEqual(configuredNames, sourceNames);
 });
 
 test("幸运药水同稀有度不按鱼价取优", () => {
