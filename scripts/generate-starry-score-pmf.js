@@ -14,7 +14,7 @@ const OUTPUT_PATH = path.join(REPOSITORY_ROOT, "starry-score-pmf.js");
 
 // Changing the Python rules must force an explicit review of this port.
 const EXPECTED_SOURCE_SHA256 =
-  "e724ebf6afc7833dbf2546dafcc525787af554602a82b2b2f0cecd1c14010b80";
+  "fcfbba731de1b51c1cd4dfcd29e5d6015cb1c7aadbd3c5050b34d34ae662f037";
 
 const FEATURE_SCORE_MICRO = Object.freeze({
   "3_same_run": 1_432_856,

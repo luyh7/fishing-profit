@@ -5105,7 +5105,7 @@
     "formatVersion": 1,
     "digitCount": 6,
     "source": "game-source/current/core/starry_system.py",
-    "sourceSha256": "e724ebf6afc7833dbf2546dafcc525787af554602a82b2b2f0cecd1c14010b80",
+    "sourceSha256": "fcfbba731de1b51c1cd4dfcd29e5d6015cb1c7aadbd3c5050b34d34ae662f037",
     "generationMethod": "prefix-state-dp-with-score-aggregation",
     "alphabets": {
       "normal": "0123456789",
