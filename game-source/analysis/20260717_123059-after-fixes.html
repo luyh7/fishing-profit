@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="render-analysis-report.js">
+    <title>20260717_123059 修复后源码复核</title>
+    <style>
+    :root {
+      color-scheme: light;
+      font-family: "Inter", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: #eef1f4;
+      color: #17212b;
+      line-height: 1.75;
+      font-size: 16px;
+    }
+    * { box-sizing: border-box; }
+    html { background: #eef1f4; }
+    body { margin: 0; padding: 40px 20px 64px; }
+    main {
+      width: min(100%, 980px);
+      margin: 0 auto;
+      padding: 48px 64px 64px;
+      background: #ffffff;
+      border: 1px solid #d8dee5;
+      box-shadow: 0 14px 36px rgba(24, 39, 56, 0.08);
+    }
+    h1, h2, h3, h4, h5, h6 {
+      color: #102a43;
+      line-height: 1.3;
+      margin: 2em 0 0.7em;
+      page-break-after: avoid;
+    }
+    h1 { margin-top: 0; font-size: 2rem; border-bottom: 3px solid #dce8f2; padding-bottom: 0.5em; }
+    h2 { font-size: 1.55rem; padding-bottom: 0.3em; border-bottom: 1px solid #dce8f2; }
+    h3 { font-size: 1.25rem; color: #145374; }
+    h4 { font-size: 1.08rem; color: #334e68; }
+    .report-section {
+      --category-color: #52606d;
+      --category-ink: #334e68;
+      --category-border: #bcccdc;
+      --category-wash: #f7f9fb;
+      margin: 42px 0;
+      padding: 0 26px 26px;
+      border: 1px solid var(--category-border);
+      border-left: 7px solid var(--category-color);
+      background: var(--category-wash);
+      border-radius: 8px;
+      page-break-inside: auto;
+    }
+    .report-section-source-bug {
+      --category-color: #c2410c;
+      --category-ink: #9a3412;
+      --category-border: #fdba74;
+      --category-wash: #fff7ed;
+    }
+    .report-section-profit-bug {
+      --category-color: #0f766e;
+      --category-ink: #115e59;
+      --category-border: #99d5cf;
+      --category-wash: #effaf8;
+    }
+    .report-section-uncertain-difference {
+      --category-color: #7c3aed;
+      --category-ink: #6d28d9;
+      --category-border: #d8b4fe;
+      --category-wash: #faf5ff;
+    }
+    .report-category-title {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 0 -26px 24px;
+      padding: 18px 26px 16px;
+      color: var(--category-ink);
+      background: rgba(255, 255, 255, 0.78);
+      border: 0;
+      border-bottom: 1px solid var(--category-border);
+    }
+    .category-kicker {
+      display: inline-flex;
+      align-items: center;
+      min-height: 25px;
+      padding: 2px 9px;
+      border: 1px solid var(--category-border);
+      border-radius: 999px;
+      background: #ffffff;
+      color: var(--category-ink);
+      font-size: 0.72rem;
+      font-weight: 800;
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+    .report-section h3 { color: var(--category-ink); }
+    .report-section > h3:first-of-type { margin-top: 0.7em; }
+    .report-section h4 { color: #334e68; }
+    p { margin: 0.8em 0; }
+    a { color: #0b6e99; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+    a:hover { color: #084c61; }
+    code {
+      padding: 0.12em 0.35em;
+      border-radius: 3px;
+      background: #f0f4f7;
+      color: #263238;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.9em;
+    }
+    pre {
+      overflow-x: auto;
+      margin: 1.2em 0;
+      padding: 16px 18px;
+      border-left: 4px solid #76a5af;
+      background: #f5f7f9;
+      line-height: 1.55;
+      page-break-inside: avoid;
+    }
+    pre code { padding: 0; background: transparent; }
+    blockquote {
+      margin: 1.2em 0;
+      padding: 0.15em 1.2em;
+      border-left: 4px solid #9fb3c8;
+      background: #f7f9fb;
+      color: #486581;
+    }
+    ul, ol { padding-left: 1.7em; }
+    li + li { margin-top: 0.45em; }
+    li > p:first-child { margin-top: 0; }
+    li > p:last-child { margin-bottom: 0; }
+    hr { border: 0; border-top: 1px solid #d8dee5; margin: 2em 0; }
+    .table-wrap { overflow-x: auto; margin: 1.3em 0; }
+    table { width: 100%; border-collapse: collapse; min-width: 560px; font-size: 0.95em; }
+    th, td { padding: 9px 12px; border: 1px solid #d8dee5; text-align: left; vertical-align: top; }
+    th { background: #edf3f7; color: #102a43; font-weight: 700; }
+    tr:nth-child(even) td { background: #fbfcfd; }
+    img { max-width: 100%; height: auto; }
+    @media (max-width: 760px) {
+      body { padding: 0; }
+      main { width: 100%; padding: 28px 22px 42px; border: 0; box-shadow: none; }
+      :root { font-size: 15px; }
+      h1 { font-size: 1.7rem; }
+      h2 { font-size: 1.4rem; }
+      .report-section { margin: 30px 0; padding: 0 18px 20px; border-left-width: 5px; }
+      .report-category-title { margin-left: -18px; margin-right: -18px; padding: 16px 18px 14px; }
+    }
+    @media print {
+      html, body { background: #ffffff; }
+      body { padding: 0; }
+      main { width: 100%; padding: 0; border: 0; box-shadow: none; }
+      a { color: inherit; }
+      .report-section { background: #ffffff; }
+      .report-category-title { background: #ffffff; }
+    }
+  </style>
+  </head>
+  <body>
+    <main><h1>20260717_123059 修复后源码复核</h1><h2>结论</h2><p>本轮点名的 14 类问题均已在利润网计算路径中修复。对能够从页面输入或自动玩家快照取得的状态重新对照后，未再发现这些点名规则与游戏实际结算路径不一致。</p><p>仍存在一些用户未要求修复的差异，主要集中在 24 小时尾段判定、地图准入道具、库存和逐时状态、星空鱼额外奖励、猫框保底及少数猫猫乐园边界。它们列在本文“仍保留的差异”中，本轮没有修改。</p><p>本报告继续以游戏实际结算路径 <a href="../versions/20260717_123059/core/engine.py"><code>core/engine.py</code></a> 为准；源码展示函数与实际抽取冲突时，以实际抽取结果为对齐目标。</p><h2>快照</h2><ul><li><p>压缩包：<code>zhenxun_plugin_fishing_20260717_123059.7z</code></p></li><li><p>解压目录：<code>game-source/versions/20260717_123059/</code></p></li><li><p>SHA-256：<code>bdb0cfd39f9da5f1e26ac08bc803f970431570ca48ffdd304ba443a4a3783bf8</code></p></li><li><p>原始分析：<a href="./20260717_123059.md"><code>20260717_123059.md</code></a></p></li><li><p>复核日期：2026-07-19</p></li></ul><h2>点名修复复核</h2><div class="table-wrap"><table><thead><tr><th scope="col">用户点名项</th><th scope="col">修复后结果</th><th scope="col">主要实现</th></tr></thead><tbody><tr><td>高渔力概率与 S1 UTR</td><td>使用源码 20×16 原始概率槽，差值钳制到 0-19；S1 最大稀有度为 UTR；扩展槽按实际引擎回落 N</td><td><a href="../../config.js"><code>config.js</code></a>、<a href="../../catch-outcome.js"><code>catch-outcome.js</code></a></td></tr><tr><td>11-20 图成就后常驻 UTR</td><td>自动玩家快照包含 <code>collect_scene_&lt;id&gt;</code> 时，不依赖天气类型启用递进 UTR 与 150 保底</td><td><a href="../../app.js"><code>app.js</code></a>、<a href="../versions/20260717_123059/status_api.py"><code>status_api.py</code></a></td></tr><tr><td>幸运取优与展示木框</td><td>顺序为材料、0.7% 木框、特殊 UTR、普通鱼；幸运按木框、特殊 UTR、原始稀有度取优，同档优先未收集，不比较鱼价</td><td><a href="../../catch-outcome.js"><code>catch-outcome.js</code></a>、<a href="../versions/20260717_123059/core/engine.py"><code>core/engine.py</code></a></td></tr><tr><td>展示木框展示与价值</td><td>计入 150 次保底并挤压鱼概率；价值固定为 0；当前单鱼期望价值面板展示长期木框掉落率</td><td><a href="../../app.js"><code>app.js</code></a>、<a href="../../config.js"><code>config.js</code></a></td></tr><tr><td>幸运与 UTR 保底顺序</td><td>先检查保底；未触发时完成两次随机取优；最终结果只推进一次保底。木框与 UTR 同时启用时使用耦合稳态</td><td><a href="../../catch-outcome.js"><code>catch-outcome.js</code></a></td></tr><tr><td>多多与旋转逗猫棒</td><td>期望数量使用 <code>基础数量 + 额外一条概率</code>，多多加 Lv.3 逗猫棒为 2.1；数量也用于保底推进</td><td><a href="../../app.js"><code>app.js</code></a>、<a href="../../catch-outcome.js"><code>catch-outcome.js</code></a></td></tr><tr><td>猫猫乐园鱼价取整</td><td>每个“鱼种 × 稀有度”执行 <code>floor(N价 × 稀有度倍率 × (1 + 加成))</code></td><td><a href="../../app.js"><code>app.js</code></a>、<a href="../../catch-outcome.js"><code>catch-outcome.js</code></a></td></tr><tr><td>功能差异 1</td><td>增加鱼钩 Lv.0，速度为 0</td><td><a href="../../config.js"><code>config.js</code></a></td></tr><tr><td>功能差异 2</td><td>增加鱼竿 Lv.21</td><td><a href="../../config.js"><code>config.js</code></a></td></tr><tr><td>功能差异 3</td><td>地图准入使用原始鱼竿等级，多多减级只用于结算</td><td><a href="../../app.js"><code>app.js</code></a></td></tr><tr><td>功能差异 9</td><td>猫天气逐条吃鱼；整组鱼全部被吃时不扣鱼饵</td><td><a href="../../app.js"><code>app.js</code></a>、<a href="../../catch-outcome.js"><code>catch-outcome.js</code></a></td></tr><tr><td>功能差异 10</td><td>金币礼物使用未加猫咖的原鱼价，完成整数取整后再除以 2</td><td><a href="../../catch-outcome.js"><code>catch-outcome.js</code></a></td></tr><tr><td>功能差异 12</td><td>幸运时，首次礼物非猫框后额外判定一次 15% 猫框，随机猫框率为 27.75%</td><td><a href="../../catch-outcome.js"><code>catch-outcome.js</code></a></td></tr><tr><td>功能差异 13</td><td>猫猫框价值固定为 200</td><td><a href="../../config.js"><code>config.js</code></a>、<a href="../../catch-outcome.js"><code>catch-outcome.js</code></a></td></tr><tr><td>功能差异 15</td><td>普通图先在完整原始概率槽上应用流星，再执行运行时映射和地图封顶；星空图保持源码的“先截断、再应用天气”顺序</td><td><a href="../../catch-outcome.js"><code>catch-outcome.js</code></a></td></tr></tbody></table></div><h3>关键数值复核</h3><ul><li><p>S1、渔力差 9 的普通表：<code>SR 6.77% / SSR 37.74% / UR 44.12% / UTR 11.37%</code>。</p></li><li><p>普通 UR 上限图、渔力差 12：<code>UR 81.92% / N 18.08%</code>，不再返回空数据。</p></li><li><p>普通图、无其他掉落时，0.7% 木框加 150 保底的长期木框率为 <code>1.074687853696%</code>。</p></li><li><p>幸运、特殊 UTR 随机率 0.2%、无木框时，含 150 保底的长期 UTR 率约为 <code>0.885014567446%</code>。</p></li><li><p>幸运、木框 0.7%、特殊 UTR 0.2%、数量恒为 1 时，长期木框率为 <code>1.582638579982%</code>，特殊 UTR 率为 <code>0.881233164924%</code>。</p></li><li><p>N 价 47、UR、猫咖鱼价 +10% 的售价为 <code>floor(47×16×1.1)=827</code>。</p></li><li><p>多多与 Lv.3 旋转逗猫棒的鱼获期望数量为 <code>2.1</code>，不是 <code>2.2</code>。</p></li></ul><h2>仍保留的差异</h2><p>以下项目不在本轮点名修复范围内，因此只记录、不修改。</p><h3>1. 24 小时尾段仍向下取整</h3><p>利润网用 <code>floor(24 / interval)</code> 计算完成次数；游戏会对不足一个完整间隔的尾段再按剩余比例做一次 Bernoulli 判定。利润网因此最多少算不足 1 次鱼获及其成本。网页见 <a href="../../app.js"><code>app.js</code></a>，源码见 <a href="../versions/20260717_123059/core/engine.py"><code>core/engine.py</code></a>。</p><h3>2. 地图准入道具未建模</h3><p>游戏中持票玩家进入 S1 可绕过鱼竿等级门槛，11-20 图还要求星空艇；利润网目前只按原始鱼竿等级和地图难度过滤。源码见 <a href="../versions/20260717_123059/core/actions.py"><code>core/actions.py</code></a>。</p><h3>3. 库存、换饵与逐时状态未模拟</h3><p>游戏会在结算时间轴上重新读取 buff 和鱼饵库存，鱼饵耗尽后自动换饵，最终进入无饵模式。利润网把当前配置外推 24 小时，并假定候选鱼饵库存无限。因此页面仍是稳态方案比较，不是背包逐时模拟。</p><h3>4. 其他药水和 buff 未计入</h3><p>游戏还支持许愿、加速、双倍捕获、闪光等效果；利润网当前只计算无药水、多多和幸运。加速与双倍捕获等会直接改变 24 小时利润。源码效果入口见 <a href="../versions/20260717_123059/models/buff.py"><code>models/buff.py</code></a>。</p><h3>5. 星空鱼和星空天气额外奖励未计入</h3><p>11-20 图的普通鱼获还会尝试生成流星鱼，太阳风、流星雨、恒纪元和闪光等会影响其产物。利润网已修复普通鱼概率和常驻 UTR，但仍未计算这部分额外收益。源码见 <a href="../versions/20260717_123059/core/starry_system.py"><code>core/starry_system.py</code></a> 和 <a href="../versions/20260717_123059/core/engine.py"><code>core/engine.py</code></a>。</p><h3>6. 首条 UTR 消耗和一次性成就收益未计入</h3><p>游戏会自动消耗第一条未收集 UTR 以解锁图鉴，并可能发放一次性成就金币。利润网仍把所有 UTR 按可出售鱼计入稳态收益。源码见 <a href="../versions/20260717_123059/core/result.py"><code>core/result.py</code></a>。</p><h3>7. 猫礼物的同稀有度选鱼策略不同</h3><p>源码优先赠送鱼池中的第一条未收集鱼，全部收集后才赠送最贵鱼；利润网未完成场景成就时仍使用同稀有度随机鱼的平均价值，完成成就后使用最贵鱼。源码见 <a href="../versions/20260717_123059/core/cat.py"><code>core/cat.py</code></a>。</p><h3>8. 猫猫框 15 次保底未建模</h3><p>利润网已按要求修复随机猫框、幸运额外判定和 200 价值，但没有加入游戏的 15 次猫框保底。源码见 <a href="../versions/20260717_123059/constants.py"><code>constants.py</code></a> 和 <a href="../versions/20260717_123059/core/cat.py"><code>core/cat.py</code></a>。</p><h3>9. 手动猫猫乐园建筑可形成非法组合</h3><p>利润网仍允许独立设置各建筑等级，可能构造源码升级/降级规则不允许的组合。自动同步的真实玩家状态不受影响。源码限制见 <a href="../versions/20260717_123059/cat_park.py"><code>cat_park.py</code></a>。</p><h3>10. 页面使用长期保底稳态，不读取当前计数</h3><p>利润网使用木框和 UTR 保底的长期稳态概率；游戏的有限时段结算从玩家当前木框、UTR、猫框计数器开始。当前状态快照没有向页面提供这些计数，因此临近保底的玩家短期结果仍会不同。</p><h3>11. 幸运与水晶猫城堡的相关性不同</h3><p>源码每次捕获只判定一次水晶猫城堡的鱼竿 <code>+1</code>，幸运药水的两个随机结果共用该等级。利润网先按城堡概率混合两档分布，再做两次幸运取优，数学上等效于两个结果独立判定城堡。该差异只出现在 S1 同时启用城堡和幸运时，影响较小，但仍是可测差异。源码见 <a href="../versions/20260717_123059/core/engine.py"><code>core/engine.py</code></a>。</p><h3>12. 手动模式没有星空成就输入</h3><p>自动更新并匹配玩家时，利润网会读取 <code>players[].achievements</code>，此路径的 11-20 常驻 UTR 已与源码一致。未匹配玩家的手动模式无法知道每张星空图是否已完成 <code>collect_scene_&lt;id&gt;</code>，目前按未解锁处理，也没有单独的手动开关。</p><h3>13. 过山车天气增幅未作用于迷途风 UTR</h3><p>游戏会把猫猫乐园过山车的天气增幅应用到迷途风特殊 UTR 概率；利润网沿用原有口径，只把该建筑用于雨天速度、暴雨消耗、流星和猫天气，不放大迷途风 UTR。此项不在本轮点名范围，因此没有修改。源码见 <a href="../versions/20260717_123059/core/engine.py"><code>core/engine.py</code></a>。</p><h2>用户指定口径</h2><ul><li><p>展示木框价值固定为 0。源码中展示木框可出售 100 金币，因此这是用户明确要求保留的有意差异，不属于待修复项。</p></li><li><p>猫猫框价值固定为 200，与源码出售价值一致；仍有差异的是上文所列的 15 次猫框保底。</p></li></ul><h2>源码自身的不一致</h2><p>源码的概率展示函数会把超过地图最大稀有度的扩展槽封顶合并；实际捕获代码却把原始索引 6 及以上回退成 N。利润网本轮按实际捕获代码对齐，因此高渔力下的页面概率可能继续与游戏自己的展示文本不同。建议上游补测试并统一两条路径。</p><h2>验证</h2><ul><li><p>结构化读取源码常量后与页面配置比较：20×16 <code>RARITY_DISTRIBUTION</code> 逐项完全一致。</p></li><li><p><code>node --test tests/catch-outcome.test.js</code>：23/23 通过。</p></li><li><p><code>node --check app.js</code>、<code>node --check catch-outcome.js</code>、<code>node --check config.js</code>：通过。</p></li><li><p><code>git diff --check</code>：通过。</p></li><li><p>Chromium 桌面 1440×1000 与移动端 390×844：页面正常渲染，无 JavaScript 异常或页面级横向溢出；鱼钩 Lv.0、鱼竿 Lv.21 和“展示木框 1.07%”均已进入实际页面。</p></li><li><p>未运行游戏完整测试套件：源码依赖真寻机器人、数据库及其运行环境，本仓库没有完整运行依赖。本次使用实际结算路径静态复核和利润网纯逻辑回归测试。</p></li></ul></main>
+  </body>
+</html>

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="render-analysis-report.js">
+    <title>Game source analysis - 20260722-29e6047</title>
+    <style>
+    :root {
+      color-scheme: light;
+      font-family: "Inter", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: #eef1f4;
+      color: #17212b;
+      line-height: 1.75;
+      font-size: 16px;
+    }
+    * { box-sizing: border-box; }
+    html { background: #eef1f4; }
+    body { margin: 0; padding: 40px 20px 64px; }
+    main {
+      width: min(100%, 980px);
+      margin: 0 auto;
+      padding: 48px 64px 64px;
+      background: #ffffff;
+      border: 1px solid #d8dee5;
+      box-shadow: 0 14px 36px rgba(24, 39, 56, 0.08);
+    }
+    h1, h2, h3, h4, h5, h6 {
+      color: #102a43;
+      line-height: 1.3;
+      margin: 2em 0 0.7em;
+      page-break-after: avoid;
+    }
+    h1 { margin-top: 0; font-size: 2rem; border-bottom: 3px solid #dce8f2; padding-bottom: 0.5em; }
+    h2 { font-size: 1.55rem; padding-bottom: 0.3em; border-bottom: 1px solid #dce8f2; }
+    h3 { font-size: 1.25rem; color: #145374; }
+    h4 { font-size: 1.08rem; color: #334e68; }
+    .report-section {
+      --category-color: #52606d;
+      --category-ink: #334e68;
+      --category-border: #bcccdc;
+      --category-wash: #f7f9fb;
+      margin: 42px 0;
+      padding: 0 26px 26px;
+      border: 1px solid var(--category-border);
+      border-left: 7px solid var(--category-color);
+      background: var(--category-wash);
+      border-radius: 8px;
+      page-break-inside: auto;
+    }
+    .report-section-source-bug {
+      --category-color: #c2410c;
+      --category-ink: #9a3412;
+      --category-border: #fdba74;
+      --category-wash: #fff7ed;
+    }
+    .report-section-profit-bug {
+      --category-color: #0f766e;
+      --category-ink: #115e59;
+      --category-border: #99d5cf;
+      --category-wash: #effaf8;
+    }
+    .report-section-uncertain-difference {
+      --category-color: #7c3aed;
+      --category-ink: #6d28d9;
+      --category-border: #d8b4fe;
+      --category-wash: #faf5ff;
+    }
+    .report-category-title {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 0 -26px 24px;
+      padding: 18px 26px 16px;
+      color: var(--category-ink);
+      background: rgba(255, 255, 255, 0.78);
+      border: 0;
+      border-bottom: 1px solid var(--category-border);
+    }
+    .category-kicker {
+      display: inline-flex;
+      align-items: center;
+      min-height: 25px;
+      padding: 2px 9px;
+      border: 1px solid var(--category-border);
+      border-radius: 999px;
+      background: #ffffff;
+      color: var(--category-ink);
+      font-size: 0.72rem;
+      font-weight: 800;
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+    .report-section h3 { color: var(--category-ink); }
+    .report-section > h3:first-of-type { margin-top: 0.7em; }
+    .report-section h4 { color: #334e68; }
+    p { margin: 0.8em 0; }
+    a { color: #0b6e99; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+    a:hover { color: #084c61; }
+    code {
+      padding: 0.12em 0.35em;
+      border-radius: 3px;
+      background: #f0f4f7;
+      color: #263238;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.9em;
+    }
+    pre {
+      overflow-x: auto;
+      margin: 1.2em 0;
+      padding: 16px 18px;
+      border-left: 4px solid #76a5af;
+      background: #f5f7f9;
+      line-height: 1.55;
+      page-break-inside: avoid;
+    }
+    pre code { padding: 0; background: transparent; }
+    blockquote {
+      margin: 1.2em 0;
+      padding: 0.15em 1.2em;
+      border-left: 4px solid #9fb3c8;
+      background: #f7f9fb;
+      color: #486581;
+    }
+    ul, ol { padding-left: 1.7em; }
+    li + li { margin-top: 0.45em; }
+    li > p:first-child { margin-top: 0; }
+    li > p:last-child { margin-bottom: 0; }
+    hr { border: 0; border-top: 1px solid #d8dee5; margin: 2em 0; }
+    .table-wrap { overflow-x: auto; margin: 1.3em 0; }
+    table { width: 100%; border-collapse: collapse; min-width: 560px; font-size: 0.95em; }
+    th, td { padding: 9px 12px; border: 1px solid #d8dee5; text-align: left; vertical-align: top; }
+    th { background: #edf3f7; color: #102a43; font-weight: 700; }
+    tr:nth-child(even) td { background: #fbfcfd; }
+    img { max-width: 100%; height: auto; }
+    @media (max-width: 760px) {
+      body { padding: 0; }
+      main { width: 100%; padding: 28px 22px 42px; border: 0; box-shadow: none; }
+      :root { font-size: 15px; }
+      h1 { font-size: 1.7rem; }
+      h2 { font-size: 1.4rem; }
+      .report-section { margin: 30px 0; padding: 0 18px 20px; border-left-width: 5px; }
+      .report-category-title { margin-left: -18px; margin-right: -18px; padding: 16px 18px 14px; }
+    }
+    @media print {
+      html, body { background: #ffffff; }
+      body { padding: 0; }
+      main { width: 100%; padding: 0; border: 0; box-shadow: none; }
+      a { color: inherit; }
+      .report-section { background: #ffffff; }
+      .report-category-title { background: #ffffff; }
+    }
+  </style>
+  </head>
+  <body>
+    <main><ul><li><p>旧 SHA：<a href="https://github.com/RShock/zhenxun_plugin_fishing/commit/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583" target="_blank" rel="noreferrer">fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583</a></p></li><li><p>目标 SHA：<a href="https://github.com/RShock/zhenxun_plugin_fishing/commit/29e6047fa21bdb611272db2885614130031601b5" target="_blank" rel="noreferrer">29e6047fa21bdb611272db2885614130031601b5</a></p></li><li><p>固定 compare：<a href="https://github.com/RShock/zhenxun_plugin_fishing/compare/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583...29e6047fa21bdb611272db2885614130031601b5" target="_blank" rel="noreferrer">完整增量</a></p></li></ul><section class="report-section report-section-source-bug" aria-labelledby="report-category-source-bug"><h2 id="report-category-source-bug" class="report-category-title"><span class="category-kicker">源码问题</span><span>游戏源码 Bug</span></h2><h3>1. 并发结算仍会按过期会话快照重复扣饵并覆盖鱼获（高）</h3><p><a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/actions.py#L255-L321" target="_blank" rel="noreferrer"><em>compute</em>settle_step()</a>先读取会话并在无锁条件下模拟完整结果；<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/actions.py#L324-L341" target="_blank" rel="noreferrer">状态查询路径</a>直到计算完成后才进入事务，既不锁用户行也不比较 <code>last_settle_time</code>。收杆同样在事务外计算，事务内的<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/actions.py#L892-L924" target="_blank" rel="noreferrer">行锁</a>只检查会话是否仍存在，再直接应用先前的 <code>updated_status</code>。</p><p>两个状态查询可从同一 S0 生成结果，后写者覆盖鱼获、保底和时间推进，但两边都按各自 <code>bait_usage</code> 扣除鱼饵；状态查询与收杆并发时，收杆还会把基于 S0 的计划套到已推进的用户状态。事务只保证单次写入同成同败，不能保证计划对应当前快照，收益、成本和状态均可能重复或丢失。</p><h3>2. 卖鱼和卖饵仍不是原子交换（高）</h3><p><a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/backpack/sell.py#L20-L50" target="_blank" rel="noreferrer">sell_fish()</a>按可售快照计价后，依次删库存、加金币和加次数；<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/models/user.py#L782-L790" target="_blank" rel="noreferrer">delete_fish_entries()</a>没有行锁也不返回实际删除数量，<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/models/user.py#L360-L367" target="_blank" rel="noreferrer">add_gold()</a>是无锁的读改写。<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/backpack/sell.py#L154-L185" target="_blank" rel="noreferrer">sell_bait()</a>也忽略 <code>remove_item()</code> 的布尔返回值后直接加币。</p><p>并发出售可同时按同一库存报价，后执行者即使没有删到对应物品仍会发币；删除后加币失败又会让物品消失而未结算款项。出售是收益闭环的最终兑现步骤，库存与金币必须在同一锁定事务内提交。</p><h3>3. 钓鱼中设定优先鱼饵会追溯改写未结算区间（中）</h3><p>结算上下文明确约定钓鱼期间只修改 <code>preferred_bait_id</code>，当前 <code>bait_id</code> 应保持到耗尽后由模拟切换，<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/actions.py#L116-L120" target="_blank" rel="noreferrer">证据见这里</a>。但 <a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/bait.py#L43-L63" target="_blank" rel="noreferrer">set_preferred_bait()</a>同时写入两个字段。</p><p>下一次状态查询或收杆会用新 <code>bait_id</code> 从旧的 <code>last_settle_time</code> 模拟整段历史，设定前已经过去的时间会按新鱼饵的速度、概率和成本结算。这与自身会话语义相矛盾，并直接改变实际鱼获和鱼饵消耗。</p><h3>4. 每次有鱼饵消耗的结算都会切换至最贵鱼饵（中）</h3><p>模拟器只在当前鱼饵耗尽时才选择价格最高的备用饵，<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/engine.py#L951-L977" target="_blank" rel="noreferrer">证据见 <em>switch</em>depleted_bait()</a>。但状态结算的 <a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/bait.py#L66-L87" target="_blank" rel="noreferrer">consume_bait_incremental()</a>和收杆事务内的<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/models/user_mutations.py#L615-L637" target="_blank" rel="noreferrer">对应实现</a>在扣除任意一枚鱼饵后均无条件选择最贵库存鱼饵并覆盖 <code>bait_id</code>。</p><p>因此当前鱼饵仍有库存时，只要结算一次，下一段就可能被强制换成更贵、速度不同的鱼饵。它既绕过优先鱼饵语义，也让后续收益和成本偏离本次模拟所承诺的“耗尽后换饵”规则。</p><h3>5. 跨鱼饵的猫礼物被合并成一种鱼饵发放（中）</h3><p>捕获循环将当时的 <code>bait_id</code> 传给猫礼物逻辑；<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/cat.py#L44-L51" target="_blank" rel="noreferrer">process_cat_gift()</a>只保存第一种非空 ID，却累加之后所有 <code>bait_count</code>。跨状态合并时，<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/cat_gift.py#L29-L46" target="_blank" rel="noreferrer">merge_cat_gifts()</a>又可能以新 ID 覆盖旧 ID，同时继续累加数量；最终发放只能以<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/stop_mutations.py#L64-L68" target="_blank" rel="noreferrer">单个 <code>bait_id</code></a>入库。</p><p>长结算内发生自动换饵，或两次状态结算使用不同鱼饵时，本应按各次当前鱼饵分别获得的礼物会全部变为一种鱼饵。这是已发生事件的物品错误，不是利润网忽略的有限库存模拟差异。</p><h3>6. 多数量捕获跨过 150 次 UTR 阈值时保底仍会延后一组（中）</h3><p><a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/engine.py#L411-L419" target="_blank" rel="noreferrer">UTR 保底检查</a>只以 <code>utr_pity + 1</code> 判断，而普通捕获会按 <code>duoduo_mult</code> 将计数一次增加多次，<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/engine.py#L503-L507" target="_blank" rel="noreferrer">证据见计数更新</a>。玩法说明承诺每累计 150 次必出 UTR，<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/AI_MAINTENANCE.md#L295-L301" target="_blank" rel="noreferrer">对应规则</a>。</p><p>例如计数为 148 且本组双倍鱼数量为 2 时，检查认为 149 未达到阈值，随后直接写成 150；保底被推迟到下一组而非第 150 次捕获。<code>b273220</code> 只修正了提示预判，未修正实际阈值判定。</p><h3>7. 黑商交换锁定鱼到首条 UTR 时仍会丢失应继承锁定的目标鱼（中）</h3><p><a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/backpack/black_market.py#L539-L563" target="_blank" rel="noreferrer">黑商逻辑</a>先移除锁定来源，再以统一入库流程加入目标并尝试锁定。首条 UTR 在<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/stop_mutations.py#L317-L338" target="_blank" rel="noreferrer">入库逻辑</a>中被图鉴消耗，随后 <a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/models/user.py#L647-L659" target="_blank" rel="noreferrer">toggle_lock_by_numeric_id()</a>找不到背包项而返回 <code>False</code>。维护约束却要求锁定来源的实际获得鱼留在背包并继承锁定，<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/AI_MAINTENANCE.md#L602-L603" target="_blank" rel="noreferrer">见此处</a>。</p><p>目标版本不再错误显示“已自动锁定”，但仍让玩家用锁定来源换取后只得到一次图鉴解锁，既无目标背包鱼也无法继承锁定，仍违反明确的交换承诺。</p><h3>8. 幸运药水的商店时长与实际时长相差四小时（中）</h3><p><a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/config/shop.json#L129-L136" target="_blank" rel="noreferrer">shop.json</a>配置并展示幸运药水持续 720 分钟、即 12 小时；<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/shop/potion_use.py#L125-L179" target="_blank" rel="noreferrer">use_lucky_potion()</a>却硬编码每瓶只加 8 小时。</p><p>玩家按商店信息使用后少获得四小时效果，多瓶叠加时误差线性扩大。运行路径、配置和展示不能同时成立，直接影响有效收益时间。</p></section><section class="report-section report-section-profit-bug" aria-labelledby="report-category-profit-bug"><h2 id="report-category-profit-bug" class="report-category-title"><span class="category-kicker">收益问题</span><span>利润网 Bug</span></h2><h3>1. 有效的 <code>double_catch</code> 仍被普通钓鱼收益链漏算（高）</h3><p>页面仅将 <code>doubleCatch</code> 传给星空期望，<a href="../../app.js#L5216">见星空调用</a>；普通地图的<a href="../../app.js#L2911">每日次数与收益计算</a>只使用药水数量倍率和猫乐园额外数量，未纳入该 Buff。目标源码会在每个间隔将 <code>base_catch_count</code> 设为 2 并执行两次基础捕获，<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/engine.py#L674-L729" target="_blank" rel="noreferrer">实际循环</a>，整组仍只进行一次鱼饵消耗记录，<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/engine.py#L1192-L1208" target="_blank" rel="noreferrer">证据见这里</a>。</p><p>因此 <code>double_catch</code> 生效时，普通图鱼获价值、<code>grossRevenue</code> 和 <code>netRevenue</code> 都被低估，而成本不应同比翻倍；这也违背了利润网自身 PRD 对该 Buff 的承诺。</p><h3>2. 星空积分 PMF 仍锁定旧评分器，未覆盖目标的新番型（高）</h3><p><a href="../../scripts/generate-starry-score-pmf.js#L11">生成器</a>和<a href="../../starry-score-pmf.js#L2852">检入产物</a>仍记录旧 <code>starry_system.py</code> 指纹 <code>0d0c39fd...</code>，目标文件 SHA-256 已变为 <code>4a2a6152...</code>。目标评分器加入全奇/全偶、分块连号和严格兜底的屁胡等规则，<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/starry_system.py#L111-L155" target="_blank" rel="noreferrer">规则定义</a>与<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/starry_system.py#L389-L510" target="_blank" rel="noreferrer">实际评分</a>均已改变。</p><p>页面的流星鱼原始分、奖池概率、碎片连锁和奖励积分仍基于旧 PMF，目标源码实际结算会逐条评分并发放对应奖池奖励，因此所有这些星空期望都会漂移。</p><h3>3. 伽马射线暴漏掉流星鱼最终掉率翻倍（高）</h3><p><a href="../../starry-expectation.js#L288">starry-expectation.js</a>将伽马映射为三类天气，但其<a href="../../starry-expectation.js#L299">掉率公式</a>只加入太阳风的 <code>+2.5%</code>，没有乘以 2。目标源码在基础、鱼竿和太阳风加成合计后，对伽马<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/starry_system.py#L589-L607" target="_blank" rel="noreferrer">执行 <code>drop_rate *= 2</code> 并封顶</a>。</p><p>闪光药水期间，页面低估流星鱼数量、积分、各奖池抽取次数及其奖励期望；现有测试固化的 <code>0.075</code> 掉率同样是旧规则。</p><h3>4. 中级奖池的猫猫框数量少算为 1 个（中）</h3><p><a href="../../starry-expectation.js#L75">利润网奖池定义</a>把中级池猫猫框设为 1 个；目标源码的<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/starry_system.py#L34-L57" target="_blank" rel="noreferrer">同一奖池项</a>实际发放 3 个。</p><p>页面的奖池展示和猫猫框期望都只有真实值的三分之一，进一步影响以猫猫框为输入的资源判断。</p></section><section class="report-section report-section-uncertain-difference" aria-labelledby="report-category-uncertain-difference"><h2 id="report-category-uncertain-difference" class="report-category-title"><span class="category-kicker">待定差异</span><span>源码与利润网有差异但无法确定是否为 Bug</span></h2><h3>1. 伽马与多多/幸运应只展示可达组合，还是保留组合假设分析</h3><p>利润网的 PRD 明确允许伽马与主药水共存，<a href="../../PRD.MD#L63">见定义</a>，页面也可同时把这些状态传给星空期望；目标源码则把真多多、幸运和闪光药水列为互斥组，<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/shop/potion_use.py#L18-L34" target="_blank" rel="noreferrer">证据见这里</a>。</p><p>若产品目标是复现玩家可达的真实结算状态，应改为三选一；若页面有意用于理论组合比较，则应保留计算并由用户确认该非真实状态的产品口径。</p><h3>2. 收杆尾数应保留源码概率，还是继续按整次向下取整</h3><p>利润网以 <code>floor(24 / interval)</code> 计算完整捕获次数，<a href="../../app.js#L2933">见此处</a>；目标模拟器对不足一个完整间隔的尾段还会按 <code>remaining / interval</code> 概率尝试一次捕获，<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/29e6047fa21bdb611272db2885614130031601b5/core/engine.py#L1135-L1174" target="_blank" rel="noreferrer">实际路径</a>。</p><p>这会影响任意不足一个完整间隔的长期期望，但 PRD 已明确选择向下取整。需要用户决定继续采用保守的“完成周期”口径，还是改为复现单次收杆的概率期望。</p></section></main>
+  </body>
+</html>

@@ -44,6 +44,8 @@
 
 ## 报告格式
 
+- 每份报告的交付格式为同名的 `.html` 阅读版和 `.png` 整页图片；Markdown 文件保留为可审查、可稳定 diff 的源文档。使用 [`scripts/render-analysis-report.js`](../scripts/render-analysis-report.js) 从 Markdown 一次生成两种产物，不手工编辑生成文件。
+- HTML 必须是自包含页面，不依赖外部运行时资源；PNG 必须覆盖报告完整正文，默认使用 1440 CSS 像素宽度生成。
 - 报告开头只记录审查范围：旧 SHA、目标 SHA 和固定 compare 链接。
 - 除上述范围元数据外，所有发现必须且只能位于以下三个固定标题下：
 

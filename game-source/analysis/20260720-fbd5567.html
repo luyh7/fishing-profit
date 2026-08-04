@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="render-analysis-report.js">
+    <title>2026-07-20 上游 fbd5567 三类问题报告</title>
+    <style>
+    :root {
+      color-scheme: light;
+      font-family: "Inter", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: #eef1f4;
+      color: #17212b;
+      line-height: 1.75;
+      font-size: 16px;
+    }
+    * { box-sizing: border-box; }
+    html { background: #eef1f4; }
+    body { margin: 0; padding: 40px 20px 64px; }
+    main {
+      width: min(100%, 980px);
+      margin: 0 auto;
+      padding: 48px 64px 64px;
+      background: #ffffff;
+      border: 1px solid #d8dee5;
+      box-shadow: 0 14px 36px rgba(24, 39, 56, 0.08);
+    }
+    h1, h2, h3, h4, h5, h6 {
+      color: #102a43;
+      line-height: 1.3;
+      margin: 2em 0 0.7em;
+      page-break-after: avoid;
+    }
+    h1 { margin-top: 0; font-size: 2rem; border-bottom: 3px solid #dce8f2; padding-bottom: 0.5em; }
+    h2 { font-size: 1.55rem; padding-bottom: 0.3em; border-bottom: 1px solid #dce8f2; }
+    h3 { font-size: 1.25rem; color: #145374; }
+    h4 { font-size: 1.08rem; color: #334e68; }
+    .report-section {
+      --category-color: #52606d;
+      --category-ink: #334e68;
+      --category-border: #bcccdc;
+      --category-wash: #f7f9fb;
+      margin: 42px 0;
+      padding: 0 26px 26px;
+      border: 1px solid var(--category-border);
+      border-left: 7px solid var(--category-color);
+      background: var(--category-wash);
+      border-radius: 8px;
+      page-break-inside: auto;
+    }
+    .report-section-source-bug {
+      --category-color: #c2410c;
+      --category-ink: #9a3412;
+      --category-border: #fdba74;
+      --category-wash: #fff7ed;
+    }
+    .report-section-profit-bug {
+      --category-color: #0f766e;
+      --category-ink: #115e59;
+      --category-border: #99d5cf;
+      --category-wash: #effaf8;
+    }
+    .report-section-uncertain-difference {
+      --category-color: #7c3aed;
+      --category-ink: #6d28d9;
+      --category-border: #d8b4fe;
+      --category-wash: #faf5ff;
+    }
+    .report-category-title {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 0 -26px 24px;
+      padding: 18px 26px 16px;
+      color: var(--category-ink);
+      background: rgba(255, 255, 255, 0.78);
+      border: 0;
+      border-bottom: 1px solid var(--category-border);
+    }
+    .category-kicker {
+      display: inline-flex;
+      align-items: center;
+      min-height: 25px;
+      padding: 2px 9px;
+      border: 1px solid var(--category-border);
+      border-radius: 999px;
+      background: #ffffff;
+      color: var(--category-ink);
+      font-size: 0.72rem;
+      font-weight: 800;
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+    .report-section h3 { color: var(--category-ink); }
+    .report-section > h3:first-of-type { margin-top: 0.7em; }
+    .report-section h4 { color: #334e68; }
+    p { margin: 0.8em 0; }
+    a { color: #0b6e99; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+    a:hover { color: #084c61; }
+    code {
+      padding: 0.12em 0.35em;
+      border-radius: 3px;
+      background: #f0f4f7;
+      color: #263238;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.9em;
+    }
+    pre {
+      overflow-x: auto;
+      margin: 1.2em 0;
+      padding: 16px 18px;
+      border-left: 4px solid #76a5af;
+      background: #f5f7f9;
+      line-height: 1.55;
+      page-break-inside: avoid;
+    }
+    pre code { padding: 0; background: transparent; }
+    blockquote {
+      margin: 1.2em 0;
+      padding: 0.15em 1.2em;
+      border-left: 4px solid #9fb3c8;
+      background: #f7f9fb;
+      color: #486581;
+    }
+    ul, ol { padding-left: 1.7em; }
+    li + li { margin-top: 0.45em; }
+    li > p:first-child { margin-top: 0; }
+    li > p:last-child { margin-bottom: 0; }
+    hr { border: 0; border-top: 1px solid #d8dee5; margin: 2em 0; }
+    .table-wrap { overflow-x: auto; margin: 1.3em 0; }
+    table { width: 100%; border-collapse: collapse; min-width: 560px; font-size: 0.95em; }
+    th, td { padding: 9px 12px; border: 1px solid #d8dee5; text-align: left; vertical-align: top; }
+    th { background: #edf3f7; color: #102a43; font-weight: 700; }
+    tr:nth-child(even) td { background: #fbfcfd; }
+    img { max-width: 100%; height: auto; }
+    @media (max-width: 760px) {
+      body { padding: 0; }
+      main { width: 100%; padding: 28px 22px 42px; border: 0; box-shadow: none; }
+      :root { font-size: 15px; }
+      h1 { font-size: 1.7rem; }
+      h2 { font-size: 1.4rem; }
+      .report-section { margin: 30px 0; padding: 0 18px 20px; border-left-width: 5px; }
+      .report-category-title { margin-left: -18px; margin-right: -18px; padding: 16px 18px 14px; }
+    }
+    @media print {
+      html, body { background: #ffffff; }
+      body { padding: 0; }
+      main { width: 100%; padding: 0; border: 0; box-shadow: none; }
+      a { color: inherit; }
+      .report-section { background: #ffffff; }
+      .report-category-title { background: #ffffff; }
+    }
+  </style>
+  </head>
+  <body>
+    <main><h1>2026-07-20 上游 fbd5567 三类问题报告</h1><p>审查范围：</p><ul><li><p>旧 SHA：<a href="https://github.com/RShock/zhenxun_plugin_fishing/commit/56a330a258dfc4ffdd0cd1011ad8898b717cd47b" target="_blank" rel="noreferrer">56a330a258dfc4ffdd0cd1011ad8898b717cd47b</a></p></li><li><p>目标 SHA：<a href="https://github.com/RShock/zhenxun_plugin_fishing/commit/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583" target="_blank" rel="noreferrer">fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583</a></p></li><li><p>固定比较：<a href="https://github.com/RShock/zhenxun_plugin_fishing/compare/56a330a258dfc4ffdd0cd1011ad8898b717cd47b...fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583" target="_blank" rel="noreferrer">完整增量</a></p></li></ul><section class="report-section report-section-source-bug" aria-labelledby="report-category-source-bug"><h2 id="report-category-source-bug" class="report-category-title"><span class="category-kicker">源码问题</span><span>游戏源码 Bug</span></h2><h3>1. 跨 23:00 的结算会按错误天气日判定乱纪元，并把结果覆盖整个区间（高）</h3><p><a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/weather_service.py#L376-L394" target="_blank" rel="noreferrer">is_chaotic_era_active()</a>虽接收 at_time，查询天气记录时却固定使用当前 <em>weather</em>date()。<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/actions.py#L131-L155" target="_blank" rel="noreferrer"><em>prepare</em>fishing_context()</a>又只以 settle_start 判定一次，并将迷途风 Buff 覆盖整个待结算区间。</p><p>因此 22:50-23:10 一类跨天气日结算既可能找不到旧天气记录，也可能将新天气误用于 23:00 前的鱼获；乱纪元实际启用的特殊 UTR 与 150 次保底会漏算或多算。状态查询和收杆均走这条路径，故不是单纯展示问题。</p><h3>2. 结算路径违反自身的原子性承诺（高）</h3><p>收杆声明事务外阶段只读、失败后数据库保持收杆前状态，但它先在事务外调用 <a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/actions.py#L882-L916" target="_blank" rel="noreferrer"><em>compute</em>settle_step()</a>。模拟内部的<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/engine.py#L946-L969" target="_blank" rel="noreferrer"><em>switch</em>depleted_bait()</a>会直接保存 user.bait_id，这次写入不在随后收杆事务中，后续失败无法回滚。</p><p>状态查询路径也先<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/actions.py#L293-L305" target="_blank" rel="noreferrer">保存结算状态</a>，再单独扣除鱼饵。两次写入之间若失败，鱼获、保底和最后结算时间已推进，鱼饵却未扣除，违反会话状态与成本应一致提交的要求。</p><h3>3. 并发的状态查询与收杆可用过期快照覆盖已结算鱼获（高）</h3><p><a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/actions.py#L224-L290" target="_blank" rel="noreferrer"><em>compute</em>settle_step()</a>在没有锁的情况下读取会话快照并计算 updated_status。状态查询可立即写入该快照，而收杆直到<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/actions.py#L847-L916" target="_blank" rel="noreferrer">事务内部</a>才锁用户，且没有比较 last_settle_time 或版本号。</p><p>例如收杆 A 与查询 B 都从 S0 计算，B 先将 SB 写入并扣饵，A 随后持有锁仍把基于 S0 的 SA 应用为最终收杆结果。B 那段鱼获、保底、猫礼物和最后结算时间会丢失，而 B 的鱼饵已经扣除；同一会话的收益和成本因此不一致。</p><h3>4. 钓鱼期间“设定鱼饵”会追溯改写尚未结算时间段（中）</h3><p>结算上下文的注释明确约定钓鱼期间设定只改 preferred_bait_id，当前 bait_id 应保持到下一次开钓（<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/actions.py#L107-L117" target="_blank" rel="noreferrer">core/actions.py</a>，<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/doc.md#L175-L180" target="_blank" rel="noreferrer">玩法文档</a>）。实际的<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/bait.py#L43-L63" target="_blank" rel="noreferrer">set_preferred_bait()</a>同时写入两者。</p><p>下一次状态查询或收杆会依当前 bait_id 对从旧 last_settle_time 起的整段时间重新模拟，导致中途换饵者以新鱼饵的速度、概率与成本结算已经过去的时段。这与源码承诺相矛盾，且会直接改变鱼获数量、稀有度和鱼饵消耗。</p><h3>5. 实际捕获与游戏内概率展示对特殊 UTR 的门控相互矛盾（高）</h3><p><a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/engine.py#L381-L408" target="_blank" rel="noreferrer">捕获引擎</a>仅在 weather_lost_wind=True 时启用星空特殊 UTR 和其保底；结算上下文也只在已解锁且乱纪元有效时才注入该 Buff。相反，<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/probability.py#L65-L82" target="_blank" rel="noreferrer">展示概率函数</a>把 starry_utr_unlocked 与迷途风作“或”判断，状态页完成成就后无条件传入该标记（<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/actions.py#L355-L405" target="_blank" rel="noreferrer">调用处</a>）。</p><p>这会在太阳风、流星雨、恒纪元以及非生效乱纪元中显示非零 UTR 概率，但实际掉落率为零；玩家据此选择地图或判断保底状态会被误导。</p><h3>6. 累计达到 1200 分不会实际发放 S2 入场券（高）</h3><p><a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/models/user.py#L209" target="_blank" rel="noreferrer">s2_ticket_claimed</a>在目标源码中只有定义和读取。流星鱼结算会<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/models/user_mutations.py#L501-L504" target="_blank" rel="noreferrer">累加积分</a>，收杆则仅<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/actions.py#L690-L707" target="_blank" rel="noreferrer">构造 reached/claimed 展示信息</a>，不存在将该字段写为已领取或发券的业务路径。</p><p>帮助页仍承诺 1200 分“可获得”入场券（<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/web/static/help.html#L1784" target="_blank" rel="noreferrer">help.html</a>）。因此玩家可达到阈值却无法获得承诺的解锁结果。</p><h3>7. 黑商将锁定 UTR 换成首条目标 UTR 时，目标会被消耗却被谎称“已自动锁定”（中）</h3><p>黑商先移除锁定来源，再调用<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/backpack/black_market.py#L523-L545" target="_blank" rel="noreferrer">add_fish_to_user()</a>，随后不检查锁定操作的返回值便追加“已自动锁定”。若目标是未收集的 UTR，<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/result.py#L60-L75" target="_blank" rel="noreferrer">入库逻辑</a>会只解锁图鉴并自动消耗该鱼，不创建背包条目；<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/models/user.py#L632-L644" target="_blank" rel="noreferrer">toggle_lock_by_numeric_id()</a>此时返回 False。</p><p>这违反同次提交新增的维护约束“锁定来源的实际获得鱼应留在背包并继承锁定”（<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/AI_MAINTENANCE.md#L598-L605" target="_blank" rel="noreferrer">AI_MAINTENANCE.md</a>）。锁定来源被消耗后，玩家既没有可锁定的目标鱼，也收到错误结果提示。</p><h3>8. 第 150 次保底奖励正确，但触发提示晚一轮（低）</h3><p>实际保底使用 <a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/engine.py#L400-L415" target="_blank" rel="noreferrer">(pity + 1) &gt;= 150</a>，提示预判却使用 <a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/engine.py#L1173-L1213" target="_blank" rel="noreferrer">pity &gt;= 150</a>。计数为 149 时，第 150 次鱼获已被强制保底但不会显示对应提示；UTR 与木框两类提示均受影响。</p><h3>9. 玩家帮助仍描述已废止的星空规则（中）</h3><p><a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/doc.md#L602-L604" target="_blank" rel="noreferrer">doc.md</a>仍称乱纪元无效果、成就后的 UTR 常驻，且在<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/doc.md#L716" target="_blank" rel="noreferrer">木框章节</a>引用已不存在的 STAR_FRAMES_MAX；网页帮助也保留“乱纪元无效果”的说法（<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/web/static/help.html#L1792-L1802" target="_blank" rel="noreferrer">help.html</a>）。</p><p>这些说明与实际结算的乱纪元门控及当前无星辰木框上限的实现冲突，会误导玩家规划天气、保底与木框资源。</p></section><section class="report-section report-section-profit-bug" aria-labelledby="report-category-profit-bug"><h2 id="report-category-profit-bug" class="report-category-title"><span class="category-kicker">收益问题</span><span>利润网 Bug</span></h2><h3>1. 星空特殊 UTR 被按完成成就后全天启用，实际只在有效乱纪元启用（高）</h3><p>利润网的<a href="../../catch-outcome.js#L1041-L1046">isSpecialUtrEnabled()</a>对星空地图只检查场景成就，忽略传入的天气类型与 weatherInactive；<a href="../../app.js#L1008-L1034">app.js</a>虽传入天气状态，结果没有参与判断。该结果进入<a href="../../app.js#L2992-L3037">捕获分布与 150 次保底</a>，直接影响鱼价期望和 netRevenue。</p><p>目标源码的实际结算只有在已解锁且乱纪元有效时才注入迷途风 Buff（<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/actions.py#L135-L155" target="_blank" rel="noreferrer">core/actions.py</a>），引擎再以该 Buff 启用特殊 UTR（<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/engine.py#L381-L408" target="_blank" rel="noreferrer">core/engine.py</a>）。因此利润网将太阳风、流星雨、恒纪元以及未生效乱纪元中的 UTR 随机收益和保底推进错误计入；现有<a href="../../tests/catch-outcome.test.js#L429-L448">回归测试</a>还把太阳风下的错误行为固定为预期。</p><h3>2. 缺失或非法的星空天气被利润网伪造为“生效中的乱纪元”（中）</h3><p><a href="../../app.js#L797-L827">getWeatherForMap()</a>在缺失源天气时先构造晴天，在类型不被星空天气集合接受时改为 chaotic_era，并同时强制写入 is_active: true、清空起止时间。目标源码遇到无天气记录时虽为便于显示返回 chaotic_era，但明确返回 <a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/weather_service.py#L397-L411" target="_blank" rel="noreferrer">is_active: False</a>，其他未解锁或结束的星空占位显示也保持非生效（<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/weather_service.py#L425-L448" target="_blank" rel="noreferrer">weather_service.py</a>）。</p><p>这把仅用于展示的占位天气当作真实效果状态。当前它被“全天特殊 UTR”问题掩盖；即使修正上一项，缺失或非法天气仍会继续错误地启用特殊收益与保底。</p><h3>3. 有效的 double_catch 被普通钓鱼收益链漏算（高）</h3><p>页面能识别玩家当前生效的 double_catch Buff（<a href="../../app.js#L904-L930">app.js</a>），但该状态只传给独立的星空期望模块（<a href="../../app.js#L5181-L5194">app.js</a>）；普通地图的数量与收益计算仅考虑多多和猫乐园分支（<a href="../../app.js#L2959-L3037">app.js</a>）。</p><p>目标源码会将 double_catch 转为实时 Buff（<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/models/buff.py#L415-L452" target="_blank" rel="noreferrer">models/buff.py</a>），并在所有地图的每个钓鱼间隔执行两次捕获（S1 材料分支例外）（<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/engine.py#L684-L724" target="_blank" rel="noreferrer">core/engine.py</a>），一枚鱼饵仍按整个间隔后置扣除（<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/engine.py#L1076-L1094" target="_blank" rel="noreferrer">core/engine.py</a>）。所以 Buff 生效期间页面低估鱼获价值、grossRevenue 与 netRevenue。</p><h3>4. 星空评分 PMF 仍按旧规则生成，积分、奖池和奖励期望已漂移（高）</h3><p>目标源码的<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/starry_system.py#L208-L212" target="_blank" rel="noreferrer">滑梯</a>与<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/starry_system.py#L235-L239" target="_blank" rel="noreferrer">回文</a>规则允许全同号同时命中两类番型。利润网的 JavaScript 移植仍要求滑梯至少移动一次并排除全同号回文（<a href="../../scripts/generate-starry-score-pmf.js#L91-L139">generate-starry-score-pmf.js</a>）。例如目标规则下 777777 的原始分为 15.047072、进入究极池（<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/tests/test_starry_fishing_design.py#L387-L405" target="_blank" rel="noreferrer">目标测试</a>），利润网旧移植则为 8.705465、仅高级池。</p><p>生成器固定的源码指纹仍是旧值（<a href="../../scripts/generate-starry-score-pmf.js#L15-L17">generate-starry-score-pmf.js</a>），检入 PMF 因而保持旧分布：普通域单候选平均原始分从 0.797450768 增至 0.840278102，究极池概率从 0.0574% 增至 0.0844%；恒纪元分别从 1.433352226 增至 1.514901110、0.2651956% 增至 0.3748438%。<a href="../../starry-expectation.js#L303-L334">starry-expectation.js</a>据该 PMF 计算积分、奖池抽取和奖励期望，所以星空区域展示的这些数值均不再对应目标游戏。根据 PRD 的既定口径，这部分不计入 netRevenue，但仍是已承诺的独立星空期望功能错误。</p></section><section class="report-section report-section-uncertain-difference" aria-labelledby="report-category-uncertain-difference"><h2 id="report-category-uncertain-difference" class="report-category-title"><span class="category-kicker">待定差异</span><span>源码与利润网有差异但无法确定是否为 Bug</span></h2><h3>1. 收杆尾数是否应按源码的概率保留，还是按页面的整次向下取整</h3><p>源码会按剩余时间占一个间隔的比例再做一次捕获判定（<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/engine.py#L797-L841" target="_blank" rel="noreferrer">core/engine.py</a>；<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/engine.py#L1127-L1171" target="_blank" rel="noreferrer">core/engine.py</a>），页面则以整次完成数向下取整（<a href="../../app.js#L2921-L2937">app.js</a>）。</p><p>这会影响任意不足一个完整钓鱼间隔的长期期望，但 PRD 已明确采用向下取整口径。需要用户决定利润网要严格复现单次收杆分布，还是保留当前更保守的产品口径。</p><h3>2. 无上限星辰木框与自动奇迹消费是否需要计入长期利润</h3><p>目标源码不再设置星辰木框持有上限（<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/core/starry_system.py#L82-L92" target="_blank" rel="noreferrer">core/starry_system.py</a>），并会在收杆时<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/fbd5567b82c46cad04aa6bed0ccf2b3a6d9cf583/models/user_mutations.py#L508-L550" target="_blank" rel="noreferrer">自动寻找并消耗可组成奇迹的流星鱼</a>。星空木框升级最多 10 个，满级后继续产生星辰木框及自动消耗流星鱼的长期价值没有统一的鱼币定义。</p><p>利润网目前不为流星鱼、奇迹或星辰木框折算鱼币。是否要把它们的机会成本或后续收益纳入利润，取决于产品要把这些非直接出售资源定义为净利润的一部分，还是继续仅显示其独立期望；这一估值口径需要用户决定。</p></section></main>
+  </body>
+</html>

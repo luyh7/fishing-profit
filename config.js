@@ -1,6 +1,6 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.2",
-  gitCommitCount: 131,
+  gitCommitCount: 133,
   versionManifestUrl: "./version.json",
   versionCheckIntervalMs: 10 * 60 * 1000,
   versionIdleReloadMs: 5 * 60 * 1000,
