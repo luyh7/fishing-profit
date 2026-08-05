@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="render-analysis-report.js">
+    <title>Game source analysis - 20260805-569dea8</title>
+    <style>
+    :root {
+      color-scheme: light;
+      font-family: "Inter", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+      background: #eef1f4;
+      color: #17212b;
+      line-height: 1.75;
+      font-size: 16px;
+    }
+    * { box-sizing: border-box; }
+    html { background: #eef1f4; }
+    body { margin: 0; padding: 40px 20px 64px; }
+    main {
+      width: min(100%, 980px);
+      margin: 0 auto;
+      padding: 48px 64px 64px;
+      background: #ffffff;
+      border: 1px solid #d8dee5;
+      box-shadow: 0 14px 36px rgba(24, 39, 56, 0.08);
+    }
+    h1, h2, h3, h4, h5, h6 {
+      color: #102a43;
+      line-height: 1.3;
+      margin: 2em 0 0.7em;
+      page-break-after: avoid;
+    }
+    h1 { margin-top: 0; font-size: 2rem; border-bottom: 3px solid #dce8f2; padding-bottom: 0.5em; }
+    h2 { font-size: 1.55rem; padding-bottom: 0.3em; border-bottom: 1px solid #dce8f2; }
+    h3 { font-size: 1.25rem; color: #145374; }
+    h4 { font-size: 1.08rem; color: #334e68; }
+    .report-section {
+      --category-color: #52606d;
+      --category-ink: #334e68;
+      --category-border: #bcccdc;
+      --category-wash: #f7f9fb;
+      margin: 42px 0;
+      padding: 0 26px 26px;
+      border: 1px solid var(--category-border);
+      border-left: 7px solid var(--category-color);
+      background: var(--category-wash);
+      border-radius: 8px;
+      page-break-inside: auto;
+    }
+    .report-section-source-bug {
+      --category-color: #c2410c;
+      --category-ink: #9a3412;
+      --category-border: #fdba74;
+      --category-wash: #fff7ed;
+    }
+    .report-section-profit-bug {
+      --category-color: #0f766e;
+      --category-ink: #115e59;
+      --category-border: #99d5cf;
+      --category-wash: #effaf8;
+    }
+    .report-section-uncertain-difference {
+      --category-color: #7c3aed;
+      --category-ink: #6d28d9;
+      --category-border: #d8b4fe;
+      --category-wash: #faf5ff;
+    }
+    .report-category-title {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 0 -26px 24px;
+      padding: 18px 26px 16px;
+      color: var(--category-ink);
+      background: rgba(255, 255, 255, 0.78);
+      border: 0;
+      border-bottom: 1px solid var(--category-border);
+    }
+    .category-kicker {
+      display: inline-flex;
+      align-items: center;
+      min-height: 25px;
+      padding: 2px 9px;
+      border: 1px solid var(--category-border);
+      border-radius: 999px;
+      background: #ffffff;
+      color: var(--category-ink);
+      font-size: 0.72rem;
+      font-weight: 800;
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+    .report-section h3 { color: var(--category-ink); }
+    .report-section > h3:first-of-type { margin-top: 0.7em; }
+    .report-section h4 { color: #334e68; }
+    p { margin: 0.8em 0; }
+    a { color: #0b6e99; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+    a:hover { color: #084c61; }
+    code {
+      padding: 0.12em 0.35em;
+      border-radius: 3px;
+      background: #f0f4f7;
+      color: #263238;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.9em;
+    }
+    pre {
+      overflow-x: auto;
+      margin: 1.2em 0;
+      padding: 16px 18px;
+      border-left: 4px solid #76a5af;
+      background: #f5f7f9;
+      line-height: 1.55;
+      page-break-inside: avoid;
+    }
+    pre code { padding: 0; background: transparent; }
+    blockquote {
+      margin: 1.2em 0;
+      padding: 0.15em 1.2em;
+      border-left: 4px solid #9fb3c8;
+      background: #f7f9fb;
+      color: #486581;
+    }
+    ul, ol { padding-left: 1.7em; }
+    li + li { margin-top: 0.45em; }
+    li > p:first-child { margin-top: 0; }
+    li > p:last-child { margin-bottom: 0; }
+    hr { border: 0; border-top: 1px solid #d8dee5; margin: 2em 0; }
+    .table-wrap { overflow-x: auto; margin: 1.3em 0; }
+    table { width: 100%; border-collapse: collapse; min-width: 560px; font-size: 0.95em; }
+    th, td { padding: 9px 12px; border: 1px solid #d8dee5; text-align: left; vertical-align: top; }
+    th { background: #edf3f7; color: #102a43; font-weight: 700; }
+    tr:nth-child(even) td { background: #fbfcfd; }
+    img { max-width: 100%; height: auto; }
+    @media (max-width: 760px) {
+      body { padding: 0; }
+      main { width: 100%; padding: 28px 22px 42px; border: 0; box-shadow: none; }
+      :root { font-size: 15px; }
+      h1 { font-size: 1.7rem; }
+      h2 { font-size: 1.4rem; }
+      .report-section { margin: 30px 0; padding: 0 18px 20px; border-left-width: 5px; }
+      .report-category-title { margin-left: -18px; margin-right: -18px; padding: 16px 18px 14px; }
+    }
+    @media print {
+      html, body { background: #ffffff; }
+      body { padding: 0; }
+      main { width: 100%; padding: 0; border: 0; box-shadow: none; }
+      a { color: inherit; }
+      .report-section { background: #ffffff; }
+      .report-category-title { background: #ffffff; }
+    }
+  </style>
+  </head>
+  <body>
+    <main><p>审查范围：旧 SHA <code>1049a4758bba4f3e7099c92b92af2333a7fd2365</code>；目标 SHA <code>569dea87babb20628f862cd908be110e79341228</code>；固定 compare：<a href="https://github.com/RShock/zhenxun_plugin_fishing/compare/1049a4758bba4f3e7099c92b92af2333a7fd2365...569dea87babb20628f862cd908be110e79341228" target="_blank" rel="noreferrer">1049a47..569dea8</a>。</p><section class="report-section report-section-source-bug" aria-labelledby="report-category-source-bug"><h2 id="report-category-source-bug" class="report-category-title"><span class="category-kicker">源码问题</span><span>游戏源码 Bug</span></h2><h3>正常玩家路径</h3><p>未发现。</p><h3>GM / 运维路径</h3><h4>GM-1. GM 强制收杆与普通结算没有会话版本校验（中）</h4><p>GM 强制收杆先在事务外直接把钓鱼状态改写为“从 10 小时前开始”、清空鱼获并重置保底，然后才调用收杆结算：<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/569dea87babb20628f862cd908be110e79341228/handlers/gm.py#L67-L96" target="_blank" rel="noreferrer">GM 状态重写</a>。普通收杆和状态结算虽然分别经过用户锁：<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/569dea87babb20628f862cd908be110e79341228/handlers/fishing.py#L141-L168" target="_blank" rel="noreferrer">普通收杆锁</a>、<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/569dea87babb20628f862cd908be110e79341228/handlers/fishing.py#L253-L289" target="_blank" rel="noreferrer">状态结算锁</a>，但 GM handler 没有获取同一把锁。</p><p><code>stop_fishing()</code> 仍先在事务外读取状态并完成模拟，事务内只重新锁用户行、检查仍在钓鱼，再应用此前计算出的 <code>updated_status</code>：<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/569dea87babb20628f862cd908be110e79341228/core/actions.py#L1279-L1297" target="_blank" rel="noreferrer">事务外计算</a>、<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/569dea87babb20628f862cd908be110e79341228/core/actions.py#L1024-L1058" target="_blank" rel="noreferrer">事务内检查与写入</a>。这里没有比较计算快照与当前会话的版本、开始时间或状态内容。</p><p>当 GM 强制收杆与普通收杆或状态结算并发时，先完成计算的一方可能用旧快照覆盖另一方刚写入的会话；例如普通结算可在 GM 已写入十小时状态后提交自己的旧结算，导致 GM 重写的时间锚点、鱼获、鱼饵消耗和保底状态丢失，或使 GM 结算被普通结算结果取代。该问题需要 GM/运维并发介入，故归入 GM / 运维路径。</p><h4>GM-2. 兑换忽略扣款失败，可能无余额发放外部金币（中）</h4><p>兑换先用用户快照检查余额，随后调用 <code>spend_gold()</code>，但忽略其布尔返回值，最后无条件调用外部金币账户入账：<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/569dea87babb20628f862cd908be110e79341228/shop/account.py#L12-L27" target="_blank" rel="noreferrer">兑换执行链</a>。目标源码中的 <code>spend_gold()</code> 会在实际扣款时重新检查余额并返回 <code>False</code>：<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/569dea87babb20628f862cd908be110e79341228/services/gold_service.py#L75-L106" target="_blank" rel="noreferrer">扣款返回值</a>。</p><p>当 GM、其他进程或运维写入在预检查与实际扣款之间降低余额时，<code>spend_gold()</code> 会拒绝扣款，但 <code>UserConsole.add_gold()</code> 仍会发放 <code>gold_received</code>，形成跨账户资源凭空增加。正常兑换入口的用户锁不能覆盖外部并发写入；因此该问题依赖 GM / 运维或其他未锁外部写入，归入 GM / 运维路径。</p></section><section class="report-section report-section-profit-bug" aria-labelledby="report-category-profit-bug"><h2 id="report-category-profit-bug" class="report-category-title"><span class="category-kicker">收益问题</span><span>利润网 Bug</span></h2><h4>1. 星空评分生成器的源码指纹停留在旧固定版本（中）</h4><p>利润网生成器将 <code>core/starry_system.py</code> 的审查指纹固定为 <code>fcfbba731de1b51c1cd4dfcd29e5d6015cb1c7aadbd3c5050b34d34ae662f037</code>：<a href="../../scripts/generate-starry-score-pmf.js#L11-L17">指纹门禁</a>。目标 SHA 的同一文件实际 SHA-256 为 <code>c3130d58267523a3f7dc952eb05cdfe1c37b1529f84b889a13fa8e27c31313cf</code>；目标源码还改变了究极奖池限制及 16 分以上流星鱼的处理：<a href="https://github.com/RShock/zhenxun_plugin_fishing/blob/569dea87babb20628f862cd908be110e79341228/core/starry_system.py#L735-L760" target="_blank" rel="noreferrer">目标规则</a>。生成器在指纹不一致时直接拒绝构建：<a href="../../scripts/generate-starry-score-pmf.js#L496-L512">校验与失败路径</a>。</p><p>因此利润网切换到目标固定源码后，星空 PMF 不能通过源码漂移检查，随页面发布的 PMF 也不能证明已经覆盖目标版本的源码审查结果。该结论只涉及星空评分/奖励展示与生成校验；当前长期收益口径本身忽略展馆库存和奖池降级，不把该一次性状态差异计入鱼币收益。</p></section><section class="report-section report-section-uncertain-difference" aria-labelledby="report-category-uncertain-difference"><h2 id="report-category-uncertain-difference" class="report-category-title"><span class="category-kicker">待定差异</span><span>源码与利润网有差异但无法确定是否为 Bug</span></h2><p>未发现。</p></section></main>
+  </body>
+</html>

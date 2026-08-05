@@ -1,10 +1,15 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.2",
-  gitCommitCount: 134,
+  gitCommitCount: 135,
   versionManifestUrl: "./version.json",
   versionCheckIntervalMs: 10 * 60 * 1000,
   versionIdleReloadMs: 5 * 60 * 1000,
   changelog: [
+    {
+      version: "1.2.135",
+      date: "2026-08-05",
+      summary: "同步最新游戏规则并修正星空收益计算",
+    },
     {
       version: "1.2.134",
       date: "2026-08-04",

@@ -15,7 +15,7 @@ game-source/
 
 首次公开基准：`18a5c95b929c36a4b255ccc686e6560316cb3765`
 
-当前固定 commit：`1049a4758bba4f3e7099c92b92af2333a7fd2365`
+当前固定 commit：`569dea87babb20628f862cd908be110e79341228`
 
 主仓库记录的是固定的子模块 commit。普通拉取不会自动跟随上游 `main`；用户要求“分析游戏源码”或提出等价请求时，才启动新版只读分析流程并在验证后推进该指针。
 
@@ -81,7 +81,8 @@ node scripts/render-analysis-report.js game-source/analysis/<report>.md
 - 上游 `e6a2161` 地图配置同 SHA 闭环复核：[`HTML`](analysis/20260729-e6a2161-same-sha.html) / [`PNG`](analysis/20260729-e6a2161-same-sha.png) / [`Markdown`](analysis/20260729-e6a2161-same-sha.md)
 - 上游 `bd4cbbd` 三类问题报告：[`HTML`](analysis/20260731-bd4cbbd.html) / [`PNG`](analysis/20260731-bd4cbbd.png) / [`Markdown`](analysis/20260731-bd4cbbd.md)
 - 上游 `1049a47` 三类问题报告：[`HTML`](analysis/20260804-1049a47.html) / [`PNG`](analysis/20260804-1049a47.png) / [`Markdown`](analysis/20260804-1049a47.md)
+- 上游 `569dea8` 三类问题报告：[`HTML`](analysis/20260805-569dea8.html) / [`PNG`](analysis/20260805-569dea8.png) / [`Markdown`](analysis/20260805-569dea8.md)
 
 旧版报告保留其生成时的快照口径和结论。旧压缩包及解压源码已经从当前工作树删除，但仍可从利润网历史提交 `267d99c` 找到；新的分析必须改用上游完整 commit SHA。
 
-审查范围：旧 SHA `bd4cbbddcdea34d02155c6a2d9e67fdc3011b49f`；目标 SHA `1049a4758bba4f3e7099c92b92af2333a7fd2365`；固定 compare：[bd4cbbd..1049a47](https://github.com/RShock/zhenxun_plugin_fishing/compare/bd4cbbddcdea34d02155c6a2d9e67fdc3011b49f...1049a4758bba4f3e7099c92b92af2333a7fd2365)。
+审查范围：旧 SHA `1049a4758bba4f3e7099c92b92af2333a7fd2365`；目标 SHA `569dea87babb20628f862cd908be110e79341228`；固定 compare：[1049a47..569dea8](https://github.com/RShock/zhenxun_plugin_fishing/compare/1049a4758bba4f3e7099c92b92af2333a7fd2365...569dea87babb20628f862cd908be110e79341228)。
