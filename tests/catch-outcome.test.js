@@ -4,6 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 const {
   canUpgradeCatBuildingLevel,
   calculateCatBaitConsumptionFactor,
@@ -727,6 +728,59 @@ test("页面计算链消费负一级差概率并保持闪光药水互斥", () =>
   );
   assert.match(prd, /多多药水、幸运药水和闪光药水互斥/);
   assert.doesNotMatch(prd, /可与多多或幸运并存|与幸运药水同时生效/);
+});
+
+test("图 11 乱纪元收益列表显示 24H 迷途风累计次数", () => {
+  const appSource = fs.readFileSync(path.resolve(__dirname, "../app.js"), "utf8");
+  const renderTableSource = appSource.match(
+    /  function renderTable\([\s\S]*?(?=\n  function hidePlayerInfo)/,
+  )?.[0];
+  assert.ok(renderTableSource, "未找到收益列表渲染函数");
+
+  const elements = {
+    bestBaitName: { textContent: "" },
+    bestBaitNet: { textContent: "" },
+    lostWindCountHeader: { hidden: true },
+    emptyState: { hidden: true },
+    resultBody: { innerHTML: "" },
+  };
+  const bait = { id: 1, name: "蚯蚓鱼饵", price: 2, speed: 0.2 };
+  const row = {
+    bait,
+    intervalHours: 1,
+    theoreticalCount: 24,
+    completedCount: 24,
+    hourlyTheoreticalRevenue: 100,
+    grossRevenue: 2400,
+    baitCost: 48,
+    netRevenue: 2352,
+  };
+  const context = {
+    elements,
+    formatMinutes: (value) => String(value),
+    formatNumber: (value, digits) => Number(value).toFixed(digits),
+    formatPercent: (value) => String(value),
+    isStarryMap: (map) => Number(map?.id) >= 11 && Number(map?.id) <= 20,
+    normalizeWeatherType: (value) => value,
+    parseNumber: (value) => Number(value) || 0,
+  };
+
+  vm.runInNewContext(
+    `${renderTableSource}\nrenderTable(rows, bestRow, selectedMapRow);`,
+    {
+      ...context,
+      rows: [row],
+      bestRow: row,
+      selectedMapRow: {
+        map: { id: 11 },
+        weather: { type: "chaotic_era" },
+        specialUtrPityIncrementExpectedValue: 0.5,
+      },
+    },
+  );
+
+  assert.equal(elements.lostWindCountHeader.hidden, false);
+  assert.match(elements.resultBody.innerHTML, /<td>12\.00<\/td>/);
 });
 
 test("多多药水与旋转逗猫棒按数量加概率组合", () => {

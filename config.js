@@ -1,10 +1,15 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.2",
-  gitCommitCount: 135,
+  gitCommitCount: 136,
   versionManifestUrl: "./version.json",
   versionCheckIntervalMs: 10 * 60 * 1000,
   versionIdleReloadMs: 5 * 60 * 1000,
   changelog: [
+    {
+      version: "1.2.136",
+      date: "2026-08-05",
+      summary: "图 11-20 收益列表增加 24H 迷途风次数",
+    },
     {
       version: "1.2.135",
       date: "2026-08-05",

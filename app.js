@@ -5696,8 +5696,13 @@
     elements.bestBaitNet.textContent = bestRow
       ? `¥${formatNumber(bestRow.netRevenue, 0)}`
       : "-";
+    const selectedWeatherType = normalizeWeatherType(
+      selectedMapRow?.weather?.type,
+    );
     const showLostWindCount =
-      normalizeWeatherType(selectedMapRow?.weather?.type) === "lost_wind";
+      selectedWeatherType === "lost_wind" ||
+      (isStarryMap(selectedMapRow?.map) &&
+        selectedWeatherType === "chaotic_era");
     if (elements.lostWindCountHeader) {
       elements.lostWindCountHeader.hidden = !showLostWindCount;
     }
