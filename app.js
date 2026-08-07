@@ -5537,14 +5537,16 @@
                 <div class="map-card-price" data-map-price="${escapedMapId}"> ¥${formatNumber(row.bestBaitRow?.netRevenue ?? 0, 0)}</div>
               </div>
               <div class="map-card-note map-card-best-bait" data-map-best-bait="${escapedMapId}">最优鱼饵：${row.bestBaitRow ? row.bestBaitRow.bait.name : "-"}</div>
-              <label class="map-card-buff">
-                <span>打窝 buff（%）</span>
+              <div class="map-card-buff">
+                <span>打窝%</span>
                 <div class="map-card-buff-stepper" data-bait-buff-stepper="${escapedMapId}">
-                  <button type="button" class="stepper-btn" data-bait-buff-step="-5" data-bait-buff-map-id="${escapedMapId}" aria-label="减少">−</button>
+                  <button type="button" class="stepper-btn stepper-limit-btn" data-bait-buff-set="0" data-bait-buff-map-id="${escapedMapId}" aria-label="置为 0%">0</button>
+                  <button type="button" class="stepper-btn" data-bait-buff-step="-5" data-bait-buff-map-id="${escapedMapId}" aria-label="减少 5%">−</button>
                   <span class="stepper-value" data-bait-buff-value="${escapedMapId}">${formatNumber(row.baitBuff, 0)}</span>
-                  <button type="button" class="stepper-btn" data-bait-buff-step="5" data-bait-buff-map-id="${escapedMapId}" aria-label="增加">+</button>
+                  <button type="button" class="stepper-btn" data-bait-buff-step="5" data-bait-buff-map-id="${escapedMapId}" aria-label="增加 5%">+</button>
+                  <button type="button" class="stepper-btn stepper-limit-btn" data-bait-buff-set="100" data-bait-buff-map-id="${escapedMapId}" aria-label="置为 100%">100</button>
                 </div>
-              </label>`;
+              </div>`;
         return `
           <div class="${cardClasses}" data-map-id="${escapedMapId}" data-map-level="${row.map.difficulty}" data-map-disabled="${isUnavailable}" role="button" tabindex="${isUnavailable ? "-1" : "0"}" aria-disabled="${isUnavailable ? "true" : "false"}"${collectionState.attributes}>
             ${catBuildingsButton}
@@ -6682,18 +6684,24 @@
           return;
         }
 
-        const stepButton = event.target.closest("[data-bait-buff-step]");
-        if (stepButton) {
+        const buffButton = event.target.closest(
+          "[data-bait-buff-step], [data-bait-buff-set]",
+        );
+        if (buffButton) {
           event.stopPropagation();
-          const stepCard = stepButton.closest(".map-card");
-          if (stepCard?.dataset.mapDisabled === "true") {
+          const buffCard = buffButton.closest(".map-card");
+          if (buffCard?.dataset.mapDisabled === "true") {
             return;
           }
           const mapId =
-            stepButton.dataset.baitBuffMapId || stepButton.dataset.baitBuffMap;
-          const stepValue = parseNumber(stepButton.dataset.baitBuffStep);
+            buffButton.dataset.baitBuffMapId || buffButton.dataset.baitBuffMap;
           const current = getBaitBuffForMap(mapId);
-          const next = Math.max(0, current + stepValue);
+          const next = buffButton.hasAttribute("data-bait-buff-set")
+            ? parseNumber(buffButton.dataset.baitBuffSet)
+            : Math.max(
+                0,
+                current + parseNumber(buffButton.dataset.baitBuffStep),
+              );
           setBaitBuffForMap(mapId, next === 0 ? "" : String(next));
           disableAutoNestBuffForManualEdit();
           render({ skipMapCardRebuild: true });
@@ -6716,7 +6724,9 @@
 
       elements.mapCardList.addEventListener("keydown", (event) => {
         if (
-          event.target.closest("[data-bait-buff-step]") ||
+          event.target.closest(
+            "[data-bait-buff-step], [data-bait-buff-set]",
+          ) ||
           event.target.closest("[data-cat-buildings-open]")
         ) {
           return;

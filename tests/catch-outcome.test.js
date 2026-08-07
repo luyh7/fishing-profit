@@ -977,6 +977,18 @@ test("自动打窝同步把 cat_nest 与 nest/frame/starry_bonus 一并计入", 
   assert.match(prd, /cat_nest\) \* 5/);
 });
 
+test("地图卡片打窝控件支持一键置为 0% 和 100%", () => {
+  const appSource = fs.readFileSync(path.resolve(__dirname, "../app.js"), "utf8");
+
+  assert.match(appSource, /<div class="map-card-buff">/);
+  assert.doesNotMatch(appSource, /<label class="map-card-buff">/);
+  assert.match(appSource, /data-bait-buff-set="0"/);
+  assert.match(appSource, /data-bait-buff-set="100"/);
+  assert.match(
+    appSource,
+    /hasAttribute\("data-bait-buff-set"\)[\s\S]*dataset\.baitBuffSet/,
+  );
+});
 
 test("双保底耦合稳态冷路径应在可接受时间内完成", () => {
   const samples = [];

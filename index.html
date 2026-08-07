@@ -1032,16 +1032,21 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 8px;
+        gap: 4px;
         margin-top: 6px;
         color: var(--muted);
         font-size: 11px;
       }
 
+      .map-card-buff > span {
+        white-space: nowrap;
+      }
+
       .map-card-buff-stepper {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        min-width: 0;
+        gap: 2px;
         background: rgba(8, 11, 18, 0.9);
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 10px;
@@ -1049,19 +1054,30 @@
       }
 
       .map-card-buff-stepper .stepper-btn {
-        width: 22px;
+        width: 20px;
         height: 22px;
+        padding: 0;
         border-radius: 7px;
         border: none;
         background: rgba(255, 255, 255, 0.06);
         color: var(--text);
-        font-size: 13px;
+        font-size: 12px;
         line-height: 1;
         cursor: pointer;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         transition: background 0.15s ease;
+      }
+
+      .map-card-buff-stepper .stepper-limit-btn {
+        width: 26px;
+        font-size: 9px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .map-card-buff-stepper .stepper-limit-btn[data-bait-buff-set="0"] {
+        width: 20px;
       }
 
       .map-card-buff-stepper .stepper-btn:hover {
@@ -1073,10 +1089,10 @@
       }
 
       .map-card-buff-stepper .stepper-value {
-        min-width: 36px;
+        min-width: 28px;
         text-align: center;
         display: inline-block;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 900;
         color: var(--text);
         font-variant-numeric: tabular-nums;

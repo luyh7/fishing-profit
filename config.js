@@ -1,10 +1,15 @@
 window.FISH_FISHING_CONFIG = {
   versionPrefix: "1.2",
-  gitCommitCount: 136,
+  gitCommitCount: 137,
   versionManifestUrl: "./version.json",
   versionCheckIntervalMs: 10 * 60 * 1000,
   versionIdleReloadMs: 5 * 60 * 1000,
   changelog: [
+    {
+      version: "1.2.137",
+      date: "2026-08-07",
+      summary: "地图打窝百分比支持一键归零和拉满",
+    },
     {
       version: "1.2.136",
       date: "2026-08-05",
